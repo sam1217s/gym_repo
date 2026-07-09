@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const LONGITUD_MINIMA_CONTRASENA = 8;
 
-const contrasenaSegura = z
+export const contrasenaSegura = z
   .string()
   .min(LONGITUD_MINIMA_CONTRASENA, `Minimo ${LONGITUD_MINIMA_CONTRASENA} caracteres`)
   .regex(/[a-z]/, 'Debe incluir al menos una minuscula')

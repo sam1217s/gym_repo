@@ -1,10 +1,11 @@
 <template>
   <q-layout view="hHh lpR fFf">
-    <q-header elevated class="bg-primary text-white">
+    <!-- Tinta con la banda de disco roja debajo: la firma visual de la marca. -->
+    <q-header class="encabezado-marca bg-secondary text-white">
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="alternarMenu" />
 
-        <q-toolbar-title>GymSaaS</q-toolbar-title>
+        <q-toolbar-title class="titulo-display">GymSaaS</q-toolbar-title>
 
         <div class="q-mr-md text-caption">
           {{ usuario?.nombreCompleto }}
@@ -66,3 +67,9 @@ function alternarMenu() {
   menuAbierto.value = !menuAbierto.value;
 }
 </script>
+
+<style scoped>
+.encabezado-marca {
+  border-bottom: 3px solid var(--q-primary);
+}
+</style>

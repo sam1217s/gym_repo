@@ -1,14 +1,23 @@
 // Paleta de la marca. Quasar la consume para generar sus clases de color.
 // https://v2.quasar.dev/style/sass-scss-variables
+//
+// El sistema visual sale del mundo del producto: los discos de competicion
+// olimpica, que se identifican por su banda de color (rojo 25 kg, azul 20 kg,
+// amarillo 15 kg, verde 10 kg). La accion primaria es el rojo del disco grande;
+// la estructura es tinta; los estados usan las bandas.
 
-$primary: #1f6feb;
-$secondary: #26a69a;
-$accent: #9c27b0;
+// Accion: rojo disco de 25 kg.
+$primary: #b3271e;
+// Estructura (header, drawer, titulos): tinta.
+$secondary: #1b1e24;
+// Azul disco de 20 kg (estado "trial" y acentos informativos).
+$accent: #21579e;
 
-$dark: #1d1d1d;
-$dark-page: #121212;
+$dark: #1b1e24;
+$dark-page: #14161b;
 
-$positive: #21ba45;
-$negative: #c10015;
-$info: #31ccec;
-$warning: #f2c037;
+// Bandas de estado: verde 10 kg, rojo profundo, azul 20 kg, ambar 15 kg.
+$positive: #1f7a46;
+$negative: #8f1d14;
+$info: #21579e;
+$warning: #9a7016;

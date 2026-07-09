@@ -1,7 +1,7 @@
 <template>
   <q-card class="tarjeta-acceso q-pa-lg">
     <q-card-section class="text-center q-pb-none">
-      <div class="text-h5 text-weight-bold">GymSaaS</div>
+      <div class="text-h4 titulo-display">GymSaaS</div>
       <div class="text-caption text-grey-7">Entra al panel de tu gimnasio</div>
     </q-card-section>
 
@@ -96,5 +96,7 @@ function enviar() {
 .tarjeta-acceso {
   width: 100%;
   max-width: 420px;
+  /* La banda de disco: la misma franja roja que corona el header del panel. */
+  border-top: 4px solid var(--q-primary);
 }
 </style>

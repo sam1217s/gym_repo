@@ -3,6 +3,32 @@
 // Estilos globales de la app. Los estilos de un componente van en su propio
 // bloque `<style scoped>`, no aqui.
 
+// Tipografia de la marca: Barlow Condensed (display, vernaculo de poster de
+// gimnasio) + Public Sans (cuerpo). Si no hay red, caen a la pila del sistema.
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap');
+
+body {
+  font-family: 'Public Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #f4f5f7;
+}
+
+// Titulos y cifras grandes. Se usa con moderacion: es la voz alta de la marca.
+.titulo-display {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+// Cifras alineadas en tablas y contadores.
+.cifra-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+// Pantallas previas a tener sesion: tinta con un resplandor sutil, no un
+// degradado del color primario (el rojo a pantalla completa gritaria).
 .pantalla-autenticacion {
-  background: linear-gradient(135deg, $primary 0%, color.adjust($primary, $lightness: -18%) 100%);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(179, 39, 30, 0.28), transparent 60%),
+    $secondary;
 }

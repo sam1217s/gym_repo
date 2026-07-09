@@ -304,7 +304,9 @@ tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto 
 POST /api/plataforma/tenants ──> requiereSuperAdmin
         |
         v
-plataforma.servicio.js  (una sola transaccion logica)
+onboarding.servicio.js  (compensacion manual: sin replica set no hay
+                         transacciones; si fallan los pasos 2 o 3 se BORRA
+                         lo ya creado y se relanza el error)
         |
         |  1. Tenant.create({ slug, nit, planPlataforma, estado: 'trial' })
         |       ^ sin plugin: es coleccion de plataforma
@@ -321,6 +323,16 @@ plataforma.servicio.js  (una sola transaccion logica)
 
 El punto no obvio: dentro del mismo endpoint se cruza la frontera de plataforma a tenant. Los
 pasos 1 y 2 corren sin contexto; el paso 3 **necesita** abrir uno.
+
+Reglas del ciclo de vida que no estan en el esquema:
+
+- `cancelado` es **terminal**: ninguna transicion sale de ahi. Suspender solo aplica a
+  `trial`/`activo`; reactivar lleva a `activo`.
+- Los `PlanPlataforma` **no se borran**: los tenants los referencian. `DELETE /planes/:id`
+  archiva (`activo: false`), lo que solo impide asignarlos a gimnasios nuevos.
+- `tenants.servicio.js` agrega sobre `Sede` **sin filtro de tenant** (conteo global por
+  gimnasio). Es legal unicamente porque ese servicio corre siempre como `super_admin` con
+  `omitirAislamiento`; no copiar ese patron en servicios de negocio.
 
 ---
 
@@ -391,6 +403,20 @@ preguntar si una propiedad existe.
   el interceptor no aborte la navegacion en curso con un `push` simultaneo.
 - El guard del router es **comodidad, no seguridad**: quien decide de verdad es el backend.
 
+### Sistema visual: la banda de disco
+
+El lenguaje visual sale de los discos de competicion olimpica, que se identifican por su banda
+de color. Esa banda es la firma de la marca y el sistema de estado; no inventar otros colores:
+
+- **Accion primaria**: rojo disco `$primary` · **estructura**: tinta `$secondary` (header,
+  titulos) · fondo gris frio. Definidos en `css/quasar.variables.scss`.
+- **Estados de tenant**: activo = `$positive` (verde), trial = `$info` (azul),
+  suspendido = `$warning` (ambar), cancelado = acero `#667085`.
+- **Tipografia**: `Barlow Condensed` solo para display (clase `.titulo-display`, mayusculas);
+  `Public Sans` para todo lo demas; `.cifra-tabular` en cifras de tablas y contadores.
+- El motivo se aplica como banda: borde superior rojo en tarjetas clave, borde inferior del
+  header, chips de estado con banda izquierda, contadores circulares tipo disco.
+
 ---
 
 ## Cosas que graphify senala y son intencionales
@@ -404,9 +430,6 @@ Al correr `node graph.js detective` veras esto. No lo "arregles":
 
 - **Huerfanos `FE:App.vue` y `FE:stores/index.js`.** Son puntos de entrada que Quasar carga por
   convencion; nadie del codigo propio los importa.
-
-- **Puntos de entrada `BE:middlewares/autorizacion.js` y `BE:middlewares/contextoTenant.js`.**
-  Todavia nadie los monta: entran en juego en la Fase 2, cuando existan rutas de negocio.
 
 ---
 

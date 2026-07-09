@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { estaConectada } from '../config/baseDatos.js';
 import { responderOk } from '../utilidades/respuesta.js';
 import rutasAuth from './auth.rutas.js';
+import rutasPlataforma from './plataforma.rutas.js';
 
 const rutas = Router();
 
@@ -10,8 +11,8 @@ rutas.get('/salud', (_peticion, respuesta) =>
 );
 
 rutas.use('/auth', rutasAuth);
+rutas.use('/plataforma', rutasPlataforma);
 
-// Fase 2: rutas.use('/plataforma', rutasPlataforma)
 // Fase 3: rutas.use('/sedes', ...), rutas.use('/miembros', ...), rutas.use('/pagos', ...)
 
 export default rutas;

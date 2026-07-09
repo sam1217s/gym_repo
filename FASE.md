@@ -11,7 +11,7 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fase 1 completa. Fase 2 sin empezar.
+**Estado global:** Fases 1 y 2 completas. Fase 3 sin empezar.
 
 ---
 
@@ -76,30 +76,36 @@ Objetivo: que sea imposible escribir una consulta que se salte el tenant sin dar
 
 ---
 
-## Fase 2 — Plataforma · PENDIENTE
+## Fase 2 — Plataforma · COMPLETA
 
 Objetivo: que un `super_admin` pueda dar de alta y administrar gimnasios.
 Es el primer flujo que cruza la frontera plataforma → tenant.
 
 ### Backend
-- [ ] `validaciones/plataforma.validacion.js` (Zod)
-- [ ] `servicios/planesPlataforma.servicio.js` — CRUD de `PlanPlataforma`
-- [ ] `servicios/tenants.servicio.js` — listar, ver, suspender, reactivar, cancelar
-- [ ] `servicios/onboarding.servicio.js` — crear tenant + primer `tenant_owner` + primera sede
+- [x] `validaciones/plataforma.validacion.js` (Zod)
+- [x] `servicios/planesPlataforma.servicio.js` — CRUD de `PlanPlataforma`
+      (DELETE archiva con `activo: false`; los planes nunca se borran porque
+      los tenants los referencian)
+- [x] `servicios/tenants.servicio.js` — listar, ver, suspender, reactivar, cancelar
+      (`cancelado` es terminal: no hay transicion que salga de ahi)
+- [x] `servicios/onboarding.servicio.js` — crear tenant + primer `tenant_owner` + primera sede
       (los pasos 1 y 2 sin contexto; el 3 dentro de `ejecutarConTenant`)
-- [ ] `controladores/` y `rutas/plataforma.rutas.js` protegidas con `requiereSuperAdmin`
-- [ ] Montar `autenticar` + `abrirContextoTenant` en el router de negocio
-      (hoy ambos middlewares existen pero no los usa nadie)
-- [ ] Transaccionalidad del onboarding: si falla la sede, no debe quedar el tenant huerfano
-- [ ] Pruebas: un `tenant_owner` recibe 403 en todas las rutas de plataforma
+- [x] `controladores/` y `rutas/plataforma.rutas.js` protegidas con `requiereSuperAdmin`
+- [x] Montar `autenticar` + `abrirContextoTenant` en el router de negocio
+- [x] Transaccionalidad del onboarding: si falla la sede, no debe quedar el tenant huerfano.
+      Resuelto con **compensacion manual** (no hay replica set, asi que no hay
+      transacciones de Mongo); hay una prueba que sabotea el paso 3 y verifica el deshacer
+- [x] Pruebas: un `tenant_owner` recibe 403 en todas las rutas de plataforma
+      (14 pruebas en `pruebas/plataforma.prueba.js`)
 
 ### Frontend
-- [ ] `servicios/plataforma.servicio.js` (cliente HTTP)
-- [ ] `stores/plataforma.js`
-- [ ] `PanelPlataforma.vue`: tabla real de gimnasios con estado y plan
-- [ ] `FormularioOnboarding.vue`: alta de gimnasio + su primer dueno
-- [ ] Acciones de suspender / reactivar con confirmacion
-- [ ] Aplicar el skill `frontend-design` (hoy la UI es Quasar por defecto)
+- [x] `servicios/plataforma.servicio.js` (cliente HTTP)
+- [x] `stores/plataforma.js`
+- [x] `PanelPlataforma.vue`: tabla real de gimnasios con estado, plan, dueno y sedes
+- [x] `FormularioOnboarding.vue`: alta de gimnasio + su primer dueno + primera sede
+- [x] Acciones de suspender / reactivar / cancelar con confirmacion
+- [x] Skill `frontend-design` aplicado: sistema visual propio ("bandas de disco",
+      ver la convencion en `CLAUDE.md`)
 
 ---
 
@@ -181,8 +187,11 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
 - [ ] **Sin rate limiting en el login.** Un atacante puede probar contrasenas sin freno.
 - [ ] **Sin `.env` de produccion.** Al desplegar: `sameSite: 'none'` + `secure: true` solo si
       frontend y API viven en dominios distintos; si comparten dominio, bajar a `'lax'`.
-- [ ] **La UI es Quasar por defecto.** Ya esta instalado el skill `frontend-design`.
 - [ ] **`Notificacion` existe pero nadie escribe en ella** hasta la Fase 5.
+- [ ] **Las fuentes de marca vienen de Google Fonts por CDN** (`css/app.scss`). Sin red
+      caen a la pila del sistema; para un despliegue offline habria que empaquetarlas.
+- [ ] **El onboarding compensa, no transacciona.** Si algun dia hay replica set (Atlas),
+      migrar `onboarding.servicio.js` a una transaccion real.
 
 ---
 
