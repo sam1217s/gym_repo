@@ -21,6 +21,32 @@ function inicioDeMes(ahora = new Date()) {
   return new Date(ahora.getFullYear(), ahora.getMonth(), 1);
 }
 
+/** `new Date(2026, -1, 1)` cae en diciembre de 2025: el mes negativo hace rollover solo. */
+function inicioDeMesAnterior(ahora = new Date()) {
+  return new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+}
+
+/**
+ * Variacion relativa contra el mes anterior. Devuelve `null` cuando no hay base
+ * con que comparar: un gimnasio que arranca desde cero no "crecio un 100%", y
+ * el panel debe poder decir "sin datos del mes pasado" en lugar de un numero
+ * inventado.
+ */
+function calcularVariacion(totalMes, totalMesAnterior) {
+  if (totalMesAnterior === 0) return null;
+  return (totalMes - totalMesAnterior) / totalMesAnterior;
+}
+
+async function sumarIngresosEntre(filtroSede, desde, hasta) {
+  const Pago = obtenerModelo('Pago');
+  const [fila] = await Pago.aggregate([
+    { $match: { ...filtroSede, fechaPago: { $gte: desde, $lt: hasta } } },
+    { $group: { _id: null, total: { $sum: '$monto' } } },
+  ]);
+
+  return fila?.total ?? 0;
+}
+
 export async function obtenerIngresosDelMes(filtroSede = {}) {
   const Sede = obtenerModelo('Sede');
   const Pago = obtenerModelo('Pago');
@@ -59,7 +85,20 @@ export async function obtenerIngresosDelMes(filtroSede = {}) {
 
   const totalMes = ingresosPorSede.reduce((acumulado, fila) => acumulado + fila.total, 0);
 
-  return { ingresosPorSede, totalMes };
+  // El total del mes solo significa algo contra una base: sin el mes anterior,
+  // una cifra grande no dice si el gimnasio va bien o va mal.
+  const totalMesAnterior = await sumarIngresosEntre(
+    filtroSede,
+    inicioDeMesAnterior(),
+    inicioDeMes(),
+  );
+
+  return {
+    ingresosPorSede,
+    totalMes,
+    totalMesAnterior,
+    variacion: calcularVariacion(totalMes, totalMesAnterior),
+  };
 }
 
 export async function obtenerConteoMiembros(filtroSede = {}) {

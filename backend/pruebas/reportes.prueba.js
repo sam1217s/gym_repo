@@ -126,10 +126,14 @@ async function entrarComo(email) {
   return agente;
 }
 
+/**
+ * Un dia a mitad del mes N-esimo hacia atras. Se usa el dia 15 y no
+ * `setMonth(-1)` porque restar un mes al 31 de julio da el 1 de julio: el dia
+ * 15 existe en todos los meses.
+ */
 function haceMeses(meses) {
-  const fecha = new Date();
-  fecha.setMonth(fecha.getMonth() - meses);
-  return fecha;
+  const ahora = new Date();
+  return new Date(ahora.getFullYear(), ahora.getMonth() - meses, 15);
 }
 
 beforeEach(limpiarColecciones);
@@ -206,6 +210,76 @@ describe('GET /api/reportes', () => {
     const respuesta = await dueno.get('/api/reportes').expect(200);
 
     expect(respuesta.body.data.totalMes).toBe(0);
+  });
+
+  it('compara contra el mes anterior y calcula la variacion', async () => {
+    const { tenant, sedes, planMensual, miembros, usuarios } = await montarGimnasio();
+
+    // Mes anterior: 100.000. Mes actual: 150.000 -> +50%.
+    await registrarPago(tenant._id, {
+      miembro: miembros.ana,
+      sede: sedes.norte,
+      planMembresia: planMensual,
+      registradoPor: usuarios.dueno,
+      monto: 100_000,
+      metodoPago: METODOS_PAGO.EFECTIVO,
+      fechaPago: haceMeses(1),
+    });
+    await registrarPago(tenant._id, {
+      miembro: miembros.ana,
+      sede: sedes.norte,
+      planMembresia: planMensual,
+      registradoPor: usuarios.dueno,
+      monto: 150_000,
+      metodoPago: METODOS_PAGO.EFECTIVO,
+      fechaPago: new Date(),
+    });
+
+    const dueno = await entrarComo(usuarios.dueno.email);
+    const respuesta = await dueno.get('/api/reportes').expect(200);
+
+    expect(respuesta.body.data.totalMes).toBe(150_000);
+    expect(respuesta.body.data.totalMesAnterior).toBe(100_000);
+    expect(respuesta.body.data.variacion).toBeCloseTo(0.5);
+  });
+
+  it('sin ingresos el mes pasado la variacion es null, no un 100% inventado', async () => {
+    const { tenant, sedes, planMensual, miembros, usuarios } = await montarGimnasio();
+
+    await registrarPago(tenant._id, {
+      miembro: miembros.ana,
+      sede: sedes.norte,
+      planMembresia: planMensual,
+      registradoPor: usuarios.dueno,
+      monto: 60_000,
+      metodoPago: METODOS_PAGO.EFECTIVO,
+      fechaPago: new Date(),
+    });
+
+    const dueno = await entrarComo(usuarios.dueno.email);
+    const respuesta = await dueno.get('/api/reportes').expect(200);
+
+    expect(respuesta.body.data.totalMesAnterior).toBe(0);
+    expect(respuesta.body.data.variacion).toBeNull();
+  });
+
+  it('un pago de hace dos meses no cuenta como "mes anterior"', async () => {
+    const { tenant, sedes, planMensual, miembros, usuarios } = await montarGimnasio();
+
+    await registrarPago(tenant._id, {
+      miembro: miembros.ana,
+      sede: sedes.norte,
+      planMembresia: planMensual,
+      registradoPor: usuarios.dueno,
+      monto: 90_000,
+      metodoPago: METODOS_PAGO.EFECTIVO,
+      fechaPago: haceMeses(2),
+    });
+
+    const dueno = await entrarComo(usuarios.dueno.email);
+    const respuesta = await dueno.get('/api/reportes').expect(200);
+
+    expect(respuesta.body.data.totalMesAnterior).toBe(0);
   });
 
   it('un sede_admin solo ve los ingresos y miembros de su sede', async () => {

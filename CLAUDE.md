@@ -445,6 +445,14 @@ de color. Esa banda es la firma de la marca y el sistema de estado; no inventar 
   usan los estados de vencimiento (verde/ambar/rojo/azul), para que una serie de pago nunca
   se lea como un estado. Los estados si reutilizan los colores de las bandas de disco. La
   app no tiene modo oscuro, asi que las graficas solo validan la paleta en modo claro.
+  Cada sede es una **manga de barra cargada**: riel horizontal, el dinero es el peso
+  montado, y la sede que mas cobro llena el riel.
+- **Un tooltip nunca es el unico sitio donde vive un dato.** Toda grafica lleva debajo su
+  vista de tabla con los mismos numeros. Si un valor solo se alcanza pasando el mouse, es
+  un bug de accesibilidad, no una decision de diseno.
+- La **cifra heroe** va en la sans del cuerpo (Public Sans), nunca en Barlow Condensed: una
+  cara condensada a 3rem se lee como decoracion. La marca entra por la ceja, la banda roja
+  y las mangas — la audacia se gasta en un solo sitio.
 
 ---
 

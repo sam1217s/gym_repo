@@ -153,14 +153,23 @@ Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a dia
       redaccion original de esta casilla lo mencionaba, pero no aplica en la practica
 - [x] Sin `$lookup`: los nombres de sede salen de una consulta aparte a `Sede` y se
       cruzan en memoria con el aggregate de `Pago` (mismo patron que `tenants.servicio.js`)
-- [x] Dashboard con graficas (skill `dataviz`): cifra heroe con el total del mes,
-      barras apiladas efectivo/transferencia por sede (`GraficaIngresos.vue`, paleta
-      violeta/naranja validada con `validate_palette.js`, deliberadamente fuera de la
-      familia de colores ya usada por los estados de vencimiento) y los discos de
-      estado de miembros ya usados en la Fase 3
+- [x] Comparacion contra el mes anterior (`totalMesAnterior` + `variacion`): una cifra
+      sola no dice si el gimnasio va bien. `variacion` es `null` cuando el mes anterior
+      fue cero — no se inventa un "+100%"
+- [x] Dashboard con graficas (skill `dataviz`): cifra heroe con el total del mes y su
+      variacion, barras horizontales por sede tipo "manga de barra cargada"
+      (`GraficaIngresos.vue`, paleta violeta/naranja validada con `validate_palette.js`,
+      deliberadamente fuera de la familia de colores ya usada por los estados de
+      vencimiento) y los dos estados accionables (vencidos / por vencer) como lista de
+      llamadas, no como marcador
+- [x] Vista de tabla bajo la grafica: el desglose efectivo/transferencia por sede no
+      puede vivir solo en el tooltip (regla de `dataviz`: los tooltips enriquecen,
+      nunca condicionan)
 - [x] Pruebas: split por metodo de pago, sede en cero no desaparece, pagos fuera del
-      mes no cuentan, alcance por sede, y el conteo coincide con `/api/vencimientos`
-      (6 pruebas en `reportes.prueba.js`)
+      mes no cuentan, variacion contra el mes anterior (incluido el caso `null` y el de
+      hace dos meses), alcance por sede, y el conteo coincide con `/api/vencimientos`
+      (9 pruebas en `reportes.prueba.js`)
+- [x] Verificado en navegador real (Chrome headless por CDP) para los tres roles
 
 ---
 
@@ -212,6 +221,11 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
       caen a la pila del sistema; para un despliegue offline habria que empaquetarlas.
 - [ ] **El onboarding compensa, no transacciona.** Si algun dia hay replica set (Atlas),
       migrar `onboarding.servicio.js` a una transaccion real.
+- [ ] **El corte de mes usa la zona horaria del servidor, no la del tenant.**
+      `reportes.servicio.js` calcula "este mes" con `new Date(y, m, 1)`, que es hora local
+      del proceso. Cada tenant ya declara su `config.zonaHoraria` (`America/Bogota` por
+      defecto) y nadie la lee. Un gimnasio veria mal los ingresos de los primeros/ultimos
+      dias del mes si el servidor corre en otra zona (p. ej. UTC en produccion).
 
 ---
 
