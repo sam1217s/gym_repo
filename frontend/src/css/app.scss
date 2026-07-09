@@ -1,0 +1,8 @@
+@use 'sass:color';
+
+// Estilos globales de la app. Los estilos de un componente van en su propio
+// bloque `<style scoped>`, no aqui.
+
+.pantalla-autenticacion {
+  background: linear-gradient(135deg, $primary 0%, color.adjust($primary, $lightness: -18%) 100%);
+}

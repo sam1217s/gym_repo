@@ -1,0 +1,22 @@
+{
+  "name": "gymsaas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plataforma SaaS multi-tenant para la gestion y contabilidad de gimnasios",
+  "scripts": {
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend run dev",
+    "instalar": "npm --prefix backend install && npm --prefix frontend install",
+    "sembrar": "npm --prefix backend run sembrar",
+    "prueba": "vitest run",
+    "prueba:observar": "vitest",
+    "grafo:mapa": "node backend/graph.js mapa",
+    "grafo:cerebro": "node backend/graph.js cerebro",
+    "grafo:detective": "node backend/graph.js detective"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.1.4",
+    "vitest": "^3.2.4"
+  }
+}

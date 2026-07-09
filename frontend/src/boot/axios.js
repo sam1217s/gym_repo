@@ -1,0 +1,80 @@
+import { defineBoot } from '#q-app/wrappers';
+import axios from 'axios';
+
+/**
+ * Cliente HTTP de la app.
+ *
+ * `withCredentials: true` es obligatorio: el token de sesion viaja en cookies
+ * HttpOnly, y sin esto el navegador no las adjunta. En desarrollo el proxy del
+ * dev-server manda `/api` al backend, asi que todo es same-origin.
+ */
+export const api = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+  timeout: 15_000,
+});
+
+/** Rutas donde un 401 es una respuesta legitima y no debe disparar el refresco. */
+const RUTAS_SIN_REFRESCO = ['/auth/iniciar-sesion', '/auth/refrescar', '/auth/cerrar-sesion'];
+
+/**
+ * Refresco compartido: si varias peticiones reciben 401 a la vez, todas esperan
+ * al mismo `POST /auth/refrescar` en lugar de dispararlo una vez por peticion.
+ */
+let refrescoEnCurso = null;
+
+function refrescarSesion() {
+  refrescoEnCurso ??= api
+    .post('/auth/refrescar')
+    .finally(() => {
+      refrescoEnCurso = null;
+    });
+
+  return refrescoEnCurso;
+}
+
+export default defineBoot(({ app, router }) => {
+  app.config.globalProperties.$api = api;
+
+  api.interceptors.response.use(
+    (respuesta) => respuesta,
+    async (error) => {
+      const peticionOriginal = error.config;
+      const esNoAutenticado = error.response?.status === 401;
+      const puedeRefrescar =
+        esNoAutenticado &&
+        peticionOriginal &&
+        !peticionOriginal.yaReintentada &&
+        !RUTAS_SIN_REFRESCO.includes(peticionOriginal.url);
+
+      if (puedeRefrescar) {
+        try {
+          await refrescarSesion();
+          peticionOriginal.yaReintentada = true;
+          return await api.request(peticionOriginal);
+        } catch {
+          // El refresco tambien fallo: la sesion esta muerta de verdad.
+        }
+      }
+
+      if (esNoAutenticado) {
+        // Import diferido para no crear un ciclo entre el store y este boot file.
+        const { useAutenticacionStore } = await import('src/stores/autenticacion.js');
+        useAutenticacionStore().limpiarSesion();
+
+        /**
+         * `omitirRedireccion401` lo pone quien ya esta gestionando la navegacion,
+         * como el guard del router al comprobar la sesion al arrancar. Sin esto,
+         * el interceptor abortaria la navegacion en curso con un push simultaneo.
+         */
+        const debeRedirigir =
+          !peticionOriginal?.omitirRedireccion401 &&
+          router.currentRoute.value.name !== 'iniciar-sesion';
+
+        if (debeRedirigir) await router.push({ name: 'iniciar-sesion' });
+      }
+
+      return Promise.reject(error);
+    },
+  );
+});

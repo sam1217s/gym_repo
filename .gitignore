@@ -1,0 +1,29 @@
+node_modules/
+
+# Secretos: se ignora cualquier .env real, en cualquier carpeta.
+# `.env.example` es la plantilla y SI se versiona: de ahi la negacion.
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Quasar
+frontend/dist/
+frontend/.quasar/
+frontend/src-capacitor/
+frontend/src-cordova/
+
+# Configuracion local de Claude Code (los hooks llevan rutas absolutas de cada maquina)
+.claude/settings.local.json
+
+# Editores
+.DS_Store
+.idea/
+*.swp
+
+# Cache de mongodb-memory-server
+.cache/
