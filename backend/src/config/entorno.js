@@ -19,6 +19,17 @@ const esquemaEntorno = z.object({
   ORIGEN_FRONTEND: z.string().url().default('http://localhost:9000'),
   SEMILLA_SUPERADMIN_EMAIL: z.string().email().default('admin@gymsaas.co'),
   SEMILLA_SUPERADMIN_CONTRASENA: z.string().min(8).default('CambiaEstaClave123'),
+
+  /**
+   * Cron de avisos de vencimiento. Se apaga en todas las instancias menos una:
+   * con dos procesos de la API corriendo, cada miembro recibiria el aviso dos
+   * veces. `z.coerce.boolean()` no sirve aqui: convierte la cadena "false" en
+   * `true`, porque toda cadena no vacia es verdadera.
+   */
+  HABILITAR_CRON: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((valor) => valor === 'true'),
 });
 
 function cargarEntorno() {

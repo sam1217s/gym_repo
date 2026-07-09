@@ -296,27 +296,40 @@ pagos.controlador.js ──> pagos.servicio.js
 
         ...
 
-[Cron diario, node-cron, fuera de toda peticion HTTP]
-        |
+[Cron diario a las 9:00, node-cron, fuera de toda peticion HTTP]
+        |                                    (tareas/vencimientos.tarea.js)
         v
-ejecutarSinTenant(() => Tenant.find({ estado: 'activo' }))   <-- escotilla explicita
-        |
-        v  por cada tenant:
+ejecutarSinTenant(() => Tenant.find({ estado: { $in: ESTADOS_TENANT_OPERATIVOS } }))
+        |                                             ^ trial + activo. Escotilla explicita.
+        v  por cada tenant (un fallo NO tumba a los demas):
 ejecutarConTenant(tenant._id, async () => {
         |
-        |  Pago.find({ periodoFin: { $lte: hoy + DIAS_AVISO_VENCIMIENTO }, notificado: false })
-        |     (solo el ULTIMO pago de cada miembro cuenta: el vencimiento se deriva)
+        |  si !plan.features.whatsapp  -> omitido
+        |  si proveedor === 'ninguno'  -> omitido
+        |
+        |  listarVencimientos()   <-- LA MISMA consulta que pinta el panel de miembros
+        |     filtra estado ∈ {por_vencer, vencido} y !ultimoPago.notificado
         v
    NotificacionProvider  <-- interfaz; la implementacion sale de tenant.config.whatsapp.proveedor
-        |                    (baileys | cloud_api | n8n | ninguno)
+        |                    (cloud_api | n8n | ninguno; baileys aun no implementado)
         v
-   Notificacion.create({ estado: 'enviado' | 'fallido', mensaje })
-   Pago.updateOne({ _id }, { notificado: true })
+   exito -> Notificacion.create({ estado: 'enviado' }) + Pago.updateOne({ notificado: true })
+   fallo -> Notificacion.create({ estado: 'fallido' })   (el pago NO se marca: se reintenta)
 })
 ```
 
 `DIAS_AVISO_VENCIMIENTO = 3` vive en `config/constantes.js`. El cron **debe** envolver cada
 tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto por el.
+
+**La trampa del aviso.** Lo obvio seria
+`Pago.find({ periodoFin: { $lte: umbral }, notificado: false })`. Esta mal: un miembro que ya
+renovo conserva su pago viejo, con `periodoFin` pasado y `notificado: false`, y recibiria un
+aviso de que su mensualidad vencio estando al dia. El aviso sale del **ultimo pago**, igual
+que el panel. `notificado` se marca sobre ese ultimo pago, y solo **despues** de que el
+proveedor confirme el envio: marcarlo antes perderia el aviso cuando el canal falle.
+
+Solo una instancia debe programar el cron (`HABILITAR_CRON`), o cada miembro recibe el aviso
+tantas veces como procesos haya corriendo.
 
 ### Onboarding de un gimnasio nuevo
 
@@ -393,6 +406,13 @@ rutas/ -> controladores/ -> servicios/ -> modelos/
   esquemas de **Mongoose**, que estan en `modelos/`. De ahi el nombre distinto.
 - Todo controlador async va envuelto en `manejadorAsync` o su promesa rechazada muere sin que
   nadie la vea.
+- `proveedores/` es infraestructura intercambiable (hoy, los canales de WhatsApp). Un servicio
+  conoce el **contrato**, nunca la implementacion: `crearProveedor(tenant.config.whatsapp)` es
+  el unico sitio que sabe cual es cual. Los servicios reciben la fabrica por parametro, para
+  que una prueba pueda pasar un proveedor falso sin tocar la red.
+- `tareas/` son procesos programados. No tienen contexto de tenant: se lo abren ellos, tenant
+  por tenant. Cada tarea exporta su funcion de trabajo aparte del `cron.schedule`, para poder
+  probarla y dispararla a mano.
 
 ### Forma de respuesta
 

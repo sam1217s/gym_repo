@@ -2,6 +2,7 @@ import { conectarBaseDatos, desconectarBaseDatos } from './config/baseDatos.js';
 import { entorno, esProduccion } from './config/entorno.js';
 import { registrarModelos, sincronizarIndices } from './modelos/indice.js';
 import { crearServidor } from './servidor.js';
+import { programarAvisosDeVencimiento } from './tareas/vencimientos.tarea.js';
 
 /** Punto de entrada del proceso: conecta, escucha y se apaga con orden. */
 async function arrancar() {
@@ -12,8 +13,16 @@ async function arrancar() {
   // arranque: `syncIndexes()` bloquea la coleccion mientras construye.
   if (!esProduccion) await sincronizarIndices(conexion);
 
+  /**
+   * El cron se programa DENTRO del callback de `listen`, no antes: un proceso
+   * que no logro tomar el puerto no debe agendar trabajo. Y solo una instancia
+   * debe hacerlo (`HABILITAR_CRON`), o cada miembro recibiria el aviso N veces.
+   */
+  let tareaAvisos = null;
+
   const servidor = crearServidor().listen(entorno.PUERTO, () => {
     console.log(`GymSaaS API escuchando en http://localhost:${entorno.PUERTO} [${entorno.NODE_ENV}]`);
+    if (entorno.HABILITAR_CRON) tareaAvisos = programarAvisosDeVencimiento();
   });
 
   /**
@@ -35,6 +44,7 @@ async function arrancar() {
 
   for (const senal of ['SIGINT', 'SIGTERM']) {
     process.on(senal, () => {
+      tareaAvisos?.stop();
       servidor.close(async () => {
         await desconectarBaseDatos();
         process.exit(0);

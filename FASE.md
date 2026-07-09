@@ -11,7 +11,7 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fases 1, 2, 3 y 4 completas. Fase 5 sin empezar.
+**Estado global:** Fases 1 a 5 completas. Fase 6 sin empezar.
 
 ---
 
@@ -173,20 +173,41 @@ Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a dia
 
 ---
 
-## Fase 5 — Notificaciones WhatsApp · PENDIENTE
+## Fase 5 — Notificaciones WhatsApp · COMPLETA
 
-- [ ] Interfaz `NotificacionProvider`
-- [ ] Implementaciones intercambiables: Baileys, Cloud API, n8n, ninguno
-- [ ] El proveedor se lee de `tenant.config.whatsapp.proveedor`
-- [ ] Cron diario con `node-cron`
-- [ ] El cron itera tenants activos y envuelve CADA uno en `ejecutarConTenant`
-- [ ] Busca pagos con `periodoFin <= hoy + DIAS_AVISO_VENCIMIENTO` y `notificado: false`
-- [ ] Registra en `Notificacion` y marca `Pago.notificado = true`
-- [ ] Respetar `PlanPlataforma.features.whatsapp`: si el plan no lo incluye, no enviar
-- [ ] Pruebas del cron con un proveedor falso
+- [x] Interfaz `NotificacionProvider` (`proveedores/NotificacionProvider.js`)
+- [x] Implementaciones intercambiables: Cloud API, n8n, ninguno.
+      **Baileys NO esta implementado a proposito**: no es una llamada HTTP como los otros,
+      sino una dependencia pesada + emparejamiento por QR + sesion viva por gimnasio.
+      Su fabrica lanza con un mensaje claro. Ver la decision abierta, abajo
+- [x] El proveedor se lee de `tenant.config.whatsapp.proveedor`
+- [x] Cron diario con `node-cron` (9:00 `America/Bogota`), apagable con `HABILITAR_CRON`
+      para que solo UNA instancia lo programe. Se agenda dentro del callback de `listen`:
+      un proceso que no tomo el puerto no debe agendar trabajo
+- [x] El cron itera tenants **operativos** y envuelve CADA uno en `ejecutarConTenant`.
+      Nota: la redaccion original decia "activos"; se usa `ESTADOS_TENANT_OPERATIVOS`
+      (`trial` + `activo`), porque un gimnasio en prueba tiene miembros que vencen de verdad
+- [x] ~~Busca pagos con `periodoFin <= hoy + DIAS_AVISO_VENCIMIENTO` y `notificado: false`~~
+      **Esa consulta es incorrecta y no se implemento asi.** Un miembro que ya renovo
+      conserva su pago viejo (vencido, `notificado: false`) y recibiria un aviso de que su
+      mensualidad vencio estando al dia. El aviso se deriva del **ULTIMO pago**, con la
+      misma `listarVencimientos()` que pinta el panel. Hay una prueba dedicada, y la
+      corrida contra los datos de prueba lo confirma (el miembro con `historial: true`
+      no recibe aviso)
+- [x] Registra en `Notificacion` y marca `Pago.notificado = true` **solo tras un envio
+      confirmado**: si falla, se registra `fallido` y se reintenta en la proxima corrida
+- [x] Respetar `PlanPlataforma.features.whatsapp`: si el plan no lo incluye, no enviar
+- [x] Un gimnasio mal configurado no tumba la corrida de los demas
+- [x] Pruebas del cron con un proveedor falso (22 pruebas, ninguna toca la red)
+- [x] Corrida de humo contra la base de desarrollo con datos sembrados
 
-> **Decision abierta:** que proveedor de WhatsApp se usa en produccion. No asumir.
-> Los datos de prueba ya dejan 2 miembros por gimnasio proximos a vencer.
+> **Decision abierta (sigue abierta):** que proveedor de WhatsApp se usa en produccion.
+> El codigo no la toma: el canal se elige por gimnasio en `tenant.config.whatsapp`.
+> Si se elige Baileys, hay que implementar `proveedores/baileys.proveedor.js` (dependencia
+> `@whiskeysockets/baileys`, sesion persistida y emparejamiento por QR por cada gimnasio).
+> Si se elige Cloud API, hay que registrar una **plantilla aprobada** por Meta: el envio de
+> texto libre solo funciona dentro de la ventana de 24 h, y un aviso de vencimiento casi
+> nunca cae dentro de ella (ver el comentario en `cloudApi.proveedor.js`).
 
 ---
 
@@ -216,7 +237,11 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
 - [ ] **Sin rate limiting en el login.** Un atacante puede probar contrasenas sin freno.
 - [ ] **Sin `.env` de produccion.** Al desplegar: `sameSite: 'none'` + `secure: true` solo si
       frontend y API viven en dominios distintos; si comparten dominio, bajar a `'lax'`.
-- [ ] **`Notificacion` existe pero nadie escribe en ella** hasta la Fase 5.
+- [ ] **Un envio fallido se reintenta cada dia, para siempre.** No hay tope de reintentos
+      ni backoff: un telefono invalido genera una `Notificacion` fallida diaria.
+- [ ] **Baileys sin implementar.** Su fabrica lanza. Ver la decision abierta de la Fase 5.
+- [ ] **Cloud API envia texto libre**, que Meta solo acepta dentro de la ventana de 24 h.
+      Para produccion hace falta una plantilla aprobada (`type: 'template'`).
 - [ ] **Las fuentes de marca vienen de Google Fonts por CDN** (`css/app.scss`). Sin red
       caen a la pila del sistema; para un despliegue offline habria que empaquetarlas.
 - [ ] **El onboarding compensa, no transacciona.** Si algun dia hay replica set (Atlas),

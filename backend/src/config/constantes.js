@@ -69,6 +69,18 @@ export const ESTADOS_VENCIMIENTO = Object.freeze({
   SIN_PAGOS: 'sin_pagos',
 });
 
+/**
+ * Estados que merecen un aviso por WhatsApp. `al_dia` no molesta a nadie y
+ * `sin_pagos` es un miembro que nunca pago: no hay periodo del que avisar.
+ */
+export const ESTADOS_VENCIMIENTO_AVISABLES = Object.freeze([
+  ESTADOS_VENCIMIENTO.POR_VENCER,
+  ESTADOS_VENCIMIENTO.VENCIDO,
+]);
+
+/** Todos los dias a las 9:00, en la zona horaria del producto. */
+export const EXPRESION_CRON_VENCIMIENTOS = '0 9 * * *';
+
 /** Configuracion regional del producto. */
 export const MONEDA_POR_DEFECTO = 'COP';
 export const ZONA_HORARIA_POR_DEFECTO = 'America/Bogota';
