@@ -16,6 +16,23 @@ async function arrancar() {
     console.log(`GymSaaS API escuchando en http://localhost:${entorno.PUERTO} [${entorno.NODE_ENV}]`);
   });
 
+  /**
+   * `listen()` no rechaza una promesa: emite un evento `error`. Sin este
+   * manejador, un puerto ocupado sale como un volcado de pila de Node en vez de
+   * un mensaje util.
+   */
+  servidor.on('error', (error) => {
+    if (error.code !== 'EADDRINUSE') throw error;
+
+    console.error(
+      `\nEl puerto ${entorno.PUERTO} ya esta ocupado por otro proceso.\n` +
+        'Suele ser una instancia anterior de la API que quedo viva. Para encontrarla:\n\n' +
+        `  PowerShell: Get-NetTCPConnection -LocalPort ${entorno.PUERTO} -State Listen\n` +
+        `  Luego:      Stop-Process -Id <PID> -Force\n`,
+    );
+    process.exit(1);
+  });
+
   for (const senal of ['SIGINT', 'SIGTERM']) {
     process.on(senal, () => {
       servidor.close(async () => {

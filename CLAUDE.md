@@ -10,6 +10,20 @@ que pagan mensualidades.
 > archivos existen, quien importa a quien, o cuantas dependencias tiene un modulo, usa
 > graphify (`node graph.js cerebro`), que se inyecta automaticamente al abrir sesion.
 
+## Antes de empezar: lee FASE.md
+
+[FASE.md](FASE.md) es la fuente de verdad sobre que esta hecho y que falta, fase por fase,
+con una checklist por cada una y la deuda tecnica conocida.
+
+- **Al empezar** cualquier trabajo, leelo para saber en que fase estamos y que hay pendiente.
+- **Al terminar**, actualizalo: marca lo hecho y anota lo que hayas descubierto.
+- **Antes de dar una fase por cerrada**, recorre su checklist entera y verifica cada casilla
+  contra el codigo real, no contra el recuerdo de la conversacion. Si algo esta marcado y no
+  existe, desmarcarlo y decirlo.
+
+Los tres archivos se reparten el trabajo asi, y no deben duplicarse:
+`FASE.md` = que falta · `CLAUDE.md` = como funciona · graphify = que existe.
+
 ---
 
 ## Comandos
@@ -20,6 +34,7 @@ que pagan mensualidades.
 # Backend (desde /backend) -> :3000
 npm run dev            # API contra la MONGO_URI del .env (hoy: Mongo local; manana: Atlas)
 npm run sembrar        # Crea el super_admin inicial. Idempotente.
+npm run sembrar:prueba # BORRA y resiembra 2 gimnasios de demo. Solo desarrollo.
 
 # Frontend (desde /frontend) -> :9000
 npm run dev            # Dev-server con proxy /api -> :3000
@@ -397,13 +412,8 @@ Al correr `node graph.js detective` veras esto. No lo "arregles":
 
 ## Estado del proyecto
 
-- **Fase 1 — Fundacion. COMPLETA.** Monorepo, modelos, plugin de aislamiento + `AsyncLocalStorage`,
-  auth con cookies HttpOnly, seed del `super_admin`, 37 pruebas en verde (23 de aislamiento,
-  14 de auth), frontend Quasar con login funcional de punta a punta, graphify.
-- **Fase 2 — Plataforma.** CRUD de tenants y planes de plataforma, onboarding de un gimnasio.
-- **Fase 3 — Core del gym.** Sedes, usuarios, planes de membresia, miembros, registro de pagos.
-- **Fase 4 — Panel y reportes.** Dashboard e indicadores por sede.
-- **Fase 5 — WhatsApp.** Abstraccion de proveedor + cron de vencimientos.
-- **Fase 6 — Facturacion de plataforma** y control de limites del plan.
+Vive en [FASE.md](FASE.md), no aqui. Ahi estan las fases, sus checklists y la deuda tecnica.
 
-Actualiza este archivo al cierre de cada fase. No dupliques lo que graphify ya muestra.
+Actualiza `CLAUDE.md` al cierre de cada fase **solo** con los flujos y convenciones nuevas
+(modelos, reglas no obvias, trampas). No dupliques lo que graphify ya muestra ni lo que
+`FASE.md` ya lleva.

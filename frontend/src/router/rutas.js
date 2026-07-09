@@ -12,6 +12,9 @@ const rutas = [
     path: '/',
     component: () => import('layouts/LayoutAutenticacion.vue'),
     children: [
+      // Sin esto, `/` resolveria al layout sin ningun hijo: pantalla en blanco.
+      // Se manda al panel y que el guard decida: si no hay sesion, va al login.
+      { path: '', redirect: { name: 'panel' } },
       {
         path: 'iniciar-sesion',
         name: 'iniciar-sesion',
@@ -36,10 +39,9 @@ const rutas = [
         component: () => import('pages/CambiarContrasena.vue'),
       },
       {
-        // Fase 2: panel de la plataforma (gestion de gimnasios y planes).
         path: 'plataforma',
         name: 'plataforma',
-        component: () => import('pages/PanelInicio.vue'),
+        component: () => import('pages/PanelPlataforma.vue'),
         meta: { roles: [ROLES.SUPER_ADMIN] },
       },
     ],

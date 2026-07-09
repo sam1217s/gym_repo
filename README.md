@@ -35,6 +35,26 @@ Sin un `.env` valido el backend no arranca: las variables se validan con Zod al 
 npm --prefix backend run sembrar
 ```
 
+### Datos de prueba (opcional, solo desarrollo)
+
+Para entrar y ver el panel con contenido, hay un seed que crea dos gimnasios con sedes,
+miembros y pagos en distintos estados de vencimiento:
+
+```bash
+npm --prefix backend run sembrar:prueba
+```
+
+**Borra y reescribe** las colecciones del producto (no hace `dropDatabase`, y no toca otras
+bases de datos de la misma instancia). Imprime al terminar una tabla con las credenciales:
+
+| rol | email | contrasena |
+| --- | --- | --- |
+| `super_admin` | admin@gymsaas.co | `ClaveInicial1` |
+| `tenant_owner` | owner@gymfuerza.co | `ClaveInicial1` |
+| `sede_admin` | recepcion@gymfuerza.co | `ClaveInicial1` |
+| `tenant_owner` | owner@ironhouse.co | `ClaveInicial1` |
+| `sede_admin` | recepcion@ironhouse.co | `ClaveInicial1` |
+
 ## Arrancar
 
 Backend y frontend se levantan por separado, cada uno en su terminal.
@@ -65,6 +85,8 @@ npm run prueba:observar  # modo watch
 El aislamiento entre tenants es el requisito #1: ninguna consulta a una coleccion de negocio se ejecuta sin filtro de tenant, y si falta el contexto la operacion falla en vez de devolver datos de otros gimnasios.
 
 Los detalles (plugin de Mongoose + `AsyncLocalStorage`, roles, flujos de pago y notificacion, convenciones) estan en [CLAUDE.md](CLAUDE.md).
+
+El plan de trabajo por fases, con el estado de cada tarea y la deuda tecnica conocida, esta en [FASE.md](FASE.md).
 
 Para inspeccionar el grafo de dependencias del codigo:
 
