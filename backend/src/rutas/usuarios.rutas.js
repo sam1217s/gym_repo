@@ -1,0 +1,24 @@
+import { Router } from 'express';
+import * as controlador from '../controladores/usuarios.controlador.js';
+import { autenticar } from '../middlewares/autenticacion.js';
+import {
+  bloquearSiDebeCambiarContrasena,
+  requiereDuenoGimnasio,
+} from '../middlewares/autorizacion.js';
+import { abrirContextoTenant } from '../middlewares/contextoTenant.js';
+import { validar } from '../middlewares/validar.js';
+import {
+  esquemaActualizarUsuario,
+  esquemaCrearUsuario,
+} from '../validaciones/usuarios.validacion.js';
+
+const rutas = Router();
+
+// El staff lo administra SOLO el dueno del gimnasio.
+rutas.use(autenticar, abrirContextoTenant, bloquearSiDebeCambiarContrasena, requiereDuenoGimnasio);
+
+rutas.get('/', controlador.listarUsuarios);
+rutas.post('/', validar(esquemaCrearUsuario), controlador.crearUsuario);
+rutas.patch('/:id', validar(esquemaActualizarUsuario), controlador.actualizarUsuario);
+
+export default rutas;

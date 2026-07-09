@@ -44,6 +44,30 @@ const rutas = [
         component: () => import('pages/PanelPlataforma.vue'),
         meta: { roles: [ROLES.SUPER_ADMIN] },
       },
+      {
+        path: 'miembros',
+        name: 'miembros',
+        component: () => import('pages/PaginaMiembros.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN] },
+      },
+      {
+        path: 'sedes',
+        name: 'sedes',
+        component: () => import('pages/PaginaSedes.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER] },
+      },
+      {
+        path: 'equipo',
+        name: 'equipo',
+        component: () => import('pages/PaginaUsuarios.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER] },
+      },
+      {
+        path: 'planes',
+        name: 'planes',
+        component: () => import('pages/PaginaPlanes.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER] },
+      },
     ],
   },
 

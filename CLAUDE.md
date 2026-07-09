@@ -162,8 +162,12 @@ Un `Tenant.estado` de `suspendido` o `cancelado` **bloquea el login** con 403, t
 su **ultimo `Pago`**. Guardarlo en el miembro crearia dos fuentes de verdad que acaban
 divergiendo cuando alguien registra un pago retroactivo o corrige un error.
 
-El panel de "proximos a vencer" y el cron de WhatsApp usan **la misma consulta**. Si cambias
-una, cambias la otra.
+El panel de "proximos a vencer" y el cron de WhatsApp usan **la misma consulta**:
+`obtenerUltimoPagoPorMiembro()` en `servicios/vencimientos.servicio.js`. Si cambias
+una, cambias la otra. La implementacion evita `$lookup` a proposito (la trampa #1 del
+plugin): el ultimo pago sale de un aggregate sobre `Pago` y se cruza con los miembros
+en memoria. `derivarEstado()` es la unica funcion que traduce un pago a
+`al_dia | por_vencer | vencido | sin_pagos` (constantes en `ESTADOS_VENCIMIENTO`).
 
 `Pago.periodoFin` se calcula una vez, al registrar el pago
 (`periodoInicio + planMembresia.duracionDias`), y despues es historia: no se muta.
@@ -183,6 +187,17 @@ El scope se resuelve en dos niveles independientes:
 - **tenant** → automatico, por el plugin de Mongoose. Nadie puede olvidarlo.
 - **sede** → manual, por el middleware `limitarASede`, que deja el filtro en
   `peticion.filtroSede` (`{}` o `{ sede: <id> }`) para que el servicio lo aplique.
+
+Contrato de `filtroSede` en los servicios (miembros, pagos, vencimientos):
+
+- Va **en la busqueda**, no despues: para un `sede_admin`, un miembro de otra sede es un
+  404, no un 403. Asi no se filtra ni la existencia del recurso.
+- Al **crear**, `filtroSede.sede` gana sobre lo que mande el cuerpo: un `sede_admin`
+  registra siempre en SU sede. Mover un miembro de sede es exclusivo del dueno.
+- El filtro del rol gana sobre el de la query (`?sede=` de otro solo devuelve vacio).
+- `Usuario` no tiene plugin de tenant: `usuarios.servicio.js` filtra `{ tenant }` a mano
+  en CADA consulta, y ademas restringe el CRUD del dueno a `rol: sede_admin` (no puede
+  tocarse a si mismo ni a otros duenos). Desactivar sube `versionToken`: mata la sesion.
 
 Orden obligatorio de middlewares en una ruta protegida:
 

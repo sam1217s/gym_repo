@@ -55,6 +55,15 @@ const ETIQUETAS_ROL = {
 const ENLACES = [
   { nombre: 'panel', titulo: 'Inicio', icono: 'dashboard', roles: null },
   { nombre: 'plataforma', titulo: 'Gimnasios', icono: 'apartment', roles: [ROLES.SUPER_ADMIN] },
+  {
+    nombre: 'miembros',
+    titulo: 'Miembros',
+    icono: 'groups',
+    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
+  },
+  { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
+  { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
+  { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },
 ];
 
 const etiquetaRol = computed(() => ETIQUETAS_ROL[usuario.value?.rol] ?? '');

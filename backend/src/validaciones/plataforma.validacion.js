@@ -1,13 +1,12 @@
 import { z } from 'zod';
 import { LISTA_ESTADOS_TENANT } from '../config/constantes.js';
 import { contrasenaSegura } from './auth.validacion.js';
+import { idMongo } from './comunes.validacion.js';
 
 /**
  * Validacion de entrada de las rutas de plataforma (solo super_admin).
  * Esquemas Zod, no confundir con los esquemas de Mongoose de `modelos/`.
  */
-
-const idMongo = z.string().regex(/^[a-f\d]{24}$/i, 'Identificador invalido');
 
 const slugValido = z
   .string()

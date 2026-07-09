@@ -1,0 +1,58 @@
+import { MILISEGUNDOS_POR_DIA } from '../config/constantes.js';
+import { obtenerContexto } from '../contexto/contextoTenant.js';
+import { obtenerModelo } from '../modelos/indice.js';
+import { ErrorApi } from '../utilidades/ErrorApi.js';
+
+/**
+ * Registro y consulta de pagos de mensualidad.
+ *
+ * La regla central del producto: `periodoFin = periodoInicio + plan.duracionDias`,
+ * calculado UNA vez aqui y nunca mutado. El vencimiento del miembro se deriva
+ * de este campo (ver `vencimientos.servicio.js`); no existe en ningun otro sitio.
+ */
+
+export function listarPagos(filtroSede = {}, { miembro } = {}) {
+  const Pago = obtenerModelo('Pago');
+
+  const filtro = { ...filtroSede };
+  if (miembro) filtro.miembro = miembro;
+
+  return Pago.find(filtro)
+    .sort({ fechaPago: -1 })
+    .populate('planMembresia', 'nombre duracionDias')
+    .populate('miembro', 'nombres apellidos documento');
+}
+
+export async function registrarPago(datos, filtroSede = {}) {
+  const Miembro = obtenerModelo('Miembro');
+  const PlanMembresia = obtenerModelo('PlanMembresia');
+  const Pago = obtenerModelo('Pago');
+
+  // Con el filtro de sede en la busqueda, un sede_admin no puede cobrarle a un
+  // miembro de otra sede: para el, ese miembro no existe.
+  const miembro = await Miembro.findOne({ _id: datos.miembro, ...filtroSede });
+  if (!miembro) throw ErrorApi.noEncontrado('El miembro no existe');
+  if (!miembro.activo) throw ErrorApi.solicitudInvalida('El miembro esta desactivado');
+
+  const plan = await PlanMembresia.findById(datos.planMembresia);
+  if (!plan) throw ErrorApi.solicitudInvalida('El plan de membresia no existe');
+  if (!plan.activo) throw ErrorApi.solicitudInvalida('Ese plan esta archivado');
+
+  const periodoInicio = datos.periodoInicio ?? new Date();
+  const periodoFin = new Date(periodoInicio.getTime() + plan.duracionDias * MILISEGUNDOS_POR_DIA);
+
+  const pago = await Pago.create({
+    sede: miembro.sede, // el pago pertenece a la sede del miembro, no a la de quien cobra
+    miembro: miembro._id,
+    planMembresia: plan._id,
+    monto: datos.monto ?? plan.precio,
+    metodoPago: datos.metodoPago,
+    referencia: datos.referencia ?? '',
+    periodoInicio,
+    periodoFin,
+    registradoPor: obtenerContexto().usuarioId,
+    notificado: false,
+  });
+
+  return pago.populate('planMembresia', 'nombre duracionDias');
+}

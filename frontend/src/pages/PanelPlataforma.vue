@@ -60,7 +60,7 @@
 
       <template #body-cell-estado="props">
         <q-td :props="props">
-          <span class="chip-estado" :style="{ '--banda': APARIENCIA_ESTADO[props.row.estado].color }">
+          <span class="chip-banda" :style="{ '--banda': APARIENCIA_ESTADO[props.row.estado].color }">
             {{ APARIENCIA_ESTADO[props.row.estado].etiqueta }}
           </span>
         </q-td>
@@ -240,76 +240,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Las clases del sistema (ceja, discos, chip-banda) viven en css/app.scss. */
 .pagina-plataforma {
   max-width: 1100px;
   margin: 0 auto;
-}
-
-.ceja {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--q-primary);
-}
-
-.titulo-pagina {
-  font-size: 2.4rem;
-  line-height: 1.1;
-  color: #1b1e24;
-}
-
-/* --- Los discos ----------------------------------------------------------- */
-
-.fila-discos {
-  display: flex;
-  gap: 28px;
-  flex-wrap: wrap;
-}
-
-.celda-disco {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.disco {
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  border: 7px solid;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* El agujero central del disco. */
-  box-shadow: inset 0 0 0 2px rgba(27, 30, 36, 0.12);
-}
-
-.numero-disco {
-  font-size: 1.9rem;
-  color: #1b1e24;
-}
-
-.etiqueta-disco {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #667085;
-}
-
-/* --- Estado en la tabla: chip con banda de disco --------------------------- */
-
-.chip-estado {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px 2px 8px;
-  border-left: 4px solid var(--banda);
-  background: rgba(27, 30, 36, 0.05);
-  border-radius: 3px;
-  font-size: 0.78rem;
-  font-weight: 600;
 }
 </style>

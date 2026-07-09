@@ -56,6 +56,19 @@ export const ESTADOS_NOTIFICACION = Object.freeze({
 /** Dias de antelacion con que se avisa a un miembro que su mensualidad vence. */
 export const DIAS_AVISO_VENCIMIENTO = 3;
 
+export const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+
+/**
+ * Estado de membresia de un miembro. NO se guarda en ninguna coleccion: se
+ * deriva del `periodoFin` de su ultimo `Pago` (ver `vencimientos.servicio.js`).
+ */
+export const ESTADOS_VENCIMIENTO = Object.freeze({
+  AL_DIA: 'al_dia',
+  POR_VENCER: 'por_vencer',
+  VENCIDO: 'vencido',
+  SIN_PAGOS: 'sin_pagos',
+});
+
 /** Configuracion regional del producto. */
 export const MONEDA_POR_DEFECTO = 'COP';
 export const ZONA_HORARIA_POR_DEFECTO = 'America/Bogota';

@@ -11,7 +11,7 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fases 1 y 2 completas. Fase 3 sin empezar.
+**Estado global:** Fases 1, 2 y 3 completas. Fase 4 sin empezar.
 
 ---
 
@@ -109,27 +109,35 @@ Es el primer flujo que cruza la frontera plataforma → tenant.
 
 ---
 
-## Fase 3 — Core del gimnasio · PENDIENTE
+## Fase 3 — Core del gimnasio · COMPLETA
 
 Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a diario.
 
 ### Backend
-- [ ] CRUD de `Sede` (respetando `maxSedes` del plan — o dejarlo para Fase 6)
-- [ ] CRUD de `Usuario` dentro del tenant (crear `sede_admin` con `debeCambiarContrasena: true`)
-- [ ] CRUD de `PlanMembresia`
-- [ ] CRUD de `Miembro`, filtrado por sede para el rol `sede_admin`
-- [ ] `servicios/pagos.servicio.js`: al registrar un pago,
+- [x] CRUD de `Sede` (el limite `maxSedes` quedo para la Fase 6, como preveia esta casilla:
+      ahi va el middleware generico de limites del plan)
+- [x] CRUD de `Usuario` dentro del tenant (crear `sede_admin` con `debeCambiarContrasena: true`).
+      El dueno solo administra `sede_admin`; desactivar sube `versionToken` y mata la sesion.
+      OJO: `Usuario` no lleva plugin — el aislamiento es manual en `usuarios.servicio.js`
+- [x] CRUD de `PlanMembresia` (DELETE archiva: los pagos historicos lo referencian)
+- [x] CRUD de `Miembro`, filtrado por sede para el rol `sede_admin` (crea siempre en SU sede,
+      no puede mover miembros de sede, y los de otra sede son 404 para el)
+- [x] `servicios/pagos.servicio.js`: al registrar un pago,
       `periodoFin = periodoInicio + planMembresia.duracionDias`
-- [ ] `servicios/vencimientos.servicio.js`: derivar el estado del miembro del
-      `periodoFin` de su ULTIMO pago. Una sola consulta, reutilizada por el panel y el cron
-- [ ] Aplicar `limitarASede` en las rutas donde el `sede_admin` no debe ver todo
-- [ ] Pruebas: un `sede_admin` no ve miembros de la otra sede del mismo tenant
+- [x] `servicios/vencimientos.servicio.js`: derivar el estado del miembro del
+      `periodoFin` de su ULTIMO pago. `obtenerUltimoPagoPorMiembro()` es la consulta unica
+      que reutilizara el cron de la Fase 5. Sin `$lookup`: aggregate sobre `Pago` + merge en JS
+- [x] Aplicar `limitarASede` en las rutas donde el `sede_admin` no debe ver todo
+      (miembros, pagos, vencimientos)
+- [x] Pruebas: un `sede_admin` no ve miembros de la otra sede del mismo tenant
+      (23 pruebas en `gimnasio.prueba.js` y `pagos.prueba.js`)
 
 ### Frontend
-- [ ] Pantallas de sedes, usuarios, planes de membresia y miembros
-- [ ] `FormularioPago.vue`: al elegir plan, calcular y mostrar `periodoFin`
-- [ ] Distinguir efectivo vs transferencia (`referencia` obligatoria en transferencia)
-- [ ] `useVencimientos.js`
+- [x] Pantallas de sedes, equipo (usuarios), planes de membresia y miembros
+- [x] `FormularioPago.vue`: al elegir plan, calcular y mostrar `periodoFin`
+- [x] Distinguir efectivo vs transferencia (`referencia` obligatoria en transferencia,
+      validado en Zod y en el formulario)
+- [x] `useVencimientos.js` (conteos, apariencia de estados y formato de fechas)
 
 ---
 
