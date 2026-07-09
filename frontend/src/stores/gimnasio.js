@@ -17,6 +17,9 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
   const vencimientos = ref([]);
 
+  /** `{ ingresosPorSede, totalMes, miembros }` que pinta el dashboard. */
+  const reportePanel = ref(null);
+
   const cargando = ref(false);
 
   // --- Sedes -----------------------------------------------------------------
@@ -109,6 +112,12 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     return pago;
   }
 
+  // --- Reportes ----------------------------------------------------------------
+
+  async function cargarReportePanel() {
+    reportePanel.value = await servicioGimnasio.obtenerReportePanel();
+  }
+
   function reemplazar(lista, elemento) {
     const indice = lista.value.findIndex((candidato) => candidato._id === elemento._id);
     if (indice !== -1) lista.value.splice(indice, 1, elemento);
@@ -119,6 +128,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     usuarios,
     planesMembresia,
     vencimientos,
+    reportePanel,
     cargando,
     cargarSedes,
     crearSede,
@@ -134,5 +144,6 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     crearMiembro,
     actualizarMiembro,
     registrarPago,
+    cargarReportePanel,
   };
 });

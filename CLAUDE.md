@@ -162,6 +162,14 @@ Un `Tenant.estado` de `suspendido` o `cancelado` **bloquea el login** con 403, t
 su **ultimo `Pago`**. Guardarlo en el miembro crearia dos fuentes de verdad que acaban
 divergiendo cuando alguien registra un pago retroactivo o corrige un error.
 
+`servicios/reportes.servicio.js` (Fase 4) reutiliza esa misma funcion para el conteo de
+miembros del dashboard: cero logica de vencimiento duplicada, solo un `reduce` que agrupa
+por estado. Los ingresos del mes SI son un aggregate propio sobre `Pago`, pero sin
+`$lookup`: el nombre de cada sede sale de una consulta aparte a `Sede` y se cruza en
+memoria (mismo patron que `contarSedesPorTenant()` en `tenants.servicio.js`). El
+`super_admin` no tiene acceso a `/api/reportes`: los reportes son tenant-scoped y el
+opera sobre la plataforma, no dentro de un gimnasio.
+
 El panel de "proximos a vencer" y el cron de WhatsApp usan **la misma consulta**:
 `obtenerUltimoPagoPorMiembro()` en `servicios/vencimientos.servicio.js`. Si cambias
 una, cambias la otra. La implementacion evita `$lookup` a proposito (la trampa #1 del
@@ -431,6 +439,12 @@ de color. Esa banda es la firma de la marca y el sistema de estado; no inventar 
   `Public Sans` para todo lo demas; `.cifra-tabular` en cifras de tablas y contadores.
 - El motivo se aplica como banda: borde superior rojo en tarjetas clave, borde inferior del
   header, chips de estado con banda izquierda, contadores circulares tipo disco.
+- **Graficas** (skill `dataviz`, `components/GraficaIngresos.vue`): las series categoricas
+  (hoy, efectivo/transferencia) usan violeta `#4a3aa7` / naranja `#eb6834`, elegidos y
+  validados con `validate_palette.js` **a proposito fuera** de la familia de tonos que ya
+  usan los estados de vencimiento (verde/ambar/rojo/azul), para que una serie de pago nunca
+  se lea como un estado. Los estados si reutilizan los colores de las bandas de disco. La
+  app no tiene modo oscuro, asi que las graficas solo validan la paleta en modo claro.
 
 ---
 

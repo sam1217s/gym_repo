@@ -86,3 +86,11 @@ export async function listarVencimientos() {
   const { data: respuesta } = await api.get('/vencimientos');
   return respuesta.data;
 }
+
+// --- Reportes ------------------------------------------------------------------
+
+/** `{ ingresosPorSede: [{ sede, sedeNombre, efectivo, transferencia, total }], totalMes, miembros }`. */
+export async function obtenerReportePanel() {
+  const { data: respuesta } = await api.get('/reportes');
+  return respuesta.data;
+}

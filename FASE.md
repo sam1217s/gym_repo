@@ -11,7 +11,7 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fases 1, 2 y 3 completas. Fase 4 sin empezar.
+**Estado global:** Fases 1, 2, 3 y 4 completas. Fase 5 sin empezar.
 
 ---
 
@@ -141,14 +141,26 @@ Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a dia
 
 ---
 
-## Fase 4 — Panel y reportes · PENDIENTE
+## Fase 4 — Panel y reportes · COMPLETA
 
-- [ ] Ingresos del mes por sede (aggregate; recordar el `$match` de tenant automatico)
-- [ ] Split efectivo vs transferencia
-- [ ] Conteo de miembros activos / vencidos / proximos a vencer
-- [ ] Filtro por sede: `super_admin` y `tenant_owner` ven consolidado; `sede_admin` solo la suya
-- [ ] Cuidado: todo `$lookup` a coleccion tenant-scoped necesita su propio `$match` de tenant
-- [ ] Dashboard con graficas (usar la skill `dataviz`)
+- [x] Ingresos del mes por sede (aggregate; el `$match` de tenant lo antepone el plugin solo)
+- [x] Split efectivo vs transferencia (`servicios/reportes.servicio.js`)
+- [x] Conteo de miembros activos / vencidos / proximos a vencer — reutiliza
+      `listarVencimientos()` de la Fase 3, no duplica la regla de derivacion
+- [x] Filtro por sede: `tenant_owner` ve el consolidado (`limitarASede` deja `{}`);
+      `sede_admin` solo la suya. **Nota:** el `super_admin` no participa de este endpoint
+      porque los reportes son tenant-scoped y el no pertenece a ningun gimnasio — la
+      redaccion original de esta casilla lo mencionaba, pero no aplica en la practica
+- [x] Sin `$lookup`: los nombres de sede salen de una consulta aparte a `Sede` y se
+      cruzan en memoria con el aggregate de `Pago` (mismo patron que `tenants.servicio.js`)
+- [x] Dashboard con graficas (skill `dataviz`): cifra heroe con el total del mes,
+      barras apiladas efectivo/transferencia por sede (`GraficaIngresos.vue`, paleta
+      violeta/naranja validada con `validate_palette.js`, deliberadamente fuera de la
+      familia de colores ya usada por los estados de vencimiento) y los discos de
+      estado de miembros ya usados en la Fase 3
+- [x] Pruebas: split por metodo de pago, sede en cero no desaparece, pagos fuera del
+      mes no cuentan, alcance por sede, y el conteo coincide con `/api/vencimientos`
+      (6 pruebas en `reportes.prueba.js`)
 
 ---
 
