@@ -188,7 +188,7 @@ describe('roles sobre sedes, usuarios y planes de membresia', () => {
     await norte.post('/api/sedes').send({ nombre: 'Pirata', direccion: 'X' }).expect(403);
     await norte
       .post('/api/planes-membresia')
-      .send({ nombre: 'Pirata', precio: 1, duracionDias: 1 })
+      .send({ nombre: 'Pirata', precio: 1, duracionMeses: 1 })
       .expect(403);
     await norte.get('/api/usuarios').expect(403);
   });
@@ -267,11 +267,11 @@ describe('roles sobre sedes, usuarios y planes de membresia', () => {
 
     await dueno
       .post('/api/planes-membresia')
-      .send({ nombre: 'Mensual', precio: 60_000, duracionDias: 30 })
+      .send({ nombre: 'Mensual', precio: 60_000, duracionMeses: 1 })
       .expect(201);
     await dueno
       .post('/api/planes-membresia')
-      .send({ nombre: 'Mensual', precio: 1, duracionDias: 1 })
+      .send({ nombre: 'Mensual', precio: 1, duracionMeses: 1 })
       .expect(409);
   });
 });

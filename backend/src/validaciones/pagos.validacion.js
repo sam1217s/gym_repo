@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { METODOS_PAGO } from '../config/constantes.js';
-import { idMongo } from './comunes.validacion.js';
+import { diaCivil, idMongo } from './comunes.validacion.js';
 
 export const esquemaListarPagos = {
   query: z.object({
@@ -20,7 +20,8 @@ export const esquemaRegistrarPago = {
       monto: z.number().min(0).optional(),
 
       // Permite registrar pagos retroactivos. Por defecto: hoy.
-      periodoInicio: z.coerce.date().optional(),
+      // `diaCivil` y no `z.coerce.date()`: "2026-07-09" es un dia, no un instante UTC.
+      periodoInicio: diaCivil.optional(),
     })
     .refine(
       (datos) => datos.metodoPago !== METODOS_PAGO.TRANSFERENCIA || Boolean(datos.referencia),

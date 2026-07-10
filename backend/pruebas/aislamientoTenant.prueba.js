@@ -69,7 +69,7 @@ async function sembrarGimnasio(tenantId, etiqueta, montoPago) {
     const planMembresia = await obtenerModelo('PlanMembresia').create({
       nombre: 'Mensual',
       precio: montoPago,
-      duracionDias: 30,
+      duracionMeses: 1,
     });
 
     // Mismo documento en ambos gimnasios: el indice unico es `{ tenant, documento }`,

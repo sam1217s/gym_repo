@@ -11,6 +11,7 @@ import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTe
 import { obtenerModelo } from '../src/modelos/indice.js';
 import { crearServidor } from '../src/servidor.js';
 import { cifrarContrasena } from '../src/utilidades/contrasena.js';
+import { sumarMeses } from '../src/utilidades/fechas.js';
 import { limpiarColecciones } from './configuracion.js';
 
 /**
@@ -49,7 +50,7 @@ async function montarGimnasio(slug = 'gimnasio-reportes') {
     const planMensual = await obtenerModelo('PlanMembresia').create({
       nombre: 'Mensual',
       precio: 60_000,
-      duracionDias: 30,
+      duracionMeses: 1,
     });
 
     const Miembro = obtenerModelo('Miembro');
@@ -111,7 +112,7 @@ async function registrarPago(tenantId, { miembro, sede, planMembresia, registrad
       metodoPago,
       fechaPago,
       periodoInicio: fechaPago,
-      periodoFin: new Date(fechaPago.getTime() + planMembresia.duracionDias * MILISEGUNDOS_POR_DIA),
+      periodoFin: sumarMeses(fechaPago, planMembresia.duracionMeses),
       registradoPor: registradoPor._id,
     }),
   );

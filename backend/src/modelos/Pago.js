@@ -6,9 +6,9 @@ import { aislamientoTenant } from './complementos/aislamientoTenant.js';
  * TENANT-SCOPED. El corazon de la contabilidad.
  *
  * `periodoFin` es la fecha de vencimiento de la mensualidad que este pago cubre.
- * Se calcula al registrar el pago (`periodoInicio + plan.duracionDias`) y luego
- * es historia: no se muta. El estado "vencido" de un miembro sale del
- * `periodoFin` de su pago mas reciente.
+ * Se calcula al registrar el pago (`periodoInicio + plan.duracionMeses`, en meses
+ * de calendario) y luego es historia: no se muta. El estado "vencido" de un
+ * miembro sale del `periodoFin` de su pago mas reciente.
  */
 const esquemaPago = new mongoose.Schema(
   {

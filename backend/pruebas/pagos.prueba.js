@@ -13,12 +13,13 @@ import { obtenerModelo } from '../src/modelos/indice.js';
 import { derivarEstado } from '../src/servicios/vencimientos.servicio.js';
 import { crearServidor } from '../src/servidor.js';
 import { cifrarContrasena } from '../src/utilidades/contrasena.js';
+import { sumarMeses } from '../src/utilidades/fechas.js';
 import { limpiarColecciones } from './configuracion.js';
 
 /**
- * Pagos y vencimientos: `periodoFin = periodoInicio + plan.duracionDias`, la
- * referencia obligatoria en transferencias, y el estado del miembro derivado
- * de su ULTIMO pago (nunca guardado).
+ * Pagos y vencimientos: `periodoFin = periodoInicio + plan.duracionMeses` (meses
+ * de CALENDARIO, no bloques de 30 dias), la referencia obligatoria en
+ * transferencias, y el estado del miembro derivado de su ULTIMO pago.
  */
 
 const CONTRASENA = 'ClaveInicial1';
@@ -50,7 +51,7 @@ async function montarGimnasio() {
     const planMensual = await obtenerModelo('PlanMembresia').create({
       nombre: 'Mensual',
       precio: 60_000,
-      duracionDias: 30,
+      duracionMeses: 1,
     });
 
     const Miembro = obtenerModelo('Miembro');
@@ -116,28 +117,74 @@ function enDias(dias) {
 beforeEach(limpiarColecciones);
 
 describe('POST /api/pagos', () => {
-  it('calcula periodoFin = periodoInicio + duracionDias del plan', async () => {
+  async function registrarPagoDesde(dueno, planMensual, miembro, periodoInicio) {
+    return dueno
+      .post('/api/pagos')
+      .send({
+        miembro: String(miembro._id),
+        planMembresia: String(planMensual._id),
+        metodoPago: METODOS_PAGO.EFECTIVO,
+        periodoInicio,
+      })
+      .expect(201);
+  }
+
+  it('calcula periodoFin = periodoInicio + duracionMeses del plan', async () => {
     const { planMensual, miembros } = await montarGimnasio();
     const dueno = await entrarComo('owner@gimnasio-pagos.co');
 
-    const periodoInicio = new Date('2026-07-01T00:00:00.000Z');
-    const respuesta = await dueno
-      .post('/api/pagos')
-      .send({
-        miembro: String(miembros.ana._id),
-        planMembresia: String(planMensual._id),
-        metodoPago: METODOS_PAGO.EFECTIVO,
-        periodoInicio: periodoInicio.toISOString(),
-      })
-      .expect(201);
+    const respuesta = await registrarPagoDesde(dueno, planMensual, miembros.ana, '2026-07-09');
 
-    const esperado = new Date(periodoInicio.getTime() + 30 * MILISEGUNDOS_POR_DIA);
-    expect(new Date(respuesta.body.data.periodoFin).toISOString()).toBe(esperado.toISOString());
+    // Un mes de calendario: del 9 de julio al 9 de agosto.
+    expect(new Date(respuesta.body.data.periodoFin).getMonth()).toBe(7);
+    expect(new Date(respuesta.body.data.periodoFin).getDate()).toBe(9);
 
     // Sin monto explicito, cobra el precio del plan.
     expect(respuesta.body.data.monto).toBe(60_000);
     // El pago queda en la sede del miembro.
     expect(respuesta.body.data.sede).toBe(String(miembros.ana.sede));
+  });
+
+  /**
+   * Un mes NO son 30 dias. Quien paga el 31 de enero vence el 28 de febrero;
+   * sumando 30 dias caeria el 2 de marzo y cobraria dias que nadie compro.
+   */
+  it('una mensualidad del 31 de enero vence el 28 de febrero, no 30 dias despues', async () => {
+    const { planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+
+    const respuesta = await registrarPagoDesde(dueno, planMensual, miembros.ana, '2026-01-31');
+    const periodoFin = new Date(respuesta.body.data.periodoFin);
+
+    expect(periodoFin.getMonth()).toBe(1); // febrero
+    expect(periodoFin.getDate()).toBe(28); // 2026 no es bisiesto
+  });
+
+  /**
+   * `"2026-07-09"` es un dia, no un instante. Con `z.coerce.date()` seria
+   * medianoche UTC —el 8 de julio en Bogota— y el periodo terminaria un dia
+   * antes de lo que dice el formulario.
+   */
+  it('trata la fecha del formulario como dia civil, no como medianoche UTC', async () => {
+    const { planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+
+    const respuesta = await registrarPagoDesde(dueno, planMensual, miembros.ana, '2026-07-09');
+    const periodoInicio = new Date(respuesta.body.data.periodoInicio);
+
+    expect(periodoInicio.getDate()).toBe(9);
+    expect(periodoInicio.getMonth()).toBe(6);
+  });
+
+  it('en año bisiesto, el 31 de enero vence el 29 de febrero', async () => {
+    const { planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+
+    const respuesta = await registrarPagoDesde(dueno, planMensual, miembros.ana, '2028-01-31');
+    const periodoFin = new Date(respuesta.body.data.periodoFin);
+
+    expect(periodoFin.getMonth()).toBe(1);
+    expect(periodoFin.getDate()).toBe(29);
   });
 
   it('rechaza una transferencia sin referencia; el efectivo no la necesita', async () => {
@@ -213,7 +260,7 @@ describe('derivarEstado (la regla, en unitario)', () => {
 describe('GET /api/vencimientos', () => {
   async function pagarConVencimiento(tenantId, miembro, plan, diasHastaVencer) {
     const periodoFin = enDias(diasHastaVencer);
-    const periodoInicio = new Date(periodoFin.getTime() - plan.duracionDias * MILISEGUNDOS_POR_DIA);
+    const periodoInicio = sumarMeses(periodoFin, -plan.duracionMeses);
     const registradoPor = await ejecutarSinTenant(() =>
       obtenerModelo('Usuario').findOne({ email: 'owner@gimnasio-pagos.co' }),
     );

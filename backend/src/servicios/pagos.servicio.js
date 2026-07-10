@@ -1,14 +1,17 @@
-import { MILISEGUNDOS_POR_DIA } from '../config/constantes.js';
 import { obtenerContexto } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
+import { sumarMeses } from '../utilidades/fechas.js';
 
 /**
  * Registro y consulta de pagos de mensualidad.
  *
- * La regla central del producto: `periodoFin = periodoInicio + plan.duracionDias`,
+ * La regla central del producto: `periodoFin = periodoInicio + plan.duracionMeses`,
  * calculado UNA vez aqui y nunca mutado. El vencimiento del miembro se deriva
  * de este campo (ver `vencimientos.servicio.js`); no existe en ningun otro sitio.
+ *
+ * Se suman MESES de calendario, no bloques de 30 dias: quien paga el 31 de enero
+ * vence el 28 de febrero. Ver `sumarMeses()`.
  */
 
 export function listarPagos(filtroSede = {}, { miembro } = {}) {
@@ -19,7 +22,7 @@ export function listarPagos(filtroSede = {}, { miembro } = {}) {
 
   return Pago.find(filtro)
     .sort({ fechaPago: -1 })
-    .populate('planMembresia', 'nombre duracionDias')
+    .populate('planMembresia', 'nombre duracionMeses')
     .populate('miembro', 'nombres apellidos documento');
 }
 
@@ -39,7 +42,7 @@ export async function registrarPago(datos, filtroSede = {}) {
   if (!plan.activo) throw ErrorApi.solicitudInvalida('Ese plan esta archivado');
 
   const periodoInicio = datos.periodoInicio ?? new Date();
-  const periodoFin = new Date(periodoInicio.getTime() + plan.duracionDias * MILISEGUNDOS_POR_DIA);
+  const periodoFin = sumarMeses(periodoInicio, plan.duracionMeses);
 
   const pago = await Pago.create({
     sede: miembro.sede, // el pago pertenece a la sede del miembro, no a la de quien cobra
@@ -54,5 +57,5 @@ export async function registrarPago(datos, filtroSede = {}) {
     notificado: false,
   });
 
-  return pago.populate('planMembresia', 'nombre duracionDias');
+  return pago.populate('planMembresia', 'nombre duracionMeses');
 }

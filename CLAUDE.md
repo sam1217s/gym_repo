@@ -194,7 +194,20 @@ en memoria. `derivarEstado()` es la unica funcion que traduce un pago a
 `al_dia | por_vencer | vencido | sin_pagos` (constantes en `ESTADOS_VENCIMIENTO`).
 
 `Pago.periodoFin` se calcula una vez, al registrar el pago
-(`periodoInicio + planMembresia.duracionDias`), y despues es historia: no se muta.
+(`periodoInicio + planMembresia.duracionMeses`), y despues es historia: no se muta.
+
+### La mensualidad dura un MES, no 30 dias
+
+`PlanMembresia.duracionMeses` (no `duracionDias`). Quien paga el 31 de enero vence el
+**28 de febrero**, no el 2 de marzo: `utilidades/fechas.js → sumarMeses()` recorta el dia al
+ultimo del mes destino. `setMonth()` a secas desborda al mes siguiente y le cobraria al
+miembro dias que no compro.
+
+Y una fecha sin hora (`"2026-07-09"`, la que manda un `<input type="date">`) es un **dia
+civil**, no un instante. `z.coerce.date()` la convierte en medianoche **UTC**, que en Bogota
+es el dia anterior; la aritmetica de meses, que trabaja en hora local, caeria un dia antes.
+Por eso `validaciones/comunes.validacion.js` exporta `diaCivil`, y `FormularioPago.vue` hace
+lo mismo en el navegador. La suma de milisegundos era inmune a esto; la de meses no.
 
 ---
 
@@ -307,7 +320,7 @@ POST /api/pagos ──> validar (Zod) ──> autenticar ──> abrirContextoTe
 pagos.controlador.js ──> pagos.servicio.js
         |
         |  1. carga el PlanMembresia elegido (ya filtrado por tenant)
-        |  2. periodoFin = periodoInicio + plan.duracionDias   <-- unica fuente de verdad
+        |  2. periodoFin = sumarMeses(periodoInicio, plan.duracionMeses)  <-- fuente de verdad
         |  3. crea el Pago { monto, metodoPago, referencia, notificado: false }
         v
    [Pago guardado]

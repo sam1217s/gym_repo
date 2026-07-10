@@ -30,3 +30,28 @@ export function sumarDias(fecha, dias) {
   resultado.setDate(resultado.getDate() + dias);
   return resultado;
 }
+
+/**
+ * Suma meses de CALENDARIO, cayendo en el mismo dia del mes.
+ *
+ * El dia se recorta al ultimo del mes destino cuando no existe: una mensualidad
+ * que empieza el 31 de enero vence el 28 de febrero, no el 3 de marzo. Hacerlo
+ * con `setMonth()` a secas desborda al mes siguiente, y el miembro pagaria por
+ * un periodo que no compro.
+ *
+ * Acepta meses negativos, para retroceder.
+ */
+export function sumarMeses(fecha, meses) {
+  const base = new Date(fecha);
+  const diaDeseado = base.getDate();
+
+  const resultado = new Date(base);
+  // Se ancla al dia 1 antes de mover el mes, o `setMonth` desbordaria solo.
+  resultado.setDate(1);
+  resultado.setMonth(resultado.getMonth() + meses);
+
+  const ultimoDiaDelMes = new Date(resultado.getFullYear(), resultado.getMonth() + 1, 0).getDate();
+  resultado.setDate(Math.min(diaDeseado, ultimoDiaDelMes));
+
+  return resultado;
+}

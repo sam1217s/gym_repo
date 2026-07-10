@@ -4,6 +4,7 @@ import { entorno, esProduccion } from '../src/config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo, registrarModelos, sincronizarIndices } from '../src/modelos/indice.js';
 import { cifrarContrasena } from '../src/utilidades/contrasena.js';
+import { sumarMeses } from '../src/utilidades/fechas.js';
 
 /**
  * Siembra datos de prueba para poder entrar al panel y ver lo construido.
@@ -90,8 +91,8 @@ const PLANES_PLATAFORMA = [
 ];
 
 const PLANES_MEMBRESIA = [
-  { nombre: 'Mensual', precio: 60_000, duracionDias: 30 },
-  { nombre: 'Trimestral', precio: 160_000, duracionDias: 90 },
+  { nombre: 'Mensual', precio: 60_000, duracionMeses: 1 },
+  { nombre: 'Trimestral', precio: 160_000, duracionMeses: 3 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -244,7 +245,8 @@ async function sembrarPagos(definicion, miembros, planesMembresia, sedes, regist
       pagos.push(
         construirPago({
           miembro, plan, sede, registradoPor,
-          diasHastaVencer: definicionMiembro.diasHastaVencer - plan.duracionDias,
+          // El periodo anterior termino donde empieza el vigente.
+          periodoFin: sumarMeses(enDias(definicionMiembro.diasHastaVencer), -plan.duracionMeses),
           metodo: METODOS_PAGO.EFECTIVO,
         }),
       );
@@ -253,7 +255,7 @@ async function sembrarPagos(definicion, miembros, planesMembresia, sedes, regist
     pagos.push(
       construirPago({
         miembro, plan, sede, registradoPor,
-        diasHastaVencer: definicionMiembro.diasHastaVencer,
+        periodoFin: enDias(definicionMiembro.diasHastaVencer),
         metodo: definicionMiembro.metodo,
       }),
     );
@@ -268,9 +270,9 @@ async function sembrarPagos(definicion, miembros, planesMembresia, sedes, regist
   };
 }
 
-function construirPago({ miembro, plan, sede, registradoPor, diasHastaVencer, metodo }) {
-  const periodoFin = enDias(diasHastaVencer);
-  const periodoInicio = new Date(periodoFin.getTime() - plan.duracionDias * MILISEGUNDOS_POR_DIA);
+function construirPago({ miembro, plan, sede, registradoPor, periodoFin, metodo }) {
+  // La mensualidad dura meses de calendario: se retrocede en meses, no en dias.
+  const periodoInicio = sumarMeses(periodoFin, -plan.duracionMeses);
 
   return {
     sede: sede._id,

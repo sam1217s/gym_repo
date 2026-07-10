@@ -47,11 +47,11 @@
           </div>
 
           <!-- El vencimiento se calcula aqui igual que en el backend:
-               periodoInicio + duracionDias del plan. Verlo ANTES de cobrar
+               periodoInicio + duracionMeses del plan. Verlo ANTES de cobrar
                evita registrar un periodo equivocado. -->
           <q-banner v-if="periodoFin" dense class="banner-vencimiento">
             Cubre hasta el <strong>{{ periodoFinLegible }}</strong>
-            ({{ planElegido.duracionDias }} dias de {{ planElegido.nombre }})
+            ({{ describirDuracion(planElegido) }} de {{ planElegido.nombre }})
           </q-banner>
 
           <div>
@@ -101,7 +101,7 @@ import { useGimnasioStore } from 'src/stores/gimnasio.js';
 /**
  * Registro de un pago de mensualidad. El `periodoFin` que se muestra es un
  * calculo local de cortesia; el que vale lo calcula el backend con la misma
- * formula (`periodoInicio + plan.duracionDias`).
+ * formula (`periodoInicio + plan.duracionMeses`, en meses de calendario).
  */
 
 const propiedades = defineProps({
@@ -116,9 +116,40 @@ const quasar = useQuasar();
 
 const enviando = ref(false);
 
-const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
-
 const METODOS = { EFECTIVO: 'efectivo', TRANSFERENCIA: 'transferencia' };
+
+/**
+ * Espejo de `sumarMeses()` del backend, que es la fuente de verdad. El dia se
+ * recorta al ultimo del mes destino: quien paga el 31 de enero vence el 28 de
+ * febrero, no el 3 de marzo.
+ */
+function sumarMeses(fecha, meses) {
+  const base = new Date(fecha);
+  const diaDeseado = base.getDate();
+
+  const resultado = new Date(base);
+  resultado.setDate(1);
+  resultado.setMonth(resultado.getMonth() + meses);
+
+  const ultimoDiaDelMes = new Date(resultado.getFullYear(), resultado.getMonth() + 1, 0).getDate();
+  resultado.setDate(Math.min(diaDeseado, ultimoDiaDelMes));
+
+  return resultado;
+}
+
+function describirDuracion(plan) {
+  return plan.duracionMeses === 1 ? '1 mes' : `${plan.duracionMeses} meses`;
+}
+
+/**
+ * `new Date('2026-07-09')` es medianoche UTC, que aqui puede ser el dia 8.
+ * El `<input type="date">` habla de dias civiles, asi que se ancla a medianoche
+ * local. El backend hace lo mismo con `diaCivil`.
+ */
+function interpretarDiaCivil(texto) {
+  const [anio, mes, dia] = texto.split('-').map(Number);
+  return new Date(anio, mes - 1, dia);
+}
 const OPCIONES_METODO = [
   { label: 'Efectivo', value: METODOS.EFECTIVO },
   { label: 'Transferencia', value: METODOS.TRANSFERENCIA },
@@ -140,7 +171,7 @@ const opcionesPlan = computed(() =>
   gimnasio.planesMembresia
     .filter((plan) => plan.activo)
     .map((plan) => ({
-      label: `${plan.nombre} — $${plan.precio.toLocaleString('es-CO')} · ${plan.duracionDias} dias`,
+      label: `${plan.nombre} — $${plan.precio.toLocaleString('es-CO')} · ${describirDuracion(plan)}`,
       value: plan._id,
     })),
 );
@@ -153,9 +184,9 @@ const esTransferencia = computed(() => formulario.metodoPago === METODOS.TRANSFE
 
 const periodoFin = computed(() => {
   if (!planElegido.value || !formulario.periodoInicio) return null;
-  const inicio = new Date(formulario.periodoInicio);
+  const inicio = interpretarDiaCivil(formulario.periodoInicio);
   if (Number.isNaN(inicio.getTime())) return null;
-  return new Date(inicio.getTime() + planElegido.value.duracionDias * MILISEGUNDOS_POR_DIA);
+  return sumarMeses(inicio, planElegido.value.duracionMeses);
 });
 
 const periodoFinLegible = computed(() =>

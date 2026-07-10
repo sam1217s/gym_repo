@@ -4,7 +4,7 @@ import { idMongo } from './comunes.validacion.js';
 const cuerpoPlan = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
   precio: z.number().min(0),
-  duracionDias: z.number().int().min(1),
+  duracionMeses: z.number().int().min(1),
 });
 
 export const esquemaCrearPlanMembresia = { body: cuerpoPlan };

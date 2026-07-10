@@ -4,7 +4,7 @@
       <div>
         <div class="ceja">Mi gimnasio</div>
         <h1 class="titulo-display titulo-pagina q-my-none">Planes de membresia</h1>
-        <div class="text-caption text-grey-7">Lo que tus miembros pagan y por cuantos dias</div>
+        <div class="text-caption text-grey-7">Lo que tus miembros pagan y por cuantos meses</div>
       </div>
 
       <q-btn color="primary" unelevated no-caps icon="add" label="Nuevo plan" @click="abrirCreacion" />
@@ -71,10 +71,11 @@
                 :rules="[reglaPrecio]"
               />
               <q-input
-                v-model.number="formulario.duracionDias"
+                v-model.number="formulario.duracionMeses"
                 class="col-6"
                 type="number"
-                label="Duracion (dias)"
+                label="Duracion (meses)"
+                hint="1 = mensual, 3 = trimestral"
                 outlined
                 dense
                 :rules="[reglaDuracion]"
@@ -131,10 +132,10 @@ const COLUMNAS = [
   {
     name: 'duracion',
     label: 'Duracion',
-    field: 'duracionDias',
+    field: 'duracionMeses',
     align: 'right',
     sortable: true,
-    format: (valor) => `${valor} dias`,
+    format: (valor) => (valor === 1 ? '1 mes' : `${valor} meses`),
     classes: 'cifra-tabular',
   },
   { name: 'estado', label: 'Estado', field: 'activo', align: 'left', sortable: true },
@@ -143,15 +144,14 @@ const COLUMNAS = [
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaPrecio = (valor) => (typeof valor === 'number' && valor >= 0) || 'Precio invalido';
-const reglaDuracion = (valor) =>
-  (Number.isInteger(valor) && valor >= 1) || 'Minimo 1 dia';
+const reglaDuracion = (valor) => (Number.isInteger(valor) && valor >= 1) || 'Minimo 1 mes';
 
-const formulario = reactive({ nombre: '', precio: null, duracionDias: null });
+const formulario = reactive({ nombre: '', precio: null, duracionMeses: null });
 
 function abrirCreacion() {
   editando.value = false;
   planActivo.value = null;
-  Object.assign(formulario, { nombre: '', precio: null, duracionDias: null });
+  Object.assign(formulario, { nombre: '', precio: null, duracionMeses: null });
   dialogoAbierto.value = true;
 }
 
@@ -161,7 +161,7 @@ function abrirEdicion(plan) {
   Object.assign(formulario, {
     nombre: plan.nombre,
     precio: plan.precio,
-    duracionDias: plan.duracionDias,
+    duracionMeses: plan.duracionMeses,
   });
   dialogoAbierto.value = true;
 }
@@ -172,7 +172,7 @@ async function guardar() {
     const datos = {
       nombre: formulario.nombre,
       precio: formulario.precio,
-      duracionDias: formulario.duracionDias,
+      duracionMeses: formulario.duracionMeses,
     };
 
     if (editando.value) {

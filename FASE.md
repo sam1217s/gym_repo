@@ -124,7 +124,7 @@ Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a dia
 - [x] CRUD de `Miembro`, filtrado por sede para el rol `sede_admin` (crea siempre en SU sede,
       no puede mover miembros de sede, y los de otra sede son 404 para el)
 - [x] `servicios/pagos.servicio.js`: al registrar un pago,
-      `periodoFin = periodoInicio + planMembresia.duracionDias`
+      `periodoFin = periodoInicio + planMembresia.duracionMeses` (meses de calendario)
 - [x] `servicios/vencimientos.servicio.js`: derivar el estado del miembro del
       `periodoFin` de su ULTIMO pago. `obtenerUltimoPagoPorMiembro()` es la consulta unica
       que reutilizara el cron de la Fase 5. Sin `$lookup`: aggregate sobre `Pago` + merge en JS
@@ -280,6 +280,10 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
       suspendieron cuando intenta entrar. Falta avisarle antes de que venza la factura.
 - [ ] **Cambiar de plan no reprorratea.** Subir o bajar de `PlanPlataforma` cambia el precio
       de la SIGUIENTE factura; la del mes en curso no se ajusta.
+- [ ] **`PlanMembresia.duracionDias` -> `duracionMeses` no tiene migracion.** Los documentos
+      viejos de una base existente quedarian sin `duracionMeses` (campo `required`). En
+      desarrollo lo resuelve `npm run sembrar:prueba`; antes de tocar una base con datos hay
+      que escribir la migracion (p. ej. `duracionMeses = Math.round(duracionDias / 30)`).
 - [ ] **Las fuentes de marca vienen de Google Fonts por CDN** (`css/app.scss`). Sin red
       caen a la pila del sistema; para un despliegue offline habria que empaquetarlas.
 - [ ] **El onboarding compensa, no transacciona.** Si algun dia hay replica set (Atlas),

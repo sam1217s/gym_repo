@@ -77,7 +77,7 @@ async function montarGimnasio({
     const planMembresia = await obtenerModelo('PlanMembresia').create({
       nombre: 'Mensual',
       precio: 60_000,
-      duracionDias: 30,
+      duracionMeses: 1,
     });
     return { sede, planMembresia };
   });
