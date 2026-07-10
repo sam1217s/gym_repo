@@ -36,7 +36,13 @@ export default defineConfig(() => ({
   },
 
   framework: {
-    plugins: ['Notify', 'Loading'],
+    /**
+     * Un plugin que no se declara aqui NO existe en tiempo de ejecucion:
+     * `$q.dialog()` no falla al compilar, revienta al hacer clic. `Dialog` lo
+     * usan las confirmaciones de suspender/reactivar/cancelar un gimnasio,
+     * desactivar un usuario y archivar un plan.
+     */
+    plugins: ['Notify', 'Dialog'],
     config: {
       notify: { position: 'top-right', timeout: 3000 },
     },
