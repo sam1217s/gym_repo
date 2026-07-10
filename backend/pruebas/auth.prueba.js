@@ -100,15 +100,31 @@ describe('POST /api/auth/iniciar-sesion', () => {
     expect(respuesta.body.error.mensaje).toBe('Email o contrasena incorrectos');
   });
 
-  it('bloquea el acceso a un gimnasio suspendido', async () => {
+  /**
+   * Un gimnasio SUSPENDIDO si entra: dentro solo alcanza Facturacion, para
+   * poder pagar lo que debe (ver `bloquearSiGimnasioSuspendido`). Si se le
+   * cerrara el login, la suspension seria una trampa sin salida.
+   */
+  it('deja entrar a un gimnasio suspendido, y lo dice en la sesion', async () => {
     await crearGimnasioConDuena({ estado: ESTADOS_TENANT.SUSPENDIDO });
+
+    const respuesta = await peticion(app)
+      .post('/api/auth/iniciar-sesion')
+      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .expect(200);
+
+    expect(respuesta.body.data.tenantEstado).toBe(ESTADOS_TENANT.SUSPENDIDO);
+  });
+
+  it('bloquea el acceso a un gimnasio cancelado: cancelar es terminal', async () => {
+    await crearGimnasioConDuena({ estado: ESTADOS_TENANT.CANCELADO });
 
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
       .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(403);
 
-    expect(respuesta.body.error.mensaje).toMatch(/suspendido/i);
+    expect(respuesta.body.error.mensaje).toMatch(/cancelado/i);
   });
 
   it('valida el cuerpo con Zod', async () => {

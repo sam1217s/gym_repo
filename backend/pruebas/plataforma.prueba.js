@@ -293,7 +293,11 @@ describe('onboarding de un gimnasio', () => {
 });
 
 describe('ciclo de vida del tenant', () => {
-  it('suspender bloquea el login de sus usuarios; reactivar lo devuelve', async () => {
+  /**
+   * Suspender cierra el gimnasio, no la puerta: su duena entra igual, pero solo
+   * puede llegar a Facturacion. Si no pudiera entrar, no podria pagar.
+   */
+  it('suspender cierra las rutas de negocio pero deja entrar; reactivar lo devuelve todo', async () => {
     await crearSuperAdmin();
     const plan = await crearPlanPlataforma();
     const { tenant } = await crearGimnasioConDuena(plan);
@@ -301,17 +305,28 @@ describe('ciclo de vida del tenant', () => {
 
     await agente.patch(`/api/plataforma/tenants/${tenant._id}/suspender`).expect(200);
 
+    const duena = await entrarComo('laura@gimnasio-existente.co');
+    await duena.get('/api/miembros').expect(403);
+    await duena.get('/api/facturacion').expect(200);
+
+    await agente.patch(`/api/plataforma/tenants/${tenant._id}/reactivar`).expect(200);
+
+    const duenaReactivada = await entrarComo('laura@gimnasio-existente.co');
+    await duenaReactivada.get('/api/miembros').expect(200);
+  });
+
+  it('cancelar si cierra la puerta: sus usuarios no entran', async () => {
+    await crearSuperAdmin();
+    const plan = await crearPlanPlataforma();
+    const { tenant } = await crearGimnasioConDuena(plan);
+    const agente = await entrarComo('root@gymsaas.co');
+
+    await agente.patch(`/api/plataforma/tenants/${tenant._id}/cancelar`).expect(200);
+
     await peticion(app)
       .post('/api/auth/iniciar-sesion')
       .send({ email: 'laura@gimnasio-existente.co', contrasena: CONTRASENA })
       .expect(403);
-
-    await agente.patch(`/api/plataforma/tenants/${tenant._id}/reactivar`).expect(200);
-
-    await peticion(app)
-      .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-existente.co', contrasena: CONTRASENA })
-      .expect(200);
   });
 
   it('cancelado es terminal: no se puede reactivar', async () => {

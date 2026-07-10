@@ -80,7 +80,7 @@ Tres piezas que se apoyan entre si:
 
 | Nivel plataforma (SIN plugin) | Tenant-scoped (CON plugin) |
 | --- | --- |
-| `PlanPlataforma`, `Tenant`, `Usuario` | `Sede`, `PlanMembresia`, `Miembro`, `Pago`, `Notificacion` |
+| `PlanPlataforma`, `Tenant`, `Usuario`, `FacturaPlataforma` | `Sede`, `PlanMembresia`, `Miembro`, `Pago`, `Notificacion` |
 
 `Usuario` **no** lleva el plugin a proposito: el login ocurre antes de que exista contexto de
 tenant, asi que la busqueda por email tiene que poder correr sin filtro. Su aislamiento se hace
@@ -144,15 +144,31 @@ Son dos flujos de dinero distintos que se parecen y se confunden:
 
 | | Quien paga | A quien | Modelos |
 | --- | --- | --- | --- |
-| **Facturacion de plataforma** | El gimnasio | A GymSaaS | `PlanPlataforma` + `Tenant.estado` |
+| **Facturacion de plataforma** | El gimnasio | A GymSaaS | `PlanPlataforma` + `Tenant.estado` + `FacturaPlataforma` (Wompi) |
 | **Facturacion de miembros** | El miembro | Al gimnasio | `PlanMembresia` + `Pago` |
 
 `PlanPlataforma` es de nivel plataforma y define **limites** (`maxSedes`, `maxMiembros`) y
 **features** (`whatsapp`, `reportes`). `PlanMembresia` es tenant-scoped y lo configura cada
 gimnasio ("Mensual" 60000 / 30 dias).
 
-Un `Tenant.estado` de `suspendido` o `cancelado` **bloquea el login** con 403, tanto en
-`servicios/auth.servicio.js` como en el middleware `autenticar`. Solo `trial` y `activo` operan.
+Los limites los hace cumplir `middlewares/limitesPlan.js` en las rutas de creacion. Cuenta
+solo recursos **activos**: un miembro dado de baja no ocupa cupo.
+
+### Entrar y operar no son lo mismo
+
+Dos listas de estados, y confundirlas rompe el cobro:
+
+| | Estados | Que permite |
+| --- | --- | --- |
+| `ESTADOS_TENANT_OPERATIVOS` | `trial`, `activo` | usar el gimnasio (miembros, pagos, reportes) |
+| `ESTADOS_TENANT_CON_ACCESO` | + `suspendido` | iniciar sesion |
+
+Un gimnasio **suspendido si entra**, y a proposito: dentro solo alcanza `/auth` y
+`/facturacion`, porque es donde paga lo que debe. Si se le cerrara el login, la suspension
+por impago seria una trampa sin salida. Lo hace cumplir `bloquearSiGimnasioSuspendido`, que
+va en TODAS las rutas de negocio y en ninguna de esas dos.
+
+`cancelado` es terminal: no entra, y **pagar una factura vieja no lo revive**.
 
 ---
 
@@ -210,10 +226,12 @@ Contrato de `filtroSede` en los servicios (miembros, pagos, vencimientos):
 Orden obligatorio de middlewares en una ruta protegida:
 
 ```js
-autenticar               // verifica la cookie -> peticion.usuario
-abrirContextoTenant      // abre el AsyncLocalStorage. SIEMPRE despues de autenticar
+autenticar                       // verifica la cookie -> peticion.usuario y peticion.tenant
+abrirContextoTenant              // abre el AsyncLocalStorage. SIEMPRE despues de autenticar
 bloquearSiDebeCambiarContrasena
-requiereRol(...)         // o limitarASede
+bloquearSiGimnasioSuspendido     // salvo en /auth y /facturacion
+requiereRol(...)                 // o limitarASede
+exigirLimite(RECURSOS.X)         // solo en las rutas que CREAN, y despues de validar
 ```
 
 ---
@@ -360,6 +378,53 @@ onboarding.servicio.js  (compensacion manual: sin replica set no hay
 El punto no obvio: dentro del mismo endpoint se cruza la frontera de plataforma a tenant. Los
 pasos 1 y 2 corren sin contexto; el paso 3 **necesita** abrir uno.
 
+### Cobro plataforma → gimnasio (Wompi)
+
+```
+[Cron de cobranza, 3:00, todo dentro de ejecutarSinTenant]
+        |                                   (tareas/facturacion.tarea.js)
+        |  generarFacturasDelMes()   una por gimnasio operativo, idempotente por el
+        |                            indice unico { tenant, periodoInicio }
+        |  suspenderMorosos()        pendiente + fechaVencimiento < hoy  ->  suspendido
+        v
+[El dueno entra a /panel/facturacion y pulsa Pagar]
+        |
+        v
+POST /api/facturacion/:id/enlace-pago   (el tenantId sale de la SESION, nunca del cuerpo)
+        |
+        |  firma = SHA256(referencia + centavos + moneda + SECRETO_INTEGRIDAD)
+        v
+   checkout.wompi.co  ──>  el dueno paga  ──>  Wompi llama de vuelta
+        |
+        v
+POST /api/webhooks/wompi          <-- RUTA PUBLICA. Sin cookie. Sin sesion.
+        |
+        |  1. verificarChecksumEvento()   SHA256(valores de signature.properties
+        |                                   + timestamp + SECRETO_EVENTOS)
+        |     ^ LO PRIMERO. Es lo unico que separa a Wompi de un impostor.
+        |  2. buscar la factura por `reference`
+        |  3. si ya esta pagada -> ignorar (Wompi reintenta los webhooks)
+        |  4. si el monto no coincide -> fallida (alguien manipulo el checkout)
+        |  5. APPROVED -> pagada + tenant a `activo` (salvo si esta cancelado)
+        v
+   Se responde 200 incluso a lo que se ignora: un error hace que Wompi reintente en bucle.
+```
+
+**Dos firmas, dos secretos, y confundirlos es un agujero.** La de *integridad* la calcula
+GymSaaS y viaja en la URL del checkout: impide que el gimnasio cambie el monto en la barra
+del navegador. La del *evento* la calcula Wompi: sin verificarla, cualquiera podria hacer un
+POST y marcarse la factura como pagada. Ninguna de las dos toca el navegador.
+
+`signature.properties` **no se puede quemar en el codigo**: la documentacion de Wompi avisa
+de que la lista cambia entre eventos. Se lee del payload y se resuelve contra `data`.
+
+La pasarela es de la **plataforma** (una sola cuenta de Wompi, en el entorno), al reves que
+el proveedor de WhatsApp, que se elige **por gimnasio** en `tenant.config.whatsapp`.
+
+El plazo de gracia cuenta desde que se **emite** la factura, no desde el dia 1 del mes: con
+`periodoInicio + gracia`, un gimnasio dado de alta un dia 20 nacería con la factura vencida
+y el mismo cron lo suspenderia el dia que lo factura por primera vez.
+
 Reglas del ciclo de vida que no estan en el esquema:
 
 - `cancelado` es **terminal**: ninguna transicion sale de ahi. Suspender solo aplica a
@@ -413,6 +478,12 @@ rutas/ -> controladores/ -> servicios/ -> modelos/
 - `tareas/` son procesos programados. No tienen contexto de tenant: se lo abren ellos, tenant
   por tenant. Cada tarea exporta su funcion de trabajo aparte del `cron.schedule`, para poder
   probarla y dispararla a mano.
+- `pasarelas/` es la infraestructura de cobro de la PLATAFORMA (Wompi). No confundir con
+  `proveedores/`, que es infraestructura elegida POR GIMNASIO. Ambas fallan ruidosamente si
+  les faltan credenciales, y ninguna se prueba contra la red.
+
+`Usuario` y `FacturaPlataforma` **no llevan el plugin de aislamiento**. Todo servicio que las
+consulte en nombre de un gimnasio filtra por `tenant` a mano, en la busqueda, no despues.
 
 ### Forma de respuesta
 

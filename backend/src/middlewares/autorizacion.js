@@ -47,3 +47,21 @@ export function bloquearSiDebeCambiarContrasena(peticion, _respuesta, siguiente)
   }
   return siguiente();
 }
+
+/**
+ * Cierra el gimnasio a quien no pago. Se aplica a todas las rutas de negocio,
+ * pero NO a `/auth` ni a `/facturacion`: un gimnasio suspendido tiene que poder
+ * entrar y ponerse al dia, o la suspension seria una trampa sin salida.
+ *
+ * `peticion.tenant` lo deja `autenticar`. Un `super_admin` no tiene, y pasa.
+ */
+export function bloquearSiGimnasioSuspendido(peticion, _respuesta, siguiente) {
+  if (peticion.tenant && !peticion.tenant.estaOperativo()) {
+    return siguiente(
+      ErrorApi.prohibido(
+        'Tu gimnasio esta suspendido por falta de pago. Ponte al dia desde Facturacion.',
+      ),
+    );
+  }
+  return siguiente();
+}

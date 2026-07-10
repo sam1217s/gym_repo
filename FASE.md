@@ -11,7 +11,8 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fases 1 a 5 completas. Fase 6 sin empezar.
+**Estado global:** Fases 1 a 6 completas. El producto esta funcionalmente cerrado;
+lo que queda es la deuda tecnica de abajo, indispensable antes de desplegar.
 
 ---
 
@@ -211,14 +212,39 @@ Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a dia
 
 ---
 
-## Fase 6 — Facturacion de plataforma y limites · PENDIENTE
+## Fase 6 — Facturacion de plataforma y limites · COMPLETA
 
-- [ ] Middleware que verifique `PlanPlataforma.limites` antes de crear sede/miembro/usuario
-- [ ] Estado de suscripcion del tenant y transiciones (`trial` → `activo` → `suspendido`)
-- [ ] Suspension automatica por impago
-- [ ] Historico de facturacion de plataforma
+Pasarela elegida: **Wompi** (`pasarelas/wompi.pasarela.js`).
 
-> **Decision abierta:** pasarela de pago para el cobro plataforma → gimnasio. No asumir.
+- [x] `middlewares/limitesPlan.js` verifica `PlanPlataforma.limites` antes de crear
+      sede/miembro/usuario. Cuenta solo los recursos **activos**: dar de baja a un
+      miembro libera cupo
+- [x] Estado de suscripcion del tenant y transiciones:
+      `trial` --(paga la 1a factura)--> `activo` --(impago)--> `suspendido` --(paga)--> `activo`.
+      `cancelado` es terminal: **pagar no lo revive**
+- [x] Suspension automatica por impago (`suspenderMorosos`, cron diario a las 3:00)
+- [x] Historico de facturacion: modelo `FacturaPlataforma` (nivel plataforma, sin plugin),
+      `GET /api/facturacion` para el dueno y `GET /api/plataforma/tenants/:id/facturas`
+      para el super_admin
+- [x] Pasarela Wompi: firma de integridad del checkout (salida) y verificacion del
+      checksum del evento (entrada), con **dos secretos distintos**. Webhook publico en
+      `POST /api/webhooks/wompi`, idempotente y con comprobacion de monto
+- [x] Frontend: `PaginaFacturacion.vue` con la factura pendiente, el boton de pago y el
+      historial
+- [x] 35 pruebas nuevas (`facturacion.prueba.js`, `limitesPlan.prueba.js`); ninguna toca
+      la red ni la pasarela real
+
+### El agujero que abria la suspension (y que la fase no mencionaba)
+
+Suspender a un gimnasio por no pagar y ademas cerrarle el login lo dejaba **sin forma de
+pagar**. Se corrigio separando dos conceptos que antes eran uno:
+
+- `ESTADOS_TENANT_OPERATIVOS` (`trial`, `activo`) — puede usar el gimnasio.
+- `ESTADOS_TENANT_CON_ACCESO` (+ `suspendido`) — puede iniciar sesion.
+
+Un gimnasio suspendido entra, pero `bloquearSiGimnasioSuspendido` le cierra todas las rutas
+de negocio menos `/auth` y `/facturacion`. `cancelado` sigue sin entrar.
+**Esto cambia el comportamiento documentado hasta la Fase 5**, y CLAUDE.md ya lo refleja.
 
 ---
 
@@ -242,6 +268,18 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
 - [ ] **Baileys sin implementar.** Su fabrica lanza. Ver la decision abierta de la Fase 5.
 - [ ] **Cloud API envia texto libre**, que Meta solo acepta dentro de la ventana de 24 h.
       Para produccion hace falta una plantilla aprobada (`type: 'template'`).
+- [ ] **Sin llaves de Wompi no hay cobro.** `WOMPI_LLAVE_PUBLICA`, `WOMPI_SECRETO_INTEGRIDAD`
+      y `WOMPI_SECRETO_EVENTOS` son opcionales para que el proyecto arranque en local; sin
+      ellas el enlace de pago responde 503 y el webhook tambien. Antes de desplegar hay que
+      registrar la URL del webhook en el panel de Wompi.
+- [ ] **La factura del mes se emite el dia que corre el cron, no el dia 1.** Si el proceso
+      estuvo caido los primeros dias del mes, la primera corrida las emite con su plazo de
+      gracia contado desde ese dia. Es intencional (evita facturas que nacen vencidas), pero
+      corre la fecha de cobro.
+- [ ] **No hay reintento ni notificacion de impago.** Un gimnasio se entera de que lo
+      suspendieron cuando intenta entrar. Falta avisarle antes de que venza la factura.
+- [ ] **Cambiar de plan no reprorratea.** Subir o bajar de `PlanPlataforma` cambia el precio
+      de la SIGUIENTE factura; la del mes en curso no se ajusta.
 - [ ] **Las fuentes de marca vienen de Google Fonts por CDN** (`css/app.scss`). Sin red
       caen a la pila del sistema; para un despliegue offline habria que empaquetarlas.
 - [ ] **El onboarding compensa, no transacciona.** Si algun dia hay replica set (Atlas),

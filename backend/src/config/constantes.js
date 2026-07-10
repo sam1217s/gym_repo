@@ -20,10 +20,21 @@ export const ESTADOS_TENANT = Object.freeze({
 
 export const LISTA_ESTADOS_TENANT = Object.values(ESTADOS_TENANT);
 
-/** Unicos estados con los que un usuario de gimnasio puede iniciar sesion. */
+/** Estados en los que el gimnasio puede OPERAR: cobrar, registrar miembros, ver reportes. */
 export const ESTADOS_TENANT_OPERATIVOS = Object.freeze([
   ESTADOS_TENANT.TRIAL,
   ESTADOS_TENANT.ACTIVO,
+]);
+
+/**
+ * Estados con los que un usuario puede INICIAR SESION. Un gimnasio suspendido
+ * entra a proposito: si no pudiera, no podria pagar la factura que lo suspendio.
+ * Dentro del panel solo alcanza Facturacion (`bloquearSiGimnasioSuspendido`).
+ * Un gimnasio cancelado no entra: cancelar es terminal.
+ */
+export const ESTADOS_TENANT_CON_ACCESO = Object.freeze([
+  ...ESTADOS_TENANT_OPERATIVOS,
+  ESTADOS_TENANT.SUSPENDIDO,
 ]);
 
 export const METODOS_PAGO = Object.freeze({
@@ -80,6 +91,38 @@ export const ESTADOS_VENCIMIENTO_AVISABLES = Object.freeze([
 
 /** Todos los dias a las 9:00, en la zona horaria del producto. */
 export const EXPRESION_CRON_VENCIMIENTOS = '0 9 * * *';
+
+/** Facturacion de plataforma: de madrugada, lejos de la hora pico del gimnasio. */
+export const EXPRESION_CRON_FACTURACION = '0 3 * * *';
+
+// --- Facturacion de plataforma (el gimnasio le paga a GymSaaS) ---------------
+
+export const ESTADOS_FACTURA = Object.freeze({
+  PENDIENTE: 'pendiente',
+  PAGADA: 'pagada',
+  FALLIDA: 'fallida',
+  ANULADA: 'anulada',
+});
+
+export const LISTA_ESTADOS_FACTURA = Object.values(ESTADOS_FACTURA);
+
+/** Dias que tiene un gimnasio para pagar antes de que se le suspenda la cuenta. */
+export const DIAS_GRACIA_PAGO = 5;
+
+/** Wompi cobra en centavos: $60.000 COP viajan como 6000000. */
+export const CENTAVOS_POR_UNIDAD = 100;
+
+/** Estados de una transaccion de Wompi. Solo `APPROVED` da la factura por pagada. */
+export const ESTADOS_TRANSACCION_WOMPI = Object.freeze({
+  APROBADA: 'APPROVED',
+  RECHAZADA: 'DECLINED',
+  ANULADA: 'VOIDED',
+  ERROR: 'ERROR',
+  PENDIENTE: 'PENDING',
+});
+
+/** El unico evento de Wompi al que se reacciona hoy. */
+export const EVENTO_WOMPI_TRANSACCION = 'transaction.updated';
 
 /** Configuracion regional del producto. */
 export const MONEDA_POR_DEFECTO = 'COP';

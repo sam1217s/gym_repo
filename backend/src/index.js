@@ -2,6 +2,7 @@ import { conectarBaseDatos, desconectarBaseDatos } from './config/baseDatos.js';
 import { entorno, esProduccion } from './config/entorno.js';
 import { registrarModelos, sincronizarIndices } from './modelos/indice.js';
 import { crearServidor } from './servidor.js';
+import { programarCobranza } from './tareas/facturacion.tarea.js';
 import { programarAvisosDeVencimiento } from './tareas/vencimientos.tarea.js';
 
 /** Punto de entrada del proceso: conecta, escucha y se apaga con orden. */
@@ -18,11 +19,13 @@ async function arrancar() {
    * que no logro tomar el puerto no debe agendar trabajo. Y solo una instancia
    * debe hacerlo (`HABILITAR_CRON`), o cada miembro recibiria el aviso N veces.
    */
-  let tareaAvisos = null;
+  const tareas = [];
 
   const servidor = crearServidor().listen(entorno.PUERTO, () => {
     console.log(`GymSaaS API escuchando en http://localhost:${entorno.PUERTO} [${entorno.NODE_ENV}]`);
-    if (entorno.HABILITAR_CRON) tareaAvisos = programarAvisosDeVencimiento();
+    if (entorno.HABILITAR_CRON) {
+      tareas.push(programarAvisosDeVencimiento(), programarCobranza());
+    }
   });
 
   /**
@@ -44,7 +47,7 @@ async function arrancar() {
 
   for (const senal of ['SIGINT', 'SIGTERM']) {
     process.on(senal, () => {
-      tareaAvisos?.stop();
+      for (const tarea of tareas) tarea.stop();
       servidor.close(async () => {
         await desconectarBaseDatos();
         process.exit(0);

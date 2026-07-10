@@ -30,6 +30,22 @@ const esquemaEntorno = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((valor) => valor === 'true'),
+
+  /**
+   * Wompi: la pasarela con la que GymSaaS le cobra a los gimnasios.
+   *
+   * A diferencia del proveedor de WhatsApp (que se elige por gimnasio, en
+   * `tenant.config.whatsapp`), la pasarela es de la PLATAFORMA: hay una sola
+   * cuenta de Wompi, la de GymSaaS. Por eso vive en el entorno.
+   *
+   * Son opcionales para que el proyecto arranque sin credenciales; la pasarela
+   * lanza, con un mensaje claro, en cuanto se la intenta usar sin ellas.
+   */
+  WOMPI_LLAVE_PUBLICA: z.string().default(''),
+  WOMPI_SECRETO_INTEGRIDAD: z.string().default(''),
+  WOMPI_SECRETO_EVENTOS: z.string().default(''),
+  WOMPI_URL_CHECKOUT: z.string().url().default('https://checkout.wompi.co/p/'),
+  WOMPI_URL_REDIRECCION: z.string().url().default('http://localhost:9000/panel/facturacion'),
 });
 
 function cargarEntorno() {

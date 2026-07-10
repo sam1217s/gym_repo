@@ -1,3 +1,4 @@
+import * as servicioFacturacion from '../servicios/facturacionPlataforma.servicio.js';
 import * as servicioOnboarding from '../servicios/onboarding.servicio.js';
 import * as servicioPlanes from '../servicios/planesPlataforma.servicio.js';
 import * as servicioTenants from '../servicios/tenants.servicio.js';
@@ -55,4 +56,9 @@ export const reactivarTenant = manejadorAsync(async (peticion, respuesta) =>
 
 export const cancelarTenant = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioTenants.cancelarTenant(peticion.params.id)),
+);
+
+/** Historico de facturacion de un gimnasio, visto desde la plataforma. */
+export const facturasDeTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioFacturacion.listarFacturasDeTenant(peticion.params.id)),
 );

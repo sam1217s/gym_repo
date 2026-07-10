@@ -29,6 +29,9 @@ export const useAutenticacionStore = defineStore(
     const esSuperAdmin = computed(() => usuario.value?.rol === ROLES.SUPER_ADMIN);
     const debeCambiarContrasena = computed(() => usuario.value?.debeCambiarContrasena === true);
 
+    /** Puede entrar, pero solo a Facturacion, hasta que pague. */
+    const gimnasioSuspendido = computed(() => usuario.value?.tenantEstado === 'suspendido');
+
     function limpiarSesion() {
       usuario.value = null;
       sesionVerificada.value = true;
@@ -78,6 +81,7 @@ export const useAutenticacionStore = defineStore(
       estaAutenticado,
       esSuperAdmin,
       debeCambiarContrasena,
+      gimnasioSuspendido,
       iniciarSesion,
       cerrarSesion,
       verificarSesion,

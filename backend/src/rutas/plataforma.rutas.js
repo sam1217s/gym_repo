@@ -37,5 +37,6 @@ rutas.get('/tenants/:id', validar(esquemaIdParam), controlador.obtenerTenant);
 rutas.patch('/tenants/:id/suspender', validar(esquemaIdParam), controlador.suspenderTenant);
 rutas.patch('/tenants/:id/reactivar', validar(esquemaIdParam), controlador.reactivarTenant);
 rutas.patch('/tenants/:id/cancelar', validar(esquemaIdParam), controlador.cancelarTenant);
+rutas.get('/tenants/:id/facturas', validar(esquemaIdParam), controlador.facturasDeTenant);
 
 export default rutas;

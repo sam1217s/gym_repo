@@ -39,7 +39,7 @@
 import { computed, ref } from 'vue';
 
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
-import { ROLES } from 'src/stores/autenticacion.js';
+import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 
 const { usuario, cerrarSesion } = useAutenticacion();
 
@@ -64,13 +64,22 @@ const ENLACES = [
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },
+  { nombre: 'facturacion', titulo: 'Facturacion', icono: 'receipt_long', roles: [ROLES.TENANT_OWNER] },
 ];
 
 const etiquetaRol = computed(() => ETIQUETAS_ROL[usuario.value?.rol] ?? '');
 
-const enlacesVisibles = computed(() =>
-  ENLACES.filter((enlace) => !enlace.roles || enlace.roles.includes(usuario.value?.rol)),
-);
+const autenticacion = useAutenticacionStore();
+
+const enlacesVisibles = computed(() => {
+  // Un gimnasio suspendido solo puede ir a Facturacion: mostrar el resto seria
+  // ofrecerle puertas que el guard le cierra en la cara.
+  if (autenticacion.gimnasioSuspendido) {
+    return ENLACES.filter((enlace) => enlace.nombre === 'facturacion');
+  }
+
+  return ENLACES.filter((enlace) => !enlace.roles || enlace.roles.includes(usuario.value?.rol));
+});
 
 function alternarMenu() {
   menuAbierto.value = !menuAbierto.value;

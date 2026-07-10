@@ -1,5 +1,6 @@
 import { ESTADOS_VENCIMIENTO } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
+import { inicioDeMes, inicioDeMesAnterior } from '../utilidades/fechas.js';
 import { listarVencimientos } from './vencimientos.servicio.js';
 
 /**
@@ -16,15 +17,6 @@ import { listarVencimientos } from './vencimientos.servicio.js';
  * pisar la trampa #1 del plugin (un `$lookup` no dispara el aislamiento de la
  * coleccion destino).
  */
-
-function inicioDeMes(ahora = new Date()) {
-  return new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-}
-
-/** `new Date(2026, -1, 1)` cae en diciembre de 2025: el mes negativo hace rollover solo. */
-function inicioDeMesAnterior(ahora = new Date()) {
-  return new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-}
 
 /**
  * Variacion relativa contra el mes anterior. Devuelve `null` cuando no hay base

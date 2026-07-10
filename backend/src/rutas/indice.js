@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { estaConectada } from '../config/baseDatos.js';
 import { responderOk } from '../utilidades/respuesta.js';
 import rutasAuth from './auth.rutas.js';
+import rutasFacturacion from './facturacion.rutas.js';
 import rutasMiembros from './miembros.rutas.js';
 import rutasPagos from './pagos.rutas.js';
 import rutasPlanesMembresia from './planesMembresia.rutas.js';
@@ -10,6 +11,7 @@ import rutasReportes from './reportes.rutas.js';
 import rutasSedes from './sedes.rutas.js';
 import rutasUsuarios from './usuarios.rutas.js';
 import rutasVencimientos from './vencimientos.rutas.js';
+import rutasWebhooks from './webhooks.rutas.js';
 
 const rutas = Router();
 
@@ -17,8 +19,12 @@ rutas.get('/salud', (_peticion, respuesta) =>
   responderOk(respuesta, { estado: 'ok', baseDatos: estaConectada() ? 'conectada' : 'caida' }),
 );
 
+// Publica: la llama Wompi. Se autentica por checksum, no por cookie.
+rutas.use('/webhooks', rutasWebhooks);
+
 rutas.use('/auth', rutasAuth);
 rutas.use('/plataforma', rutasPlataforma);
+rutas.use('/facturacion', rutasFacturacion);
 rutas.use('/sedes', rutasSedes);
 rutas.use('/usuarios', rutasUsuarios);
 rutas.use('/planes-membresia', rutasPlanesMembresia);

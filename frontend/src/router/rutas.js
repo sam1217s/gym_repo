@@ -68,6 +68,14 @@ const rutas = [
         component: () => import('pages/PaginaPlanes.vue'),
         meta: { roles: [ROLES.TENANT_OWNER] },
       },
+      {
+        // `meta.permiteSuspendido`: la unica pantalla que alcanza un gimnasio
+        // suspendido, porque es donde se pone al dia.
+        path: 'facturacion',
+        name: 'facturacion',
+        component: () => import('pages/PaginaFacturacion.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER], permiteSuspendido: true },
+      },
     ],
   },
 

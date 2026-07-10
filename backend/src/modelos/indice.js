@@ -1,6 +1,7 @@
 import { obtenerConexion } from '../config/baseDatos.js';
 import { obtenerContexto } from '../contexto/contextoTenant.js';
 
+import * as facturaPlataforma from './FacturaPlataforma.js';
 import * as notificacion from './Notificacion.js';
 import * as pago from './Pago.js';
 import * as planMembresia from './PlanMembresia.js';
@@ -26,6 +27,7 @@ const definiciones = [
   planPlataforma,
   tenant,
   usuario,
+  facturaPlataforma,
   sede,
   planMembresia,
   miembro,

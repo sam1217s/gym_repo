@@ -26,14 +26,13 @@ export async function iniciarSesion({ email, contrasena, slugGimnasio }) {
   if (!usuario || !esCorrecta) throw ErrorApi.noAutenticado(MENSAJE_CREDENCIALES);
   if (!usuario.activo) throw ErrorApi.prohibido('Tu usuario esta desactivado');
 
-  if (usuario.rol !== ROLES.SUPER_ADMIN) {
-    await exigirTenantOperativo(usuario.tenant);
-  }
+  const tenant =
+    usuario.rol === ROLES.SUPER_ADMIN ? null : await exigirTenantConAcceso(usuario.tenant);
 
   usuario.ultimoAcceso = new Date();
   await usuario.save();
 
-  return usuario;
+  return { usuario, tenant };
 }
 
 /**
@@ -63,16 +62,22 @@ async function buscarUsuarioParaLogin(email, slugGimnasio) {
   return candidatos[0] ?? null;
 }
 
-async function exigirTenantOperativo(tenantId) {
+/**
+ * Un gimnasio SUSPENDIDO si puede entrar: dentro solo alcanza Facturacion, para
+ * poder pagar lo que debe. Solo `cancelado` cierra la puerta del todo.
+ */
+async function exigirTenantConAcceso(tenantId) {
   if (!tenantId) throw ErrorApi.prohibido('El usuario no pertenece a ningun gimnasio');
 
   const Tenant = obtenerModelo('Tenant');
   const tenant = await Tenant.findById(tenantId);
 
   if (!tenant) throw ErrorApi.prohibido('El gimnasio ya no existe');
-  if (!tenant.estaOperativo()) {
+  if (!tenant.permiteAcceso()) {
     throw ErrorApi.prohibido(`El gimnasio esta ${tenant.estado}. Contacta a soporte.`);
   }
+
+  return tenant;
 }
 
 /**
@@ -95,11 +100,10 @@ export async function refrescarSesion(tokenRefresco) {
   if (!usuario || !usuario.activo) throw ErrorApi.noAutenticado('Usuario inexistente o inactivo');
   if (usuario.versionToken !== carga.version) throw ErrorApi.noAutenticado('Sesion revocada');
 
-  if (usuario.rol !== ROLES.SUPER_ADMIN) {
-    await exigirTenantOperativo(usuario.tenant);
-  }
+  const tenant =
+    usuario.rol === ROLES.SUPER_ADMIN ? null : await exigirTenantConAcceso(usuario.tenant);
 
-  return usuario;
+  return { usuario, tenant };
 }
 
 /** Cerrar sesion invalida TODOS los tokens del usuario, no solo el de este navegador. */
@@ -130,8 +134,14 @@ export async function cambiarContrasena(usuarioId, { contrasenaActual, contrasen
   return usuario;
 }
 
-/** Datos del usuario en sesion que el frontend necesita para pintar el panel. */
-export function describirSesion(usuario) {
+/**
+ * Datos del usuario en sesion que el frontend necesita para pintar el panel.
+ *
+ * `tenantEstado` viaja para que el frontend sepa mandar a Facturacion a un
+ * gimnasio suspendido en vez de dejarlo chocar contra un 403 en cada pantalla.
+ * Es comodidad de la interfaz: quien decide sigue siendo el backend.
+ */
+export function describirSesion(usuario, tenant = null) {
   return {
     id: usuario._id,
     nombres: usuario.nombres,
@@ -140,6 +150,7 @@ export function describirSesion(usuario) {
     email: usuario.email,
     rol: usuario.rol,
     tenant: usuario.tenant,
+    tenantEstado: tenant?.estado ?? null,
     sede: usuario.sede,
     debeCambiarContrasena: usuario.debeCambiarContrasena,
   };

@@ -11,10 +11,10 @@ import { establecerCookiesSesion, limpiarCookiesSesion } from '../utilidades/tok
  */
 
 export const iniciarSesion = manejadorAsync(async (peticion, respuesta) => {
-  const usuario = await servicioAuth.iniciarSesion(peticion.body);
+  const { usuario, tenant } = await servicioAuth.iniciarSesion(peticion.body);
 
   establecerCookiesSesion(respuesta, usuario);
-  return responderOk(respuesta, servicioAuth.describirSesion(usuario));
+  return responderOk(respuesta, servicioAuth.describirSesion(usuario, tenant));
 });
 
 export const cerrarSesion = manejadorAsync(async (peticion, respuesta) => {
@@ -25,10 +25,10 @@ export const cerrarSesion = manejadorAsync(async (peticion, respuesta) => {
 });
 
 export const refrescar = manejadorAsync(async (peticion, respuesta) => {
-  const usuario = await servicioAuth.refrescarSesion(peticion.cookies?.[COOKIE_REFRESCO]);
+  const { usuario, tenant } = await servicioAuth.refrescarSesion(peticion.cookies?.[COOKIE_REFRESCO]);
 
   establecerCookiesSesion(respuesta, usuario);
-  return responderOk(respuesta, servicioAuth.describirSesion(usuario));
+  return responderOk(respuesta, servicioAuth.describirSesion(usuario, tenant));
 });
 
 export const cambiarContrasena = manejadorAsync(async (peticion, respuesta) => {
@@ -38,9 +38,9 @@ export const cambiarContrasena = manejadorAsync(async (peticion, respuesta) => {
   // incluidas las de este navegador. Se reemiten para no expulsar a quien acaba
   // de cambiarla.
   establecerCookiesSesion(respuesta, usuario);
-  return responderOk(respuesta, servicioAuth.describirSesion(usuario));
+  return responderOk(respuesta, servicioAuth.describirSesion(usuario, peticion.tenant));
 });
 
 export const obtenerSesion = manejadorAsync(async (peticion, respuesta) =>
-  responderOk(respuesta, servicioAuth.describirSesion(peticion.usuario)),
+  responderOk(respuesta, servicioAuth.describirSesion(peticion.usuario, peticion.tenant)),
 );

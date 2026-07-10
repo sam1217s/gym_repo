@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import {
   ESTADOS_TENANT,
+  ESTADOS_TENANT_CON_ACCESO,
+  ESTADOS_TENANT_OPERATIVOS,
   LISTA_ESTADOS_TENANT,
   LISTA_PROVEEDORES_WHATSAPP,
   MONEDA_POR_DEFECTO,
@@ -56,9 +58,18 @@ const esquemaTenant = new mongoose.Schema(
   { timestamps: true },
 );
 
-/** Un tenant suspendido o cancelado no puede operar: sus usuarios no entran. */
+/** Puede usar el gimnasio: cobrar, registrar miembros, ver reportes. */
 esquemaTenant.methods.estaOperativo = function () {
-  return this.estado === ESTADOS_TENANT.TRIAL || this.estado === ESTADOS_TENANT.ACTIVO;
+  return ESTADOS_TENANT_OPERATIVOS.includes(this.estado);
+};
+
+/**
+ * Sus usuarios pueden iniciar sesion. Un gimnasio SUSPENDIDO si puede: entra,
+ * pero solo alcanza Facturacion. Si no pudiera entrar, no podria pagar la
+ * factura que lo suspendio.
+ */
+esquemaTenant.methods.permiteAcceso = function () {
+  return ESTADOS_TENANT_CON_ACCESO.includes(this.estado);
 };
 
 esquemaTenant.set('toJSON', {

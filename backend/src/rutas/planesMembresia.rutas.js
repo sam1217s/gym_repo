@@ -3,6 +3,7 @@ import * as controlador from '../controladores/planesMembresia.controlador.js';
 import { autenticar } from '../middlewares/autenticacion.js';
 import {
   bloquearSiDebeCambiarContrasena,
+  bloquearSiGimnasioSuspendido,
   requiereDuenoGimnasio,
   requierePersonalGimnasio,
 } from '../middlewares/autorizacion.js';
@@ -16,7 +17,12 @@ import {
 
 const rutas = Router();
 
-rutas.use(autenticar, abrirContextoTenant, bloquearSiDebeCambiarContrasena);
+rutas.use(
+  autenticar,
+  abrirContextoTenant,
+  bloquearSiDebeCambiarContrasena,
+  bloquearSiGimnasioSuspendido,
+);
 
 // Leerlos lo necesita cualquier staff (el formulario de pago); definirlos, el dueno.
 rutas.get('/', requierePersonalGimnasio, controlador.listarPlanesMembresia);

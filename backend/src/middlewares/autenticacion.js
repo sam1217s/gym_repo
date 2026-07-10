@@ -35,21 +35,29 @@ export const autenticar = manejadorAsync(async (peticion, _respuesta, siguiente)
   }
 
   if (usuario.rol !== ROLES.SUPER_ADMIN) {
-    await verificarTenantOperativo(usuario.tenant);
+    // Se deja en la peticion para que `bloquearSiGimnasioSuspendido` no lo
+    // vuelva a consultar.
+    peticion.tenant = await verificarTenantConAcceso(usuario.tenant);
   }
 
   peticion.usuario = usuario;
   return siguiente();
 });
 
-async function verificarTenantOperativo(tenantId) {
+/**
+ * Un gimnasio suspendido SI pasa por aqui: dentro solo alcanza Facturacion.
+ * Si no pudiera entrar, no podria pagar la factura que lo suspendio.
+ */
+async function verificarTenantConAcceso(tenantId) {
   if (!tenantId) throw ErrorApi.prohibido('El usuario no pertenece a ningun gimnasio');
 
   const Tenant = obtenerModelo('Tenant');
   const tenant = await Tenant.findById(tenantId);
 
   if (!tenant) throw ErrorApi.prohibido('El gimnasio ya no existe');
-  if (!tenant.estaOperativo()) {
+  if (!tenant.permiteAcceso()) {
     throw ErrorApi.prohibido(`El gimnasio esta ${tenant.estado}. Contacta a soporte.`);
   }
+
+  return tenant;
 }
