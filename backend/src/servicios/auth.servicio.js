@@ -2,7 +2,7 @@ import { ROLES } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { cifrarContrasena, verificarContrasena } from '../utilidades/contrasena.js';
-import { verificarTokenRefresco } from '../utilidades/token.js';
+import { verificarTokenRefresco, verificarTokenVerificacion } from '../utilidades/token.js';
 
 /**
  * Logica de negocio de autenticacion. No conoce Express: recibe datos planos y
@@ -25,6 +25,14 @@ export async function iniciarSesion({ email, contrasena, slugGimnasio }) {
 
   if (!usuario || !esCorrecta) throw ErrorApi.noAutenticado(MENSAJE_CREDENCIALES);
   if (!usuario.activo) throw ErrorApi.prohibido('Tu usuario esta desactivado');
+
+  // Un dueno que se registro solo no entra hasta confirmar el enlace del correo.
+  // El resto de usuarios nace verificado, asi que esto no les afecta.
+  if (!usuario.emailVerificado) {
+    throw ErrorApi.prohibido(
+      'Confirma tu correo para activar tu cuenta. Revisa el enlace que te enviamos al registrarte.',
+    );
+  }
 
   const tenant =
     usuario.rol === ROLES.SUPER_ADMIN ? null : await exigirTenantConAcceso(usuario.tenant);
@@ -104,6 +112,32 @@ export async function refrescarSesion(tokenRefresco) {
     usuario.rol === ROLES.SUPER_ADMIN ? null : await exigirTenantConAcceso(usuario.tenant);
 
   return { usuario, tenant };
+}
+
+/**
+ * Confirma el correo de un dueno que se registro solo, con el token del enlace.
+ * Idempotente: pulsar dos veces el enlace no falla. No abre sesion; solo
+ * desbloquea el login.
+ */
+export async function verificarEmail(token) {
+  let carga;
+  try {
+    carga = verificarTokenVerificacion(token);
+  } catch {
+    throw ErrorApi.solicitudInvalida('El enlace de verificacion no es valido o ya expiro');
+  }
+
+  const Usuario = obtenerModelo('Usuario');
+  const usuario = await Usuario.findById(carga.sub);
+
+  if (!usuario) throw ErrorApi.noEncontrado('La cuenta ya no existe');
+
+  if (!usuario.emailVerificado) {
+    usuario.emailVerificado = true;
+    await usuario.save();
+  }
+
+  return { email: usuario.email, yaEstaba: false };
 }
 
 /** Cerrar sesion invalida TODOS los tokens del usuario, no solo el de este navegador. */

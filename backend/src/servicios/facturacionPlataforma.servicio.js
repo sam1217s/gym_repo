@@ -59,6 +59,9 @@ export async function generarFacturasDelMes(ahora = new Date()) {
   const creadas = [];
 
   for (const tenant of tenants) {
+    // Los 2 meses gratis: mientras dure la prueba, no se emite factura.
+    if (tenant.finTrial && ahora < tenant.finTrial) continue;
+
     try {
       const factura = await Factura.create({
         tenant: tenant._id,

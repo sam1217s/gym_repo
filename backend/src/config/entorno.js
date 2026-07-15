@@ -46,6 +46,20 @@ const esquemaEntorno = z.object({
   WOMPI_SECRETO_EVENTOS: z.string().default(''),
   WOMPI_URL_CHECKOUT: z.string().url().default('https://checkout.wompi.co/p/'),
   WOMPI_URL_REDIRECCION: z.string().url().default('http://localhost:9000/panel/facturacion'),
+
+  /**
+   * SMTP para el correo de verificacion del registro publico.
+   *
+   * Son opcionales para que el proyecto arranque sin credenciales. Sin
+   * `SMTP_HOST`, en desarrollo el enlace de verificacion se imprime en consola
+   * (nadie envia nada); en produccion, `correos/correo.js` LANZA en cuanto se
+   * intenta enviar, para no fingir que el correo salio. Mismo patron que Wompi.
+   */
+  SMTP_HOST: z.string().default(''),
+  SMTP_PUERTO: z.coerce.number().int().positive().default(587),
+  SMTP_USUARIO: z.string().default(''),
+  SMTP_CONTRASENA: z.string().default(''),
+  SMTP_REMITENTE: z.string().default('GymSaaS <no-responder@gymsaas.local>'),
 });
 
 function cargarEntorno() {

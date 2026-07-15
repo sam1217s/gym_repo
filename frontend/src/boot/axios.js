@@ -24,8 +24,13 @@ const RUTAS_SIN_REFRESCO = ['/auth/iniciar-sesion', '/auth/refrescar', '/auth/ce
 let refrescoEnCurso = null;
 
 function refrescarSesion() {
+  // El refresco es fontaneria interna: si el tambien da 401, la decision de
+  // redirigir es del interceptor de la peticion ORIGINAL, no de este POST. Sin
+  // `omitirRedireccion401`, el 401 del refresco redirige a login por su cuenta
+  // y expulsa de cualquier pagina publica que no sea el propio login (registrar,
+  // verificar-email), donde el guard solo estaba comprobando la sesion de fondo.
   refrescoEnCurso ??= api
-    .post('/auth/refrescar')
+    .post('/auth/refrescar', null, { omitirRedireccion401: true })
     .finally(() => {
       refrescoEnCurso = null;
     });

@@ -1,19 +1,12 @@
 import { z } from 'zod';
 import { LISTA_ESTADOS_TENANT } from '../config/constantes.js';
 import { contrasenaSegura } from './auth.validacion.js';
-import { idMongo } from './comunes.validacion.js';
+import { idMongo, slugValido } from './comunes.validacion.js';
 
 /**
  * Validacion de entrada de las rutas de plataforma (solo super_admin).
  * Esquemas Zod, no confundir con los esquemas de Mongoose de `modelos/`.
  */
-
-const slugValido = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(3, 'Minimo 3 caracteres')
-  .regex(/^[a-z0-9-]+$/, 'Solo minusculas, numeros y guiones');
 
 export const esquemaIdParam = {
   params: z.object({ id: idMongo }),

@@ -4,6 +4,14 @@ import { z } from 'zod';
 
 export const idMongo = z.string().regex(/^[a-f\d]{24}$/i, 'Identificador invalido');
 
+/** Identificador del gimnasio en la URL/login. Lo comparten plataforma y registro publico. */
+export const slugValido = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, 'Minimo 3 caracteres')
+  .regex(/^[a-z0-9-]+$/, 'Solo minusculas, numeros y guiones');
+
 export const esquemaIdParam = {
   params: z.object({ id: idMongo }),
 };

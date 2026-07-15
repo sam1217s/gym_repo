@@ -65,6 +65,29 @@ export function verificarTokenRefresco(token) {
   return jwt.verify(token, entorno.JWT_SECRETO_REFRESCO);
 }
 
+/** El proposito va dentro del token para que no valga como token de acceso. */
+const PROPOSITO_VERIFICACION = 'verificacion-email';
+const DURACION_TOKEN_VERIFICACION = '2d';
+
+/**
+ * Token que viaja en el enlace del correo de verificacion. Se firma con el
+ * secreto de acceso pero con un `prop` distinto: aunque alguien lo capture, no
+ * sirve como cookie de sesion, y al reves tampoco.
+ */
+export function firmarTokenVerificacion(usuario) {
+  return jwt.sign({ sub: usuario._id.toString(), prop: PROPOSITO_VERIFICACION }, entorno.JWT_SECRETO_ACCESO, {
+    expiresIn: DURACION_TOKEN_VERIFICACION,
+  });
+}
+
+export function verificarTokenVerificacion(token) {
+  const carga = jwt.verify(token, entorno.JWT_SECRETO_ACCESO);
+  if (carga.prop !== PROPOSITO_VERIFICACION) {
+    throw new Error('El token no es de verificacion de correo');
+  }
+  return carga;
+}
+
 /**
  * El refresh token se limita a `path=/api/auth/refrescar`: el navegador no lo
  * adjunta al resto de la API, asi que una vulnerabilidad en otro endpoint no lo

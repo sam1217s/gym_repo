@@ -5,6 +5,8 @@ import { validar } from '../middlewares/validar.js';
 import {
   esquemaCambiarContrasena,
   esquemaIniciarSesion,
+  esquemaRegistrarGimnasio,
+  esquemaVerificarEmail,
 } from '../validaciones/auth.validacion.js';
 
 const rutas = Router();
@@ -12,6 +14,10 @@ const rutas = Router();
 // --- Publicas -------------------------------------------------------------
 rutas.post('/iniciar-sesion', validar(esquemaIniciarSesion), controlador.iniciarSesion);
 rutas.post('/refrescar', controlador.refrescar);
+
+// Registro abierto: cualquiera da de alta su gimnasio. No abre sesion.
+rutas.post('/registrar-gimnasio', validar(esquemaRegistrarGimnasio), controlador.registrarGimnasio);
+rutas.get('/verificar-email', validar(esquemaVerificarEmail), controlador.verificarEmail);
 
 // --- Protegidas -----------------------------------------------------------
 // Estas tres NO llevan `bloquearSiDebeCambiarContrasena`: un usuario con la

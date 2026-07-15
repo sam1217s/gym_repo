@@ -21,6 +21,18 @@ const rutas = [
         component: () => import('pages/IniciarSesion.vue'),
         meta: { publica: true },
       },
+      {
+        path: 'registrar',
+        name: 'registrar',
+        component: () => import('pages/RegistrarGimnasio.vue'),
+        meta: { publica: true },
+      },
+      {
+        path: 'verificar-email',
+        name: 'verificar-email',
+        component: () => import('pages/VerificarEmail.vue'),
+        meta: { publica: true },
+      },
     ],
   },
 

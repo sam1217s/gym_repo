@@ -1,7 +1,8 @@
 import { COOKIE_REFRESCO } from '../config/constantes.js';
 import * as servicioAuth from '../servicios/auth.servicio.js';
+import * as servicioRegistro from '../servicios/registroPublico.servicio.js';
 import { manejadorAsync } from '../utilidades/manejadorAsync.js';
-import { responderOk } from '../utilidades/respuesta.js';
+import { responderCreado, responderOk } from '../utilidades/respuesta.js';
 import { establecerCookiesSesion, limpiarCookiesSesion } from '../utilidades/token.js';
 
 /**
@@ -43,4 +44,18 @@ export const cambiarContrasena = manejadorAsync(async (peticion, respuesta) => {
 
 export const obtenerSesion = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, servicioAuth.describirSesion(peticion.usuario, peticion.tenant)),
+);
+
+/**
+ * Registro publico. NO abre sesion: el dueno tiene que verificar el correo
+ * primero. Se responde con lo justo para pintar el "revisa tu correo".
+ */
+export const registrarGimnasio = manejadorAsync(async (peticion, respuesta) => {
+  const { dueno, tenant } = await servicioRegistro.registrarGimnasioPublico(peticion.body);
+
+  return responderCreado(respuesta, { email: dueno.email, gimnasio: tenant.nombre });
+});
+
+export const verificarEmail = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioAuth.verificarEmail(peticion.query.token)),
 );

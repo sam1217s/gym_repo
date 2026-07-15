@@ -11,7 +11,7 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fases 1 a 6 completas. El producto esta funcionalmente cerrado;
+**Estado global:** Fases 1 a 7 completas. El producto esta funcionalmente cerrado;
 lo que queda es la deuda tecnica de abajo, indispensable antes de desplegar.
 
 ---
@@ -248,6 +248,63 @@ de negocio menos `/auth` y `/facturacion`. `cancelado` sigue sin entrar.
 
 ---
 
+## Fase 7 — Registro publico, prueba gratis y suscripcion unica · COMPLETA
+
+Objetivo: que cualquiera (no solo el `super_admin`) de de alta su gimnasio, estrene
+2 meses gratis y quede en una unica suscripcion plana de $100.000/mes.
+
+### Backend
+- [x] Constantes: `MESES_TRIAL_GRATIS = 2`, `PLAN_SUSCRIPCION_NOMBRE = 'Estandar'`,
+      `PLAN_SUSCRIPCION_PRECIO = 100_000` en `config/constantes.js`
+- [x] `Tenant.finTrial` (fecha): fin de la prueba gratis. Se calcula al crear el tenant
+      con `sumarMeses(ahora, MESES_TRIAL_GRATIS)`
+- [x] `Usuario.emailVerificado` (bool, **default `true`**): solo el registro publico lo
+      pone en `false`. Un usuario creado por un admin nace verificado
+- [x] `correos/correo.js` — transporte nodemailer cacheado; sin `SMTP_HOST` imprime el
+      contenido en consola (dev/test) y **lanza en produccion** (no dar por registrado a
+      quien no recibio el enlace). `correos/verificacion.correo.js` arma asunto/texto/html
+- [x] `utilidades/token.js` — `firmarTokenVerificacion` / `verificarTokenVerificacion`
+      (JWT con `prop: 'verificacion-email'`, 2 dias, firmado con `JWT_SECRETO_ACCESO`)
+- [x] `onboarding.servicio.js` reutilizado por ambos caminos (super_admin y publico) via
+      un objeto `opciones` (`{ planId, emailVerificado, debeCambiarContrasena, ahora }`)
+- [x] `servicios/registroPublico.servicio.js` — `obtenerPlanDeSuscripcion()` (busca el
+      plan unico activo o lanza un error claro) + `registrarGimnasioPublico()`, que crea el
+      gimnasio sin verificar, firma el token y dispara el correo. El emisor de correo se
+      **inyecta** (como el proveedor de WhatsApp), para que las pruebas no toquen la red
+- [x] `auth.servicio.js`: `iniciarSesion` responde 403 si `!emailVerificado`;
+      `verificarEmail(token)` es idempotente
+- [x] Rutas publicas `POST /api/auth/registrar-gimnasio` y `GET /api/auth/verificar-email`
+- [x] `facturacionPlataforma.servicio.js`: el cron de cobranza **salta** los gimnasios en
+      prueba (`ahora < tenant.finTrial`): no factura durante los 2 meses gratis
+- [x] `sembrarDatosPrueba.js`: un unico `PlanPlataforma` ('Estandar'), ambos gimnasios en el
+
+### Frontend
+- [x] Rutas publicas `registrar` y `verificar-email` (`meta.publica: true`)
+- [x] `servicios/auth.servicio.js`: `registrarGimnasio` y `verificarEmail`
+- [x] `RegistrarGimnasio.vue`: formulario publico de 3 pasos (gimnasio/dueno/sede) con
+      discos numerados, slug autopropuesto desde el nombre, estado "revisa tu correo" al
+      terminar (no abre sesion) y el precio "$100.000/mes" a la vista
+- [x] `VerificarEmail.vue`: aterriza el enlace del correo, canjea el token y muestra
+      verificando/ok/error
+- [x] Enlace "Registra tu gimnasio" desde `IniciarSesion.vue`
+- [x] **Bug corregido (interceptor 401):** en una pagina publica que no es el login
+      (`registrar`, `verificar-email`), el chequeo de sesion de fondo del guard daba 401,
+      el interceptor lanzaba un `POST /auth/refrescar` **interno sin `omitirRedireccion401`**,
+      ese refresco daba 401 y redirigia a login, expulsando de la pagina. Se marca el
+      refresco con `omitirRedireccion401: true`: su propio 401 ya no decide navegacion; la
+      decision sigue siendo de la peticion original. (`boot/axios.js`)
+
+### Pruebas
+- [x] 11 pruebas nuevas en `pruebas/registroPublico.prueba.js` (trial + sin verificar,
+      correo con token, rollback por slug ocupado, clave debil, sin plan, login bloqueado
+      sin verificar, login tras verificar, verificar idempotente, token invalido, y el cron
+      que salta durante la prueba pero factura despues). Suite completa en verde
+- [x] Verificado en navegador real (CDP): `/registrar` renderiza y se queda (regresion del
+      redirect resuelta), envio -> "revisa tu correo", `/verificar-email?token=malo` muestra
+      el error sin expulsar a login
+
+---
+
 ## Deuda tecnica conocida
 
 Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones con coste.
@@ -261,6 +318,21 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
 - [ ] **Indices en produccion.** `syncIndexes()` solo corre fuera de produccion. Hace falta
       una migracion controlada antes del primer despliegue.
 - [ ] **Sin rate limiting en el login.** Un atacante puede probar contrasenas sin freno.
+- [ ] **El registro publico no tiene freno anti-abuso.** Cualquiera puede crear gimnasios en
+      masa (cada uno con sus 2 meses gratis) sin captcha ni rate limiting, y el correo de
+      verificacion no reenvia ni caduca al gimnasio sin verificar. Antes de abrirlo al
+      publico hacen falta: rate limit por IP, captcha, y un barrido que borre los tenants
+      que nunca verificaron.
+- [ ] **La suscripcion unica es una convencion, no un candado.** El registro publico usa el
+      `PlanPlataforma` llamado `'Estandar'`; el super_admin puede seguir creando otros planes
+      y asignarlos a mano. Si se renombra o archiva 'Estandar', el registro publico responde
+      503 hasta que exista uno activo con ese nombre.
+- [ ] **Migracion del plan unico.** Una base existente con varios `PlanPlataforma` no se
+      consolida sola en 'Estandar' a $100.000; hay que migrar los tenants al plan unico
+      antes de desplegar este cambio.
+- [ ] **`Tenant.finTrial` no migra bases viejas.** Los tenants creados antes de la Fase 7
+      tienen `finTrial: null` (default), asi que el cron los factura de inmediato. Es el
+      comportamiento correcto para gimnasios ya de pago, pero conviene revisarlo caso a caso.
 - [ ] **Sin `.env` de produccion.** Al desplegar: `sameSite: 'none'` + `secure: true` solo si
       frontend y API viven en dominios distintos; si comparten dominio, bajar a `'lax'`.
 - [ ] **Un envio fallido se reintenta cada dia, para siempre.** No hay tope de reintentos

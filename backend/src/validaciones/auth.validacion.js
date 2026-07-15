@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { slugValido } from './comunes.validacion.js';
+
 const LONGITUD_MINIMA_CONTRASENA = 8;
 
 export const contrasenaSegura = z
@@ -18,6 +20,36 @@ export const esquemaIniciarSesion = {
     // porque el email es unico por tenant, no globalmente.
     slugGimnasio: z.string().trim().optional(),
   }),
+};
+
+/**
+ * Registro publico de un gimnasio. Igual que el onboarding del super_admin pero:
+ *   - sin `planPlataforma` (la suscripcion es unica, la fija el servidor);
+ *   - el dueno elige SU propia clave (`contrasena`), no una inicial que cambiar.
+ */
+export const esquemaRegistrarGimnasio = {
+  body: z.object({
+    gimnasio: z.object({
+      nombre: z.string().trim().min(1, 'El nombre del gimnasio es obligatorio'),
+      nit: z.string().trim().min(1, 'El NIT es obligatorio'),
+      slug: slugValido,
+    }),
+    dueno: z.object({
+      nombres: z.string().trim().min(1, 'Los nombres son obligatorios'),
+      apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
+      email: z.string().email('Email invalido').toLowerCase().trim(),
+      contrasena: contrasenaSegura,
+    }),
+    sede: z.object({
+      nombre: z.string().trim().min(1, 'El nombre de la sede es obligatorio'),
+      direccion: z.string().trim().min(1, 'La direccion es obligatoria'),
+      telefono: z.string().trim().optional(),
+    }),
+  }),
+};
+
+export const esquemaVerificarEmail = {
+  query: z.object({ token: z.string().min(1, 'Falta el token') }),
 };
 
 export const esquemaCambiarContrasena = {

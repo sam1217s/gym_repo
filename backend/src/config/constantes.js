@@ -67,6 +67,17 @@ export const ESTADOS_NOTIFICACION = Object.freeze({
 /** Dias de antelacion con que se avisa a un miembro que su mensualidad vence. */
 export const DIAS_AVISO_VENCIMIENTO = 3;
 
+/** Todo gimnasio nuevo estrena 2 meses gratis antes de su primera factura. */
+export const MESES_TRIAL_GRATIS = 2;
+
+/**
+ * La suscripcion es una sola, plana, igual para todos: `PlanPlataforma` con
+ * este nombre. El registro publico lo asigna sin que nadie elija. El seed lo
+ * crea. Se busca por nombre, asi que este string es la llave.
+ */
+export const PLAN_SUSCRIPCION_NOMBRE = 'Estandar';
+export const PLAN_SUSCRIPCION_PRECIO = 100_000;
+
 export const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
 
 /**

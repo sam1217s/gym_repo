@@ -1,5 +1,11 @@
 import { conectarBaseDatos, desconectarBaseDatos } from '../src/config/baseDatos.js';
-import { ESTADOS_TENANT, METODOS_PAGO, ROLES } from '../src/config/constantes.js';
+import {
+  ESTADOS_TENANT,
+  METODOS_PAGO,
+  PLAN_SUSCRIPCION_NOMBRE,
+  PLAN_SUSCRIPCION_PRECIO,
+  ROLES,
+} from '../src/config/constantes.js';
 import { entorno, esProduccion } from '../src/config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo, registrarModelos, sincronizarIndices } from '../src/modelos/indice.js';
@@ -43,7 +49,7 @@ const GIMNASIOS = [
     nombre: 'GymFuerza',
     slug: 'gymfuerza',
     nit: '900111222-1',
-    plan: 'Basico',
+    plan: 'Estandar',
     dominio: 'gymfuerza.co',
     miembros: [
       { indice: 0, sede: 'norte', plan: 'Mensual', diasHastaVencer: -10, metodo: 'efectivo', historial: true },
@@ -60,7 +66,7 @@ const GIMNASIOS = [
     nombre: 'IronHouse',
     slug: 'ironhouse',
     nit: '900333444-2',
-    plan: 'Pro',
+    plan: 'Estandar',
     dominio: 'ironhouse.co',
     miembros: [
       { indice: 0, sede: 'norte', plan: 'Trimestral', diasHastaVencer: -30, metodo: 'transferencia' },
@@ -75,17 +81,13 @@ const GIMNASIOS = [
   },
 ];
 
+// Suscripcion unica y plana: la misma para todo gimnasio. Topes altos como red
+// de seguridad, no como escalon de precio. Todo incluido.
 const PLANES_PLATAFORMA = [
   {
-    nombre: 'Basico',
-    precioMensual: 80_000,
-    limites: { maxSedes: 1, maxMiembros: 50, maxUsuarios: 3 },
-    features: { whatsapp: false, reportes: true },
-  },
-  {
-    nombre: 'Pro',
-    precioMensual: 250_000,
-    limites: { maxSedes: 5, maxMiembros: 500, maxUsuarios: 20 },
+    nombre: PLAN_SUSCRIPCION_NOMBRE,
+    precioMensual: PLAN_SUSCRIPCION_PRECIO,
+    limites: { maxSedes: 10, maxMiembros: 2000, maxUsuarios: 50 },
     features: { whatsapp: true, reportes: true },
   },
 ];
@@ -157,6 +159,9 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
       slug: definicion.slug,
       estado: ESTADOS_TENANT.ACTIVO,
       planPlataforma: planPlataforma._id,
+      // Gimnasios de demo ya establecidos: su prueba gratis quedo atras, asi que
+      // el cron de cobranza SI les factura (es lo que muestra la Fase 6).
+      finTrial: sumarMeses(new Date(), -1),
     }),
   );
 

@@ -33,3 +33,18 @@ export async function cambiarContrasena(datos) {
   const { data: respuesta } = await api.post('/auth/cambiar-contrasena', datos);
   return respuesta.data;
 }
+
+/** Registro publico. No abre sesion: el dueno debe verificar su correo. */
+export async function registrarGimnasio(datos) {
+  const { data: respuesta } = await api.post('/auth/registrar-gimnasio', datos);
+  return respuesta.data;
+}
+
+/** Confirma el correo con el token del enlace. `omitirRedireccion401`: es publico. */
+export async function verificarEmail(token) {
+  const { data: respuesta } = await api.get('/auth/verificar-email', {
+    params: { token },
+    omitirRedireccion401: true,
+  });
+  return respuesta.data;
+}

@@ -58,6 +58,13 @@
           :loading="cargando"
         />
       </q-form>
+
+      <div class="text-center q-mt-md text-caption text-grey-7">
+        ¿No tienes cuenta?
+        <router-link :to="{ name: 'registrar' }" class="enlace-registro">
+          Registra tu gimnasio
+        </router-link>
+      </div>
     </q-card-section>
   </q-card>
 </template>
@@ -99,4 +106,11 @@ function enviar() {
   /* La banda de disco: la misma franja roja que corona el header del panel. */
   border-top: 4px solid var(--q-primary);
 }
+
+.enlace-registro {
+  color: var(--q-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 </style>

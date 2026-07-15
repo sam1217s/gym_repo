@@ -41,6 +41,14 @@ const esquemaTenant = new mongoose.Schema(
       required: true,
     },
     fechaRegistro: { type: Date, default: Date.now },
+
+    /**
+     * Fin de los 2 meses gratis. Mientras `hoy < finTrial`, el cron de cobranza
+     * NO emite factura: el gimnasio usa todo sin pagar. Cuando pasa, se factura
+     * como cualquiera. `null` = sin periodo de prueba (no deberia pasar en gyms
+     * nuevos, pero deja la puerta abierta a cuentas heredadas).
+     */
+    finTrial: { type: Date, default: null },
     config: {
       moneda: { type: String, default: MONEDA_POR_DEFECTO },
       zonaHoraria: { type: String, default: ZONA_HORARIA_POR_DEFECTO },

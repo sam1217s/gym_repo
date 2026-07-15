@@ -391,6 +391,42 @@ onboarding.servicio.js  (compensacion manual: sin replica set no hay
 El punto no obvio: dentro del mismo endpoint se cruza la frontera de plataforma a tenant. Los
 pasos 1 y 2 corren sin contexto; el paso 3 **necesita** abrir uno.
 
+### Registro publico → 2 meses gratis → verificacion de correo
+
+Cualquiera (no solo el `super_admin`) da de alta su gimnasio. El mismo `onboarding.servicio.js`
+sirve a los dos caminos: se le pasa un objeto `opciones` que cambia lo poco que difiere.
+
+```
+POST /api/auth/registrar-gimnasio     <-- RUTA PUBLICA. Sin cookie. Sin sesion.
+        |                                (registroPublico.servicio.js)
+        |  1. obtenerPlanDeSuscripcion()   el PlanPlataforma unico 'Estandar' activo,
+        |                                  o 503 si no existe (PLAN_SUSCRIPCION_NOMBRE)
+        |  2. crearGimnasio(datos, { emailVerificado: false, debeCambiarContrasena: false })
+        |       - Tenant.finTrial = sumarMeses(ahora, MESES_TRIAL_GRATIS)  (2 meses)
+        |       - el dueno eligio SU clave: no se le obliga a cambiarla
+        |  3. firmarTokenVerificacion(dueno)   JWT prop:'verificacion-email', 2 dias
+        |  4. enviarCorreo({ enlace: ORIGEN_FRONTEND/verificar-email?token=... })  (inyectado)
+        v
+   201 { email, gimnasio }   NO abre sesion: no entrega cookies
+
+[El dueno abre el enlace del correo]
+        v
+GET /api/auth/verificar-email?token=...   idempotente -> emailVerificado = true
+```
+
+Tres reglas que sostienen esto:
+
+- **`emailVerificado` es del `Usuario`, no un estado del tenant.** Por defecto `true`: solo
+  el registro publico lo pone en `false`. `iniciarSesion` responde 403
+  ("Confirma tu correo…") mientras siga sin verificar. El ciclo de vida del tenant sigue
+  siendo puro cobro (`trial`/`activo`/`suspendido`/`cancelado`); la verificacion no lo toca.
+- **La prueba gratis la respeta la cobranza.** `generarFacturasDelMes()` salta el tenant si
+  `ahora < tenant.finTrial`: no emite factura durante los 2 meses. Cuando el trial termina,
+  el mismo cron lo factura y, al pagar, pasa a `activo`.
+- **Una sola suscripcion.** El registro publico usa el plan `'Estandar'`
+  (`PLAN_SUSCRIPCION_PRECIO = 100_000`). Es una convencion, no un candado: el super_admin
+  puede seguir creando otros planes y asignarlos a mano (ver deuda tecnica en FASE.md).
+
 ### Cobro plataforma → gimnasio (Wompi)
 
 ```
@@ -494,6 +530,12 @@ rutas/ -> controladores/ -> servicios/ -> modelos/
 - `pasarelas/` es la infraestructura de cobro de la PLATAFORMA (Wompi). No confundir con
   `proveedores/`, que es infraestructura elegida POR GIMNASIO. Ambas fallan ruidosamente si
   les faltan credenciales, y ninguna se prueba contra la red.
+- `correos/` es el envio de correo transaccional de la PLATAFORMA (hoy: la verificacion del
+  registro publico), sobre nodemailer. `correo.js` cachea el transporte; **sin `SMTP_HOST`
+  imprime el contenido en consola en desarrollo, y LANZA en produccion** (dar por registrado
+  a quien nunca recibio el enlace seria peor que fallar). El emisor se **inyecta** en el
+  servicio (`registrarGimnasioPublico({ enviarCorreo })`), igual que el proveedor de
+  WhatsApp, para que las pruebas no toquen la red.
 
 `Usuario` y `FacturaPlataforma` **no llevan el plugin de aislamiento**. Todo servicio que las
 consulte en nombre de un gimnasio filtra por `tenant` a mano, en la busqueda, no despues.
