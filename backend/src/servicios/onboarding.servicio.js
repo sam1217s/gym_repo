@@ -106,6 +106,8 @@ async function crearDueno(tenantId, dueno, { emailVerificado, debeCambiarContras
     nombres: dueno.nombres,
     apellidos: dueno.apellidos,
     email: dueno.email,
+    // Opcional: alternativa al correo para iniciar sesion.
+    cedula: dueno.cedula,
     // La clave la puso el super_admin (`contrasenaInicial`) o la eligio el propio
     // dueno en el registro publico (`contrasena`). Una de las dos viene siempre.
     contrasenaHash: await cifrarContrasena(dueno.contrasenaInicial ?? dueno.contrasena),

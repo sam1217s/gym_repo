@@ -24,6 +24,14 @@ const esquemaUsuario = new mongoose.Schema(
     apellidos: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
 
+    /**
+     * Documento de identidad. OPCIONAL y unico por tenant (ver el indice parcial
+     * abajo): sirve como alternativa al correo para iniciar sesion. No se guarda
+     * `null` cuando falta, se deja sin definir, para que el indice parcial no lo
+     * cuente y varios usuarios sin cedula no choquen entre si.
+     */
+    cedula: { type: String, trim: true },
+
     // `select: false` para que ningun `find()` distraido lo arrastre a una respuesta.
     contrasenaHash: { type: String, required: true, select: false },
 
@@ -60,6 +68,17 @@ const esquemaUsuario = new mongoose.Schema(
  * MongoDB trata `null` como un valor mas.
  */
 esquemaUsuario.index({ tenant: 1, email: 1 }, { unique: true });
+
+/**
+ * La cedula tambien es unica DENTRO de cada tenant, pero es OPCIONAL: el indice
+ * es parcial (`partialFilterExpression`) para que solo cuente a los usuarios que
+ * la tienen. Sin esto, dos usuarios sin cedula colisionarian en el mismo valor
+ * ausente. Con esto, la unicidad se exige solo cuando la cedula existe.
+ */
+esquemaUsuario.index(
+  { tenant: 1, cedula: 1 },
+  { unique: true, partialFilterExpression: { cedula: { $type: 'string' } } },
+);
 
 esquemaUsuario.virtual('nombreCompleto').get(function () {
   return `${this.nombres} ${this.apellidos}`.trim();

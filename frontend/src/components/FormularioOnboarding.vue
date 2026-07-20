@@ -94,6 +94,15 @@
               :rules="[reglaObligatorio, reglaEmail]"
             />
             <q-input
+              v-model="formulario.dueno.cedula"
+              class="col-12 col-sm-6"
+              label="Cedula (opcional)"
+              hint="Alternativa al correo para iniciar sesion"
+              outlined
+              dense
+              :rules="[reglaCedulaOpcional]"
+            />
+            <q-input
               v-model="formulario.dueno.contrasenaInicial"
               class="col-12 col-sm-6"
               :type="contrasenaVisible ? 'text' : 'password'"
@@ -189,7 +198,7 @@ const slugEditadoAMano = ref(false);
 
 const FORMULARIO_VACIO = () => ({
   gimnasio: { nombre: '', nit: '', slug: '', planPlataforma: null },
-  dueno: { nombres: '', apellidos: '', email: '', contrasenaInicial: '' },
+  dueno: { nombres: '', apellidos: '', email: '', cedula: '', contrasenaInicial: '' },
   sede: { nombre: '', direccion: '', telefono: '' },
 });
 
@@ -205,6 +214,9 @@ const opcionesPlan = computed(() =>
 // --- Reglas de validacion (espejo de la validacion Zod del backend) ---------
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaEmail = (valor) => /.+@.+\..+/.test(valor) || 'Email invalido';
+// Vacia es válida (opcional); si viene, debe ser numérica.
+const reglaCedulaOpcional = (valor) =>
+  !String(valor ?? '').trim() || /^\d{4,15}$/.test(valor) || 'Cedula numerica (4 a 15 digitos)';
 const reglaSlug = (valor) =>
   /^[a-z0-9-]{3,}$/.test(valor) || 'Minimo 3 caracteres: minusculas, numeros y guiones';
 const reglaContrasena = (valor) =>

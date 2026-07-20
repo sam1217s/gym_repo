@@ -261,13 +261,27 @@ exigirLimite(RECURSOS.X)         // solo en las rutas que CREAN, y despues de va
 - `autenticar` consulta `Usuario` y `Tenant` en **cada peticion**. Es deliberado: sin eso,
   desactivar un usuario o suspender un gimnasio no surtiria efecto hasta que expirara su token.
 
-### El email es unico POR TENANT, no globalmente
+### Se entra por correo O por cedula, y ambos son unicos POR TENANT
 
-Indice `{ tenant: 1, email: 1 }` unico. Dos gimnasios distintos pueden tener un recepcionista
-con el mismo correo. Consecuencia: el login por email solo es ambiguo si el correo existe en
-varios gimnasios. En ese caso el backend responde 400 con
+El login recibe un solo campo `identificador`: el servicio decide si es correo o cedula segun
+contenga `@` (`auth.servicio.js → filtroPorIdentificador`). El correo se normaliza a minusculas
+al buscar; la cedula se compara tal cual.
+
+- **`email`**: indice `{ tenant: 1, email: 1 }` unico, obligatorio.
+- **`cedula`**: indice `{ tenant: 1, cedula: 1 }` unico pero **parcial**
+  (`partialFilterExpression: { cedula: { $type: 'string' } }`) porque es **opcional**: sin el,
+  varios usuarios sin cedula colisionarian en el mismo valor ausente. Cuando falta se deja
+  **sin definir**, no `null`, para que el indice no la cuente.
+
+Los dos son unicos por tenant, no globalmente: dos gimnasios pueden tener un recepcionista con
+el mismo correo o la misma cedula. Consecuencia: el login por correo o cedula solo es ambiguo
+si ese dato existe en varios gimnasios. En ese caso el backend responde 400 con
 `detalles: [{ campo: 'slugGimnasio' }]`, y el frontend muestra un campo extra para que el usuario
 diga en cual entra. No es un caso raro que se pueda ignorar.
+
+Solo el **personal** (`Usuario`) tiene cedula y login; los miembros del gimnasio no inician
+sesion. La cedula se pide (opcional) en el registro publico, el onboarding del super_admin y el
+alta de administradores de sede.
 
 ### Cambio de contrasena obligatorio
 

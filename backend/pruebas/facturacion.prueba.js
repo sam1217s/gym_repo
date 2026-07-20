@@ -66,7 +66,7 @@ async function montarGimnasio({ slug = 'gimnasio-factura', estado = ESTADOS_TENA
 
 async function entrarComo(email) {
   const agente = peticion.agent(app);
-  await agente.post('/api/auth/iniciar-sesion').send({ email, contrasena: CONTRASENA }).expect(200);
+  await agente.post('/api/auth/iniciar-sesion').send({ identificador: email, contrasena: CONTRASENA }).expect(200);
   return agente;
 }
 

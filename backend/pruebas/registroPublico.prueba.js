@@ -57,7 +57,7 @@ function cuerpoRegistro(sobrescribir = {}) {
 const registrar = (cuerpo) => peticion(app).post('/api/auth/registrar-gimnasio').send(cuerpo);
 
 const entrar = (email, contrasena) =>
-  peticion(app).post('/api/auth/iniciar-sesion').send({ email, contrasena });
+  peticion(app).post('/api/auth/iniciar-sesion').send({ identificador: email, contrasena });
 
 function leerDueno(email) {
   return ejecutarSinTenant(() => obtenerModelo('Usuario').findOne({ email }));

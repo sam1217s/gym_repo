@@ -303,6 +303,19 @@ Objetivo: que cualquiera (no solo el `super_admin`) de de alta su gimnasio, estr
       redirect resuelta), envio -> "revisa tu correo", `/verificar-email?token=malo` muestra
       el error sin expulsar a login
 
+### Login por correo o cedula (incremento posterior)
+
+El personal entra con **correo o cedula**, a eleccion. Detalles:
+
+- `Usuario.cedula`, **opcional** y unica por tenant con indice **parcial** (solo cuenta a
+  quien la tiene). El login recibe un unico `identificador`; `auth.servicio.js` decide si es
+  correo o cedula por el `@`. Ambos siguen siendo unicos por tenant, asi que el paso de
+  "identificador del gimnasio" tambien aplica cuando la cedula se repite entre gimnasios.
+- La cedula se pide (opcional) en el registro publico, el onboarding del super_admin y el alta
+  de administradores de sede. Los miembros NO se tocan: no inician sesion.
+- Pruebas: login por cedula, cedula inexistente (mismo 401 generico), unicidad por tenant y
+  convivencia de varios usuarios sin cedula (indice parcial), en `auth.prueba.js`.
+
 ---
 
 ## Deuda tecnica conocida
@@ -330,6 +343,8 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
 - [ ] **Migracion del plan unico.** Una base existente con varios `PlanPlataforma` no se
       consolida sola en 'Estandar' a $100.000; hay que migrar los tenants al plan unico
       antes de desplegar este cambio.
+- [ ] **La cedula opcional no se valida contra el digito de verificacion.** Se acepta
+      cualquier cadena de 4 a 15 digitos; no se comprueba que sea una cedula colombiana real.
 - [ ] **`Tenant.finTrial` no migra bases viejas.** Los tenants creados antes de la Fase 7
       tienen `finTrial: null` (default), asi que el cron los factura de inmediato. Es el
       comportamiento correcto para gimnasios ya de pago, pero conviene revisarlo caso a caso.

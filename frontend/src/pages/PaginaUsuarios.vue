@@ -128,6 +128,16 @@
 
             <q-input
               v-if="!editando"
+              v-model="formulario.cedula"
+              label="Cedula (opcional)"
+              hint="Podra entrar con su cedula ademas del correo"
+              outlined
+              dense
+              :rules="[reglaCedulaOpcional]"
+            />
+
+            <q-input
+              v-if="!editando"
               v-model="formulario.contrasenaInicial"
               :type="contrasenaVisible ? 'text' : 'password'"
               label="Contraseña inicial"
@@ -217,6 +227,9 @@ const opcionesSede = computed(() =>
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaEmail = (valor) => /.+@.+\..+/.test(valor) || 'Email invalido';
+// Vacia es válida (opcional); si viene, debe ser numérica.
+const reglaCedulaOpcional = (valor) =>
+  !String(valor ?? '').trim() || /^\d{4,15}$/.test(valor) || 'Cedula numerica (4 a 15 digitos)';
 const reglaContrasena = (valor) =>
   (valor.length >= 8 && /[a-z]/.test(valor) && /[A-Z]/.test(valor) && /\d/.test(valor)) ||
   'Minimo 8 caracteres, con mayuscula, minuscula y numero';
@@ -225,6 +238,7 @@ const formulario = reactive({
   nombres: '',
   apellidos: '',
   email: '',
+  cedula: '',
   contrasenaInicial: '',
   sede: null,
 });
@@ -238,7 +252,7 @@ function abrirCreacion() {
   editando.value = false;
   usuarioActivo.value = null;
   contrasenaVisible.value = false;
-  Object.assign(formulario, { nombres: '', apellidos: '', email: '', contrasenaInicial: '', sede: null });
+  Object.assign(formulario, { nombres: '', apellidos: '', email: '', cedula: '', contrasenaInicial: '', sede: null });
   dialogoAbierto.value = true;
 }
 
@@ -270,6 +284,8 @@ async function guardar() {
         nombres: formulario.nombres,
         apellidos: formulario.apellidos,
         email: formulario.email,
+        // Solo se manda si la escribieron; el backend la trata como opcional.
+        ...(formulario.cedula.trim() ? { cedula: formulario.cedula.trim() } : {}),
         contrasenaInicial: formulario.contrasenaInicial,
         sede: formulario.sede,
       });

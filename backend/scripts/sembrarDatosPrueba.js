@@ -51,6 +51,9 @@ const GIMNASIOS = [
     nit: '900111222-1',
     plan: 'Estandar',
     dominio: 'gymfuerza.co',
+    // Cedulas de demo: sirven para entrar con cedula ademas del correo.
+    cedulaDueno: '1010101010',
+    cedulaRecepcion: '2020202020',
     miembros: [
       { indice: 0, sede: 'norte', plan: 'Mensual', diasHastaVencer: -10, metodo: 'efectivo', historial: true },
       { indice: 1, sede: 'norte', plan: 'Mensual', diasHastaVencer: -3, metodo: 'transferencia' },
@@ -68,6 +71,8 @@ const GIMNASIOS = [
     nit: '900333444-2',
     plan: 'Estandar',
     dominio: 'ironhouse.co',
+    cedulaDueno: '3030303030',
+    cedulaRecepcion: '4040404040',
     miembros: [
       { indice: 0, sede: 'norte', plan: 'Trimestral', diasHastaVencer: -30, metodo: 'transferencia' },
       { indice: 1, sede: 'norte', plan: 'Mensual', diasHastaVencer: -1, metodo: 'efectivo' },
@@ -184,6 +189,7 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
       nombres: 'Laura',
       apellidos: definicion.nombre,
       email: `owner@${definicion.dominio}`,
+      cedula: definicion.cedulaDueno,
       contrasenaHash,
       rol: ROLES.TENANT_OWNER,
       debeCambiarContrasena: false,
@@ -195,6 +201,7 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
       nombres: 'Carlos',
       apellidos: definicion.nombre,
       email: `recepcion@${definicion.dominio}`,
+      cedula: definicion.cedulaRecepcion,
       contrasenaHash,
       rol: ROLES.SEDE_ADMIN,
       debeCambiarContrasena: false,
@@ -303,9 +310,9 @@ function estaProximoAVencer(periodoFin) {
 // ---------------------------------------------------------------------------
 
 function imprimirTablaCredenciales(filas) {
-  const columnas = ['rol', 'tenant', 'email', 'contrasena'];
+  const columnas = ['rol', 'tenant', 'email', 'cedula', 'contrasena'];
   const anchos = columnas.map((columna) =>
-    Math.max(columna.length, ...filas.map((fila) => String(fila[columna]).length)),
+    Math.max(columna.length, ...filas.map((fila) => String(fila[columna] ?? '—').length)),
   );
 
   const linea = (caracter) => anchos.map((ancho) => caracter.repeat(ancho + 2)).join('+');
@@ -317,7 +324,7 @@ function imprimirTablaCredenciales(filas) {
   console.log(fila(columnas));
   console.log('+' + linea('=') + '+');
   for (const registro of filas) {
-    console.log(fila(columnas.map((columna) => registro[columna])));
+    console.log(fila(columnas.map((columna) => registro[columna] ?? '—')));
   }
   console.log('+' + linea('-') + '+');
 }
@@ -360,8 +367,8 @@ async function sembrar() {
     );
 
     credenciales.push(
-      { rol: ROLES.TENANT_OWNER, tenant: tenant.slug, email: usuarios.dueno.email, contrasena: CONTRASENA_DEMO },
-      { rol: ROLES.SEDE_ADMIN, tenant: tenant.slug, email: usuarios.recepcion.email, contrasena: CONTRASENA_DEMO },
+      { rol: ROLES.TENANT_OWNER, tenant: tenant.slug, email: usuarios.dueno.email, cedula: usuarios.dueno.cedula, contrasena: CONTRASENA_DEMO },
+      { rol: ROLES.SEDE_ADMIN, tenant: tenant.slug, email: usuarios.recepcion.email, cedula: usuarios.recepcion.cedula, contrasena: CONTRASENA_DEMO },
     );
   }
 

@@ -105,7 +105,7 @@ async function entrarComo(email) {
   const agente = peticion.agent(app);
   await agente
     .post('/api/auth/iniciar-sesion')
-    .send({ email, contrasena: CONTRASENA })
+    .send({ identificador: email, contrasena: CONTRASENA })
     .expect(200);
   return agente;
 }

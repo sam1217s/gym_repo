@@ -63,7 +63,7 @@ describe('POST /api/auth/iniciar-sesion', () => {
 
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     expect(respuesta.body.ok).toBe(true);
@@ -85,19 +85,19 @@ describe('POST /api/auth/iniciar-sesion', () => {
 
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: 'IncorrectaTotal9' })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: 'IncorrectaTotal9' })
       .expect(401);
 
-    expect(respuesta.body.error.mensaje).toBe('Email o contrasena incorrectos');
+    expect(respuesta.body.error.mensaje).toBe('Datos de acceso incorrectos');
   });
 
-  it('devuelve el mismo mensaje cuando el email no existe', async () => {
+  it('devuelve el mismo mensaje cuando el correo no existe', async () => {
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'nadie@ninguna-parte.co', contrasena: CONTRASENA })
+      .send({ identificador: 'nadie@ninguna-parte.co', contrasena: CONTRASENA })
       .expect(401);
 
-    expect(respuesta.body.error.mensaje).toBe('Email o contrasena incorrectos');
+    expect(respuesta.body.error.mensaje).toBe('Datos de acceso incorrectos');
   });
 
   /**
@@ -110,7 +110,7 @@ describe('POST /api/auth/iniciar-sesion', () => {
 
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     expect(respuesta.body.data.tenantEstado).toBe(ESTADOS_TENANT.SUSPENDIDO);
@@ -121,7 +121,7 @@ describe('POST /api/auth/iniciar-sesion', () => {
 
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(403);
 
     expect(respuesta.body.error.mensaje).toMatch(/cancelado/i);
@@ -130,12 +130,89 @@ describe('POST /api/auth/iniciar-sesion', () => {
   it('valida el cuerpo con Zod', async () => {
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'no-es-un-email', contrasena: '' })
+      .send({ identificador: '', contrasena: '' })
       .expect(400);
 
     expect(respuesta.body.error.detalles).toEqual(
-      expect.arrayContaining([expect.objectContaining({ campo: 'email' })]),
+      expect.arrayContaining([expect.objectContaining({ campo: 'identificador' })]),
     );
+  });
+});
+
+describe('login por cedula', () => {
+  /** Le pone cedula a la duena creada por el helper. */
+  async function ponerCedula(usuarioId, cedula) {
+    return ejecutarSinTenant(() =>
+      obtenerModelo('Usuario').updateOne({ _id: usuarioId }, { cedula }),
+    );
+  }
+
+  it('entra con la cedula en lugar del correo', async () => {
+    const { usuario } = await crearGimnasioConDuena();
+    await ponerCedula(usuario._id, '123456789');
+
+    const respuesta = await peticion(app)
+      .post('/api/auth/iniciar-sesion')
+      .send({ identificador: '123456789', contrasena: CONTRASENA })
+      .expect(200);
+
+    expect(respuesta.body.data.cedula).toBe('123456789');
+    expect(respuesta.body.data.rol).toBe(ROLES.TENANT_OWNER);
+  });
+
+  it('rechaza una cedula que no existe con el mismo 401 generico', async () => {
+    await crearGimnasioConDuena();
+
+    const respuesta = await peticion(app)
+      .post('/api/auth/iniciar-sesion')
+      .send({ identificador: '000000000', contrasena: CONTRASENA })
+      .expect(401);
+
+    expect(respuesta.body.error.mensaje).toBe('Datos de acceso incorrectos');
+  });
+
+  it('la cedula es unica por tenant: no deja crear dos usuarios con la misma', async () => {
+    const { tenant, usuario } = await crearGimnasioConDuena();
+    await ponerCedula(usuario._id, '555555555');
+
+    const hash = await cifrarContrasena(CONTRASENA);
+    await expect(
+      ejecutarSinTenant(() =>
+        obtenerModelo('Usuario').create({
+          tenant: tenant._id,
+          nombres: 'Otro',
+          apellidos: 'Usuario',
+          email: 'otro@gimnasio-prueba.co',
+          cedula: '555555555',
+          contrasenaHash: hash,
+          rol: ROLES.SEDE_ADMIN,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 11000 });
+  });
+
+  it('varios usuarios SIN cedula conviven: el indice es parcial', async () => {
+    const { tenant } = await crearGimnasioConDuena();
+
+    // Dos usuarios mas, ninguno con cedula: no deben chocar entre si.
+    await ejecutarSinTenant(async () => {
+      const Usuario = obtenerModelo('Usuario');
+      const hash = await cifrarContrasena(CONTRASENA);
+      await Usuario.create({
+        tenant: tenant._id, nombres: 'A', apellidos: 'A',
+        email: 'a@gimnasio-prueba.co', contrasenaHash: hash, rol: ROLES.SEDE_ADMIN,
+      });
+      await Usuario.create({
+        tenant: tenant._id, nombres: 'B', apellidos: 'B',
+        email: 'b@gimnasio-prueba.co', contrasenaHash: hash, rol: ROLES.SEDE_ADMIN,
+      });
+    });
+
+    const cuantos = await ejecutarSinTenant(() =>
+      obtenerModelo('Usuario').countDocuments({ tenant: tenant._id, cedula: null }),
+    );
+    // Los tres (duena + A + B) sin cedula.
+    expect(cuantos).toBe(3);
   });
 });
 
@@ -150,7 +227,7 @@ describe('rutas protegidas', () => {
     const agente = peticion.agent(app);
     await agente
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     const respuesta = await agente.get('/api/auth/yo').expect(200);
@@ -163,7 +240,7 @@ describe('rutas protegidas', () => {
     const agente = peticion.agent(app);
     await agente
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     // Se guarda la cookie ANTES de cerrar sesion para intentar reusarla despues.
@@ -173,7 +250,7 @@ describe('rutas protegidas', () => {
     const cookieRobada = leerCookie(
       await peticion(app)
         .post('/api/auth/iniciar-sesion')
-        .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA }),
+        .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA }),
       COOKIE_ACCESO,
     );
 
@@ -190,7 +267,7 @@ describe('cambio de contrasena obligatorio en el primer acceso', () => {
 
     const respuesta = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     expect(respuesta.body.data.debeCambiarContrasena).toBe(true);
@@ -202,7 +279,7 @@ describe('cambio de contrasena obligatorio en el primer acceso', () => {
     const agente = peticion.agent(app);
     await agente
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     const respuesta = await agente
@@ -223,7 +300,7 @@ describe('cambio de contrasena obligatorio en el primer acceso', () => {
     const agente = peticion.agent(app);
     await agente
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     await agente
@@ -238,7 +315,7 @@ describe('cambio de contrasena obligatorio en el primer acceso', () => {
     const agente = peticion.agent(app);
     await agente
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     await agente
@@ -255,7 +332,7 @@ describe('POST /api/auth/refrescar', () => {
     const agente = peticion.agent(app);
     await agente
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
     const respuesta = await agente.post('/api/auth/refrescar').expect(200);

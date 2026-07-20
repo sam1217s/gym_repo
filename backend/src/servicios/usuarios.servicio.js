@@ -40,6 +40,8 @@ export async function crearUsuario(datos) {
       nombres: datos.nombres,
       apellidos: datos.apellidos,
       email: datos.email,
+      // Opcional: si no vino, se deja sin definir para que el indice parcial no la cuente.
+      cedula: datos.cedula,
       contrasenaHash: await cifrarContrasena(datos.contrasenaInicial),
       rol: ROLES.SEDE_ADMIN,
       sede: datos.sede,
@@ -48,7 +50,9 @@ export async function crearUsuario(datos) {
     });
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {
-      throw ErrorApi.conflicto('Ya existe un usuario con ese correo en este gimnasio');
+      // El indice que choco dice si fue el correo o la cedula.
+      const campo = error.keyPattern?.cedula ? 'la cedula' : 'el correo';
+      throw ErrorApi.conflicto(`Ya existe un usuario con ${campo} en este gimnasio`);
     }
     throw error;
   }

@@ -61,7 +61,7 @@ async function entrarComoDuena() {
   const agente = peticion.agent(app);
   await agente
     .post('/api/auth/iniciar-sesion')
-    .send({ email: 'owner@gimnasio-limitado.co', contrasena: CONTRASENA })
+    .send({ identificador: 'owner@gimnasio-limitado.co', contrasena: CONTRASENA })
     .expect(200);
   return agente;
 }

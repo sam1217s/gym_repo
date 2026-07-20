@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { slugValido } from './comunes.validacion.js';
+import { cedulaOpcional, slugValido } from './comunes.validacion.js';
 
 const LONGITUD_MINIMA_CONTRASENA = 8;
 
@@ -13,11 +13,14 @@ export const contrasenaSegura = z
 
 export const esquemaIniciarSesion = {
   body: z.object({
-    email: z.string().email('Email invalido').toLowerCase().trim(),
+    // Se entra por correo O por cedula: `identificador` es cualquiera de los dos.
+    // No se valida formato de email aqui a proposito (una cedula no lo cumpliria);
+    // el servicio decide si es correo o cedula segun contenga '@'.
+    identificador: z.string().trim().min(1, 'Ingresa tu correo o cedula'),
     contrasena: z.string().min(1, 'La contrasena es obligatoria'),
 
-    // Solo hace falta cuando el mismo email existe en mas de un gimnasio,
-    // porque el email es unico por tenant, no globalmente.
+    // Solo hace falta cuando el mismo correo/cedula existe en mas de un gimnasio,
+    // porque son unicos por tenant, no globalmente.
     slugGimnasio: z.string().trim().optional(),
   }),
 };
@@ -38,6 +41,7 @@ export const esquemaRegistrarGimnasio = {
       nombres: z.string().trim().min(1, 'Los nombres son obligatorios'),
       apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
       email: z.string().email('Email invalido').toLowerCase().trim(),
+      cedula: cedulaOpcional,
       contrasena: contrasenaSegura,
     }),
     sede: z.object({

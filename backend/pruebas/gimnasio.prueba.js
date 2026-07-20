@@ -95,7 +95,7 @@ async function entrarComo(email) {
   const agente = peticion.agent(app);
   await agente
     .post('/api/auth/iniciar-sesion')
-    .send({ email, contrasena: CONTRASENA })
+    .send({ identificador: email, contrasena: CONTRASENA })
     .expect(200);
   return agente;
 }
@@ -215,7 +215,7 @@ describe('roles sobre sedes, usuarios y planes de membresia', () => {
     // Y puede entrar con su clave inicial.
     await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'sur@gimnasio-a.co', contrasena: 'ClaveDeSur123' })
+      .send({ identificador: 'sur@gimnasio-a.co', contrasena: 'ClaveDeSur123' })
       .expect(200);
   });
 

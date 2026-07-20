@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useAutenticacionStore } from 'src/stores/autenticacion.js';
 
-/** El backend pide el gimnasio cuando un mismo correo existe en varios. */
+/** El backend pide el gimnasio cuando el mismo correo o cedula existe en varios. */
 const CAMPO_GIMNASIO_REQUERIDO = 'slugGimnasio';
 
 /**

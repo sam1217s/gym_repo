@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { contrasenaSegura } from './auth.validacion.js';
-import { idMongo } from './comunes.validacion.js';
+import { cedulaOpcional, idMongo } from './comunes.validacion.js';
 
 /**
  * Un tenant_owner solo puede crear y administrar `sede_admin`. El rol no viaja
@@ -13,6 +13,7 @@ export const esquemaCrearUsuario = {
     nombres: z.string().trim().min(1, 'Los nombres son obligatorios'),
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
     email: z.string().email('Email invalido').toLowerCase().trim(),
+    cedula: cedulaOpcional,
     contrasenaInicial: contrasenaSegura,
     sede: idMongo,
   }),

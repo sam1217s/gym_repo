@@ -22,6 +22,21 @@ export const telefonoWhatsApp = z
   .trim()
   .regex(/^\d{10,15}$/, 'Telefono en formato internacional, ej: 573001234567');
 
+/**
+ * Cedula (documento de identidad) OPCIONAL. Solo digitos. Un string vacio del
+ * formulario se trata como "no la dio" (`undefined`), para no guardar cadenas
+ * vacias que el indice parcial contaria como cedula. Sirve como alternativa al
+ * correo para iniciar sesion, y es unica por gimnasio.
+ */
+export const cedulaOpcional = z
+  .string()
+  .trim()
+  .transform((valor) => valor || undefined)
+  .refine((valor) => valor === undefined || /^\d{4,15}$/.test(valor), {
+    message: 'La cedula debe ser numerica (4 a 15 digitos)',
+  })
+  .optional();
+
 const SOLO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 /**

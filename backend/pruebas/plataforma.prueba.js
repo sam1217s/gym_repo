@@ -90,7 +90,7 @@ async function entrarComo(email) {
   const agente = peticion.agent(app);
   await agente
     .post('/api/auth/iniciar-sesion')
-    .send({ email, contrasena: CONTRASENA })
+    .send({ identificador: email, contrasena: CONTRASENA })
     .expect(200);
   return agente;
 }
@@ -243,7 +243,7 @@ describe('onboarding de un gimnasio', () => {
 
     const sesionDueno = await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'marta@powerzone.co', contrasena: CONTRASENA_DUENO_NUEVO })
+      .send({ identificador: 'marta@powerzone.co', contrasena: CONTRASENA_DUENO_NUEVO })
       .expect(200);
 
     expect(sesionDueno.body.data.debeCambiarContrasena).toBe(true);
@@ -325,7 +325,7 @@ describe('ciclo de vida del tenant', () => {
 
     await peticion(app)
       .post('/api/auth/iniciar-sesion')
-      .send({ email: 'laura@gimnasio-existente.co', contrasena: CONTRASENA })
+      .send({ identificador: 'laura@gimnasio-existente.co', contrasena: CONTRASENA })
       .expect(403);
   });
 

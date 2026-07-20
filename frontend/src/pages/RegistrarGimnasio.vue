@@ -98,6 +98,14 @@
             :rules="[reglaObligatorio, reglaEmail]"
           />
           <q-input
+            v-model="formulario.dueno.cedula"
+            label="Cédula (opcional)"
+            hint="Podrás entrar con tu cédula además del correo"
+            outlined
+            dense
+            :rules="[reglaCedulaOpcional]"
+          />
+          <q-input
             v-model="formulario.dueno.contrasena"
             :type="contrasenaVisible ? 'text' : 'password'"
             label="Contraseña"
@@ -193,12 +201,15 @@ const gimnasioRegistrado = ref('');
 
 const formulario = reactive({
   gimnasio: { nombre: '', nit: '', slug: '' },
-  dueno: { nombres: '', apellidos: '', email: '', contrasena: '' },
+  dueno: { nombres: '', apellidos: '', email: '', cedula: '', contrasena: '' },
   sede: { nombre: '', direccion: '', telefono: '' },
 });
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaEmail = (valor) => /.+@.+\..+/.test(valor) || 'Email inválido';
+// Vacia es válida (opcional); si viene, debe ser numérica.
+const reglaCedulaOpcional = (valor) =>
+  !String(valor ?? '').trim() || /^\d{4,15}$/.test(valor) || 'Cédula numérica (4 a 15 dígitos)';
 const reglaSlug = (valor) =>
   /^[a-z0-9-]{3,}$/.test(valor) || 'Mínimo 3 caracteres: minúsculas, números y guiones';
 const reglaContrasena = (valor) =>

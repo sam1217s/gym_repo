@@ -8,14 +8,13 @@
     <q-card-section>
       <q-form class="q-gutter-md" @submit.prevent="enviar">
         <q-input
-          v-model="formulario.email"
-          type="email"
-          label="Correo electronico"
+          v-model="formulario.identificador"
+          label="Correo o cedula"
           autocomplete="username"
           outlined
           :rules="[reglaObligatorio]"
         >
-          <template #prepend><q-icon name="mail" /></template>
+          <template #prepend><q-icon name="badge" /></template>
         </q-input>
 
         <q-input
@@ -79,7 +78,7 @@ const { iniciarSesion, cargando, exigeGimnasio } = useAutenticacion();
 const contrasenaVisible = ref(false);
 
 const formulario = reactive({
-  email: '',
+  identificador: '',
   contrasena: '',
   slugGimnasio: '',
 });
@@ -87,12 +86,16 @@ const formulario = reactive({
 const reglaObligatorio = (valor) => Boolean(valor?.trim()) || 'Este campo es obligatorio';
 
 function enviar() {
+  // Se puede entrar por correo o por cedula: ambos viajan en `identificador`.
+  // Se recortan los espacios de los bordes: un espacio colado (autocompletado,
+  // copiar/pegar, un dedo de mas) hacia que bcrypt no cuadrara y el backend
+  // respondiera 401, sin que el usuario viera nada raro en el campo.
   // `slugGimnasio` solo se manda si el backend lo pidio: enviarlo vacio provoca
   // que busque un gimnasio con slug "" y falle.
   const credenciales = {
-    email: formulario.email,
-    contrasena: formulario.contrasena,
-    ...(exigeGimnasio.value ? { slugGimnasio: formulario.slugGimnasio } : {}),
+    identificador: formulario.identificador.trim(),
+    contrasena: formulario.contrasena.trim(),
+    ...(exigeGimnasio.value ? { slugGimnasio: formulario.slugGimnasio.trim() } : {}),
   };
 
   return iniciarSesion(credenciales);

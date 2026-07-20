@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { LISTA_ESTADOS_TENANT } from '../config/constantes.js';
 import { contrasenaSegura } from './auth.validacion.js';
-import { idMongo, slugValido } from './comunes.validacion.js';
+import { cedulaOpcional, idMongo, slugValido } from './comunes.validacion.js';
 
 /**
  * Validacion de entrada de las rutas de plataforma (solo super_admin).
@@ -74,6 +74,7 @@ export const esquemaCrearGimnasio = {
       nombres: z.string().trim().min(1, 'Los nombres son obligatorios'),
       apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
       email: z.string().email('Email invalido').toLowerCase().trim(),
+      cedula: cedulaOpcional,
       // El dueno entra con esta clave y el sistema le exige cambiarla al primer acceso.
       contrasenaInicial: contrasenaSegura,
     }),

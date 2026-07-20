@@ -9,7 +9,7 @@ import { verificarTokenRefresco, verificarTokenVerificacion } from '../utilidade
  * devuelve el usuario o lanza un `ErrorApi`. Las cookies las pone el controlador.
  */
 
-const MENSAJE_CREDENCIALES = 'Email o contrasena incorrectos';
+const MENSAJE_CREDENCIALES = 'Datos de acceso incorrectos';
 
 /**
  * Hash valido de una cadena aleatoria que nadie conoce. Cuando el email no
@@ -18,8 +18,8 @@ const MENSAJE_CREDENCIALES = 'Email o contrasena incorrectos';
  */
 const HASH_SENUELO = '$2a$12$1mlFN/obbPRqUGEGZz9r3.xs1Sxo5ZNWm2E.UQFCreOOU5uQofayu';
 
-export async function iniciarSesion({ email, contrasena, slugGimnasio }) {
-  const usuario = await buscarUsuarioParaLogin(email, slugGimnasio);
+export async function iniciarSesion({ identificador, contrasena, slugGimnasio }) {
+  const usuario = await buscarUsuarioParaLogin(identificador, slugGimnasio);
 
   const esCorrecta = await verificarContrasena(contrasena, usuario?.contrasenaHash ?? HASH_SENUELO);
 
@@ -44,25 +44,36 @@ export async function iniciarSesion({ email, contrasena, slugGimnasio }) {
 }
 
 /**
- * El email es unico por tenant, asi que un mismo correo puede existir en varios
+ * Se entra por correo O por cedula. Se distingue por el '@': un correo lo lleva,
+ * una cedula (solo digitos) no. El correo se normaliza a minusculas, como se
+ * guarda; la cedula se compara tal cual.
+ *
+ * Ambos son unicos por tenant, asi que un mismo dato puede existir en varios
  * gimnasios. Si pasa, se le pide al usuario que diga en cual entra.
  */
-async function buscarUsuarioParaLogin(email, slugGimnasio) {
+function filtroPorIdentificador(identificador) {
+  return identificador.includes('@')
+    ? { email: identificador.toLowerCase() }
+    : { cedula: identificador };
+}
+
+async function buscarUsuarioParaLogin(identificador, slugGimnasio) {
   const Usuario = obtenerModelo('Usuario');
+  const filtro = filtroPorIdentificador(identificador);
 
   if (slugGimnasio) {
     const Tenant = obtenerModelo('Tenant');
     const tenant = await Tenant.findOne({ slug: slugGimnasio });
     if (!tenant) throw ErrorApi.noAutenticado(MENSAJE_CREDENCIALES);
 
-    return Usuario.findOne({ email, tenant: tenant._id }).select('+contrasenaHash');
+    return Usuario.findOne({ ...filtro, tenant: tenant._id }).select('+contrasenaHash');
   }
 
-  const candidatos = await Usuario.find({ email }).select('+contrasenaHash').limit(2);
+  const candidatos = await Usuario.find(filtro).select('+contrasenaHash').limit(2);
 
   if (candidatos.length > 1) {
     throw ErrorApi.solicitudInvalida(
-      'Ese correo existe en varios gimnasios. Indica el identificador de tu gimnasio.',
+      'Ese dato existe en varios gimnasios. Indica el identificador de tu gimnasio.',
       [{ campo: 'slugGimnasio', mensaje: 'Requerido' }],
     );
   }
@@ -182,6 +193,7 @@ export function describirSesion(usuario, tenant = null) {
     apellidos: usuario.apellidos,
     nombreCompleto: usuario.nombreCompleto,
     email: usuario.email,
+    cedula: usuario.cedula ?? null,
     rol: usuario.rol,
     tenant: usuario.tenant,
     tenantEstado: tenant?.estado ?? null,
