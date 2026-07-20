@@ -19,7 +19,8 @@ export default defineConfig(() => ({
 
   devServer: {
     port: 9000,
-    open: false,
+    // Abre el navegador en la app al arrancar `npm run dev`.
+    open: true,
 
     /**
      * El proxy es lo que hace que las cookies HttpOnly funcionen en desarrollo:
