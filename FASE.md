@@ -12,8 +12,9 @@ y que falta.**
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
 **Estado global:** Fases 1 a 7 completas. La Fase 8 (pago en linea del miembro por Wompi del
-dueño) tiene el **backend completo**; le falta el frontend (etapa 2). Lo demas es la deuda
-tecnica de abajo, indispensable antes de desplegar.
+dueño) tiene **backend + frontend completos**; solo queda enganchar el botón de la plantilla de
+WhatsApp (etapa 3), que depende de que el dueño lo añada en Meta. Lo demas es la deuda tecnica
+de abajo, indispensable antes de desplegar.
 
 ---
 
@@ -346,13 +347,21 @@ Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (
       webhook crea el Pago, idempotencia, firma inválida (401), no-aprobado, monto que no cuadra,
       referencia ajena, y el cableado HTTP real (302/400/200/401). Suite completa en verde.
 
-### Frontend (etapa 2) — pendiente
-- [ ] Pantalla del dueño para pegar sus llaves Wompi (`tenant.config.wompi`) + endpoint que las
-      guarde (nunca las devuelve).
-- [ ] Campo `email` (opcional) en el alta/edición de miembros.
-- [ ] Página de "gracias/pago en proceso" propia del frontend (hoy la sirve el backend como HTML).
-- [ ] Enganchar el enlace de pago (`enlacePagoMiembro`) al aviso de WhatsApp y documentar cómo
-      crear en Meta la plantilla con **botón URL dinámico** (base `ORIGEN_PUBLICO/api/pagar/`).
+### Frontend (etapa 2) — hecho
+- [x] `GET/PUT /api/cobros` (solo dueño): guarda/lee las llaves Wompi del gimnasio. Los secretos
+      NUNCA se devuelven al cliente; sí la llave pública y la URL del webhook a registrar. 5 pruebas.
+- [x] `PaginaCobros.vue` + ruta `cobros` + enlace en la navegación: el dueño pega sus 3 llaves,
+      ve el estado (activo/sin configurar) y la URL del webhook con botón de copiar. Verificado en
+      navegador real (guardar flip a "activo").
+- [x] Campo `email` (opcional) en el alta/edición de miembros (`PaginaMiembros.vue`). Verificado.
+- [x] Página de "gracias/pago en proceso": la sirve el backend en `/api/pagar/gracias` (HTML).
+
+### Pendiente (etapa 3): enganchar el botón de WhatsApp
+- [ ] La plantilla de Meta hoy es solo texto, sin botón. Para el flujo completo hay que: (a) editar
+      la plantilla en Meta y añadir un **botón URL dinámico** con base `ORIGEN_PUBLICO/api/pagar/`;
+      (b) que `cloudApi.proveedor.js` envíe el parámetro del botón (`sub_type: 'url'`) con el token
+      del miembro (`enlacePagoMiembro` ya lo genera); (c) pasar ese token desde el servicio de
+      notificaciones. Sin (a) —acción del dueño en Meta— no tiene sentido implementar (b) y (c).
 
 ---
 

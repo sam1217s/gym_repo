@@ -165,6 +165,16 @@
                 dense
                 :rules="[reglaObligatorio, reglaTelefono]"
               />
+              <q-input
+                v-model="formulario.email"
+                class="col-12"
+                type="email"
+                label="Correo (opcional)"
+                hint="Para el recibo del pago en linea"
+                outlined
+                dense
+                :rules="[reglaEmailOpcional]"
+              />
               <q-select
                 v-if="sedesVisibles"
                 v-model="formulario.sede"
@@ -313,12 +323,16 @@ function nombreSede(sedeId) {
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaTelefono = (valor) =>
   /^\d{10,15}$/.test(valor) || 'Solo digitos, con indicativo de pais (57...)';
+// Vacio es valido (opcional); si viene, debe parecer un correo.
+const reglaEmailOpcional = (valor) =>
+  !String(valor ?? '').trim() || /.+@.+\..+/.test(valor) || 'Correo invalido';
 
 const formulario = reactive({
   nombres: '',
   apellidos: '',
   documento: '',
   telefono: '',
+  email: '',
   sede: null,
   activo: true,
 });
@@ -331,6 +345,7 @@ function abrirCreacion() {
     apellidos: '',
     documento: '',
     telefono: '',
+    email: '',
     sede: null,
     activo: true,
   });
@@ -345,6 +360,7 @@ function abrirEdicion(miembro) {
     apellidos: miembro.apellidos,
     documento: miembro.documento,
     telefono: miembro.telefono,
+    email: miembro.email ?? '',
     sede: miembro.sede,
     activo: miembro.activo,
   });
@@ -364,6 +380,7 @@ async function guardarMiembro() {
       apellidos: formulario.apellidos,
       documento: formulario.documento,
       telefono: formulario.telefono,
+      email: formulario.email.trim(),
       // La sede solo viaja si hay algo que decir: al sede_admin se la fuerza el backend.
       ...(formulario.sede ? { sede: formulario.sede } : {}),
     };
