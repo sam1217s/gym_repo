@@ -1,3 +1,4 @@
+import * as servicioCobros from '../servicios/cobros.servicio.js';
 import * as servicioFacturacion from '../servicios/facturacionPlataforma.servicio.js';
 import * as servicioOnboarding from '../servicios/onboarding.servicio.js';
 import * as servicioPlanes from '../servicios/planesPlataforma.servicio.js';
@@ -61,4 +62,15 @@ export const cancelarTenant = manejadorAsync(async (peticion, respuesta) =>
 /** Historico de facturacion de un gimnasio, visto desde la plataforma. */
 export const facturasDeTenant = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioFacturacion.listarFacturasDeTenant(peticion.params.id)),
+);
+
+// --- Cobro en linea del gimnasio (llaves Wompi del dueno) --------------------
+// Lo configura el super_admin por gimnasio: son secretos criptograficos.
+
+export const configCobrosTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioCobros.obtenerConfigCobros(peticion.params.id)),
+);
+
+export const guardarCobrosTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioCobros.guardarConfigCobros(peticion.params.id, peticion.body)),
 );

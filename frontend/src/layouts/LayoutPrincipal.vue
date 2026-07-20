@@ -64,7 +64,6 @@ const ENLACES = [
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'cobros', titulo: 'Cobros', icono: 'qr_code_2', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'facturacion', titulo: 'Facturacion', icono: 'receipt_long', roles: [ROLES.TENANT_OWNER] },
 ];
 

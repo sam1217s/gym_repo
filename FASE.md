@@ -348,11 +348,13 @@ Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (
       referencia ajena, y el cableado HTTP real (302/400/200/401). Suite completa en verde.
 
 ### Frontend (etapa 2) — hecho
-- [x] `GET/PUT /api/cobros` (solo dueño): guarda/lee las llaves Wompi del gimnasio. Los secretos
-      NUNCA se devuelven al cliente; sí la llave pública y la URL del webhook a registrar. 5 pruebas.
-- [x] `PaginaCobros.vue` + ruta `cobros` + enlace en la navegación: el dueño pega sus 3 llaves,
-      ve el estado (activo/sin configurar) y la URL del webhook con botón de copiar. Verificado en
-      navegador real (guardar flip a "activo").
+- [x] **Lo configura el SUPER_ADMIN, no el dueño**: son secretos criptográficos y es más prudente
+      que los maneje el operador de la plataforma. `GET/PUT /api/plataforma/tenants/:id/cobros`
+      (requiereSuperAdmin). Los secretos NUNCA se devuelven al cliente; sí la llave pública y la URL
+      del webhook. 5 pruebas (incluida: un dueño recibe 403).
+- [x] Diálogo de config en `PanelPlataforma.vue`: botón "Cobros" por gimnasio → pega las 3 llaves,
+      ve el estado (activo/sin configurar) y copia la URL del webhook. Verificado en navegador real
+      (guardar → "Llaves guardadas").
 - [x] Campo `email` (opcional) en el alta/edición de miembros (`PaginaMiembros.vue`). Verificado.
 - [x] Página de "gracias/pago en proceso": la sirve el backend en `/api/pagar/gracias` (HTML).
 

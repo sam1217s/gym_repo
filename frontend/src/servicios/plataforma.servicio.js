@@ -35,3 +35,14 @@ export async function listarPlanes() {
   const { data: respuesta } = await api.get('/plataforma/planes');
   return respuesta.data;
 }
+
+/** Cobro en linea del gimnasio: llaves Wompi del dueno. Los secretos no vuelven. */
+export async function obtenerCobros(id) {
+  const { data: respuesta } = await api.get(`/plataforma/tenants/${id}/cobros`);
+  return respuesta.data;
+}
+
+export async function guardarCobros(id, datos) {
+  const { data: respuesta } = await api.put(`/plataforma/tenants/${id}/cobros`, datos);
+  return respuesta.data;
+}

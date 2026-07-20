@@ -559,6 +559,13 @@ Cuatro cosas no obvias:
 `Pago.registradoPor` es `null` en estos pagos: no hay staff detras, lo pagó el propio miembro.
 `Miembro.email` es opcional y solo sirve para prellenar el checkout y el recibo.
 
+Las llaves Wompi del gimnasio las configura el **super_admin** (no el dueño), en el panel de
+plataforma: son secretos criptograficos y es mas prudente que los maneje el operador. Endpoint
+`GET/PUT /api/plataforma/tenants/:id/cobros` (`requiereSuperAdmin`); los secretos **nunca** se
+devuelven al cliente (`cobros.servicio.js → describirConfig`), solo si estan puestos y la llave
+publica. La misma regla que `tenant.config.whatsapp.credenciales`: `Tenant.toJSON` borra
+`config.wompi` entero.
+
 ---
 
 ## Convenciones de codigo
