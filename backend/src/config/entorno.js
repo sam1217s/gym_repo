@@ -17,6 +17,14 @@ const esquemaEntorno = z.object({
   JWT_SECRETO_ACCESO: z.string().min(LONGITUD_MINIMA_SECRETO),
   JWT_SECRETO_REFRESCO: z.string().min(LONGITUD_MINIMA_SECRETO),
   ORIGEN_FRONTEND: z.string().url().default('http://localhost:9000'),
+
+  /**
+   * Base publica del backend, accesible desde el celular del miembro y desde
+   * Wompi: es donde vive el enlace de pago `/api/pagar/:token` que lleva el
+   * boton de WhatsApp, y el webhook de pagos de miembro. En desarrollo cae al
+   * mismo origen del backend; en produccion es el dominio desplegado (HTTPS).
+   */
+  ORIGEN_PUBLICO: z.string().url().default('http://localhost:3000'),
   SEMILLA_SUPERADMIN_EMAIL: z.string().email().default('admin@gymsaas.co'),
   SEMILLA_SUPERADMIN_CONTRASENA: z.string().min(8).default('CambiaEstaClave123'),
 

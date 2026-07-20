@@ -5,6 +5,7 @@ import rutasAuth from './auth.rutas.js';
 import rutasFacturacion from './facturacion.rutas.js';
 import rutasMiembros from './miembros.rutas.js';
 import rutasPagos from './pagos.rutas.js';
+import rutasPagosMiembro from './pagosMiembro.rutas.js';
 import rutasPlanesMembresia from './planesMembresia.rutas.js';
 import rutasPlataforma from './plataforma.rutas.js';
 import rutasReportes from './reportes.rutas.js';
@@ -21,6 +22,10 @@ rutas.get('/salud', (_peticion, respuesta) =>
 
 // Publica: la llama Wompi. Se autentica por checksum, no por cookie.
 rutas.use('/webhooks', rutasWebhooks);
+
+// Publica: el enlace "Pagar ahora" del WhatsApp. Se autentica por el token del
+// enlace, no por cookie (quien llega es el celular del miembro).
+rutas.use('/pagar', rutasPagosMiembro);
 
 rutas.use('/auth', rutasAuth);
 rutas.use('/plataforma', rutasPlataforma);

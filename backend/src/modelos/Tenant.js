@@ -61,6 +61,14 @@ const esquemaTenant = new mongoose.Schema(
         // Credenciales del proveedor. Nunca se serializan hacia el cliente.
         credenciales: { type: mongoose.Schema.Types.Mixed, default: {} },
       },
+      /**
+       * Wompi DEL GIMNASIO: con estas llaves el propio miembro paga su
+       * mensualidad al Wompi del dueno (nivel de cobro "miembro"), distinto del
+       * Wompi de la PLATAFORMA (env), con el que el gimnasio le paga a GymSaaS.
+       * `{ llavePublica, secretoIntegridad, secretoEventos }`. Nunca se
+       * serializan hacia el cliente (ver `toJSON` abajo).
+       */
+      wompi: { type: mongoose.Schema.Types.Mixed, default: {} },
     },
   },
   { timestamps: true },
@@ -83,6 +91,8 @@ esquemaTenant.methods.permiteAcceso = function () {
 esquemaTenant.set('toJSON', {
   transform(_documento, objeto) {
     delete objeto.config?.whatsapp?.credenciales;
+    // Las llaves Wompi del dueno (incluido el secreto de eventos) jamas salen al cliente.
+    delete objeto.config?.wompi;
     return objeto;
   },
 });

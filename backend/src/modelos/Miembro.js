@@ -23,6 +23,13 @@ const esquemaMiembro = new mongoose.Schema(
       match: [/^\d{10,15}$/, 'El telefono debe ir en formato internacional, ej: 573001234567'],
     },
 
+    /**
+     * OPCIONAL. Solo se usa para prellenar el checkout de Wompi cuando el miembro
+     * paga en linea y para el recibo. Los miembros no inician sesion, asi que no
+     * es unico ni obligatorio.
+     */
+    email: { type: String, lowercase: true, trim: true },
+
     fechaRegistro: { type: Date, default: Date.now },
     activo: { type: Boolean, default: true },
   },

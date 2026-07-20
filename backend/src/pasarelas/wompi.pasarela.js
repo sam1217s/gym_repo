@@ -45,10 +45,23 @@ export function aCentavos(monto) {
  *
  * La firma se hace SIEMPRE en el servidor: el secreto de integridad no puede
  * pisar el navegador.
+ *
+ * Sirve a los DOS niveles de cobro con el mismo codigo (la firma es identica):
+ *   - Plataforma: sin `credenciales`, usa las llaves del entorno (Wompi de GymSaaS).
+ *   - Miembro:    con `credenciales` del dueno (Wompi del gimnasio) y una
+ *     `urlRedireccion` propia. `cliente` prellena los datos en el checkout.
  */
-export function construirEnlaceCheckout({ referencia, monto, moneda = MONEDA_POR_DEFECTO }) {
-  const llavePublica = exigirCredencial('WOMPI_LLAVE_PUBLICA');
-  const secretoIntegridad = exigirCredencial('WOMPI_SECRETO_INTEGRIDAD');
+export function construirEnlaceCheckout({
+  referencia,
+  monto,
+  moneda = MONEDA_POR_DEFECTO,
+  credenciales,
+  urlRedireccion = entorno.WOMPI_URL_REDIRECCION,
+  cliente,
+}) {
+  const llavePublica = credenciales?.llavePublica ?? exigirCredencial('WOMPI_LLAVE_PUBLICA');
+  const secretoIntegridad =
+    credenciales?.secretoIntegridad ?? exigirCredencial('WOMPI_SECRETO_INTEGRIDAD');
 
   const centavos = aCentavos(monto);
   const firma = sha256(`${referencia}${centavos}${moneda}${secretoIntegridad}`);
@@ -59,8 +72,14 @@ export function construirEnlaceCheckout({ referencia, monto, moneda = MONEDA_POR
     'amount-in-cents': String(centavos),
     reference: referencia,
     'signature:integrity': firma,
-    'redirect-url': entorno.WOMPI_URL_REDIRECCION,
+    'redirect-url': urlRedireccion,
   });
+
+  // Prellenado opcional del checkout con los datos del miembro. Wompi los usa
+  // como valores iniciales; el miembro puede corregirlos.
+  if (cliente?.email) parametros.set('customer-data:email', cliente.email);
+  if (cliente?.nombre) parametros.set('customer-data:full-name', cliente.nombre);
+  if (cliente?.telefono) parametros.set('customer-data:phone-number', cliente.telefono);
 
   return `${entorno.WOMPI_URL_CHECKOUT}?${parametros}`;
 }
@@ -90,8 +109,10 @@ function sonIguales(a, b) {
  * documentacion avisa de que la lista cambia entre eventos y con el tiempo. Se
  * lee del payload y se resuelve contra `data`.
  */
-export function verificarChecksumEvento(evento) {
-  const secretoEventos = exigirCredencial('WOMPI_SECRETO_EVENTOS');
+export function verificarChecksumEvento(evento, secretoEventos = entorno.WOMPI_SECRETO_EVENTOS) {
+  if (!secretoEventos) {
+    throw new Error('Falta el secreto de eventos de Wompi. No se puede verificar el webhook.');
+  }
 
   const propiedades = evento?.signature?.properties;
   const checksumRecibido = evento?.signature?.checksum;

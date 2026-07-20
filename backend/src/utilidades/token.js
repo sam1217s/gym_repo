@@ -88,6 +88,31 @@ export function verificarTokenVerificacion(token) {
   return carga;
 }
 
+const PROPOSITO_PAGO_MIEMBRO = 'pago-miembro';
+const DURACION_TOKEN_PAGO_MIEMBRO = '7d';
+
+/**
+ * Token del enlace "Pagar ahora" que viaja en el WhatsApp. Identifica al miembro
+ * y su gimnasio; NO lleva monto ni plan (se resuelven frescos al abrir el enlace,
+ * para no cobrar un precio viejo). Vive 7 dias: el aviso de vencimiento tiene
+ * sentido durante esa ventana. `prop` distinto: no sirve como cookie de sesion.
+ */
+export function firmarTokenPagoMiembro({ miembroId, tenantId }) {
+  return jwt.sign(
+    { sub: miembroId.toString(), tenant: tenantId.toString(), prop: PROPOSITO_PAGO_MIEMBRO },
+    entorno.JWT_SECRETO_ACCESO,
+    { expiresIn: DURACION_TOKEN_PAGO_MIEMBRO },
+  );
+}
+
+export function verificarTokenPagoMiembro(token) {
+  const carga = jwt.verify(token, entorno.JWT_SECRETO_ACCESO);
+  if (carga.prop !== PROPOSITO_PAGO_MIEMBRO) {
+    throw new Error('El token no es de pago de miembro');
+  }
+  return carga;
+}
+
 /**
  * El refresh token se limita a `path=/api/auth/refrescar`: el navegador no lo
  * adjunta al resto de la API, asi que una vulnerabilidad en otro endpoint no lo

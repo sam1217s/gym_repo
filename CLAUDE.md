@@ -144,8 +144,13 @@ Son dos flujos de dinero distintos que se parecen y se confunden:
 
 | | Quien paga | A quien | Modelos |
 | --- | --- | --- | --- |
-| **Facturacion de plataforma** | El gimnasio | A GymSaaS | `PlanPlataforma` + `Tenant.estado` + `FacturaPlataforma` (Wompi) |
-| **Facturacion de miembros** | El miembro | Al gimnasio | `PlanMembresia` + `Pago` |
+| **Facturacion de plataforma** | El gimnasio | A GymSaaS | `PlanPlataforma` + `Tenant.estado` + `FacturaPlataforma` (Wompi de la PLATAFORMA, en el entorno) |
+| **Facturacion de miembros** | El miembro | Al gimnasio | `PlanMembresia` + `Pago` (efectivo/transferencia, o Wompi DEL GIMNASIO en `tenant.config.wompi`) |
+
+**Hay DOS integraciones de Wompi, con cuentas y secretos distintos, y confundirlas es un
+agujero:** la de plataforma (una sola cuenta de GymSaaS, en el `.env`, webhook `/webhooks/wompi`)
+y la de cada gimnasio (las llaves del dueno en `tenant.config.wompi`, webhook
+`/webhooks/wompi-miembro`). El miembro paga al Wompi del DUENO, no al de GymSaaS.
 
 `PlanPlataforma` es de nivel plataforma y define **limites** (`maxSedes`, `maxMiembros`) y
 **features** (`whatsapp`, `reportes`). `PlanMembresia` es tenant-scoped y lo configura cada
@@ -507,6 +512,52 @@ Reglas del ciclo de vida que no estan en el esquema:
 - `tenants.servicio.js` agrega sobre `Sede` **sin filtro de tenant** (conteo global por
   gimnasio). Es legal unicamente porque ese servicio corre siempre como `super_admin` con
   `omitirAislamiento`; no copiar ese patron en servicios de negocio.
+
+### Cobro miembro → gimnasio (Wompi del dueño, por WhatsApp)
+
+El miembro paga su mensualidad EN LINEA al Wompi **del dueño** (no al de la plataforma), desde
+el botón "Pagar ahora" del aviso de vencimiento por WhatsApp.
+
+```
+[Aviso de vencimiento por WhatsApp con boton URL]
+        |  el boton es una base fija + variable:  ORIGEN_PUBLICO/api/pagar/{{1}}
+        |  ({{1}} = token JWT del miembro; la URL de Wompi es larga y firmada,
+        |   NO cabe en el boton, por eso se pasa por un enlace corto propio)
+        v
+GET /api/pagar/:token ──> pagosMiembro.servicio.js
+        |  1. verifica el token (prop 'pago-miembro') -> miembro + tenant
+        |  2. resuelve el plan del ULTIMO pago del miembro -> monto (fresco, no en el token)
+        |  3. construirEnlaceCheckout con las llaves del DUENO (tenant.config.wompi),
+        |     prellenando nombre/telefono/email del miembro
+        |  4. referencia = MB-<tenantId>-<miembroId>-<planId>-<nonce>
+        v  302 redirect
+[checkout.wompi.co del dueño] ──> el miembro paga ──> Wompi llama de vuelta
+        v
+POST /api/webhooks/wompi-miembro ──> aplicarEventoPagoMiembro()
+        |  1. lee la referencia -> a que gimnasio pertenece (elige CON QUE secreto verificar)
+        |  2. verificarChecksumEvento(evento, tenant.config.wompi.secretoEventos)  <-- LA firma
+        |  3. si APPROVED: crea el Pago (metodoPago 'wompi', registradoPor null) y renueva:
+        |     periodoInicio = fin de la mensualidad vigente (o hoy si ya vencio)
+        v
+   Se responde 200 a lo que se ignora (Wompi reintenta si no).
+```
+
+Cuatro cosas no obvias:
+
+- **La firma se verifica DENTRO del servicio, no en el controlador** (al reves que el webhook de
+  plataforma): el secreto es de cada gimnasio y hay que resolver el tenant por la referencia
+  primero. Parsear la referencia (dato no confiable) solo elige el secreto; la firma autentica.
+- **La firma de integridad ya garantiza el monto**: Wompi rechaza el checkout si no cuadra, asi
+  que el miembro no puede cambiar el precio. El webhook lo re-compara con `plan.precio` como
+  defensa en profundidad, no por seguridad.
+- **Idempotencia por el `id` de transaccion de Wompi** guardado en `Pago.transaccionWompi`
+  (indice unico parcial `{ tenant, transaccionWompi }`): Wompi reintenta los webhooks y no se
+  puede renovar dos veces por un pago.
+- **El monto NO viaja en el token ni en la referencia**: se resuelve fresco al abrir el enlace,
+  para no cobrar un precio viejo si el plan cambio entre el aviso y el pago.
+
+`Pago.registradoPor` es `null` en estos pagos: no hay staff detras, lo pagó el propio miembro.
+`Miembro.email` es opcional y solo sirve para prellenar el checkout y el recibo.
 
 ---
 

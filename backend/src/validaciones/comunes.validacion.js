@@ -37,6 +37,15 @@ export const cedulaOpcional = z
   })
   .optional();
 
+/** Correo OPCIONAL. Un string vacio se trata como "no lo dio" (`undefined`). */
+export const emailOpcional = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((valor) => valor || undefined)
+  .refine((valor) => valor === undefined || /.+@.+\..+/.test(valor), { message: 'Email invalido' })
+  .optional();
+
 const SOLO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 /**

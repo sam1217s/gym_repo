@@ -22,11 +22,22 @@ const esquemaPago = new mongoose.Schema(
     /** Numero de comprobante. Obligatorio en la practica para transferencias. */
     referencia: { type: String, trim: true, default: '' },
 
+    /**
+     * `id` de la transaccion de Wompi cuando el pago lo hizo el propio miembro en
+     * linea. Es la clave de idempotencia: Wompi reintenta los webhooks, y el
+     * indice unico parcial de abajo impide crear el pago dos veces.
+     */
+    transaccionWompi: { type: String, trim: true },
+
     fechaPago: { type: Date, required: true, default: Date.now },
     periodoInicio: { type: Date, required: true },
     periodoFin: { type: Date, required: true },
 
-    registradoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+    /**
+     * Quien registro el pago. `null` cuando lo pago el propio miembro en linea
+     * por Wompi: ahi no hay un usuario del staff detras.
+     */
+    registradoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
 
     /** `true` cuando el cron ya aviso del vencimiento de este periodo. */
     notificado: { type: Boolean, default: false },
@@ -45,6 +56,15 @@ esquemaPago.index({ tenant: 1, miembro: 1, periodoFin: -1 });
 
 // Reportes de ingresos del mes por sede y por metodo de pago.
 esquemaPago.index({ tenant: 1, sede: 1, fechaPago: -1 });
+
+/**
+ * Idempotencia del pago en linea: una transaccion de Wompi no puede crear dos
+ * pagos. Parcial porque `transaccionWompi` solo existe en los pagos por Wompi.
+ */
+esquemaPago.index(
+  { tenant: 1, transaccionWompi: 1 },
+  { unique: true, partialFilterExpression: { transaccionWompi: { $type: 'string' } } },
+);
 
 export const esquema = esquemaPago;
 export const nombreModelo = 'Pago';

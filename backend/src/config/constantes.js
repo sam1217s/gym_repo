@@ -40,9 +40,19 @@ export const ESTADOS_TENANT_CON_ACCESO = Object.freeze([
 export const METODOS_PAGO = Object.freeze({
   EFECTIVO: 'efectivo',
   TRANSFERENCIA: 'transferencia',
+  // Pago en linea del propio miembro por Wompi (al Wompi del dueno del gimnasio).
+  WOMPI: 'wompi',
 });
 
 export const LISTA_METODOS_PAGO = Object.values(METODOS_PAGO);
+
+/**
+ * Prefijo de la `reference` de Wompi para un pago de MIEMBRO (al gimnasio),
+ * para distinguirlo del cobro de plataforma. El webhook lee de la referencia
+ * a que gimnasio pertenece y con que secreto de eventos verificar la firma.
+ * Formato: `MB-<tenantId>-<miembroId>-<planId>-<nonce>`.
+ */
+export const PREFIJO_REFERENCIA_PAGO_MIEMBRO = 'MB';
 
 export const PROVEEDORES_WHATSAPP = Object.freeze({
   BAILEYS: 'baileys',

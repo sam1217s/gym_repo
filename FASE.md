@@ -11,8 +11,9 @@ y que falta.**
 
 **Leyenda:** `[x]` hecho y verificado · `[~]` hecho a medias · `[ ]` pendiente
 
-**Estado global:** Fases 1 a 7 completas. El producto esta funcionalmente cerrado;
-lo que queda es la deuda tecnica de abajo, indispensable antes de desplegar.
+**Estado global:** Fases 1 a 7 completas. La Fase 8 (pago en linea del miembro por Wompi del
+dueño) tiene el **backend completo**; le falta el frontend (etapa 2). Lo demas es la deuda
+tecnica de abajo, indispensable antes de desplegar.
 
 ---
 
@@ -317,6 +318,41 @@ El personal entra con **correo o cedula**, a eleccion. Detalles:
   de administradores de sede. Los miembros NO se tocan: no inician sesion.
 - Pruebas: login por cedula, cedula inexistente (mismo 401 generico), unicidad por tenant y
   convivencia de varios usuarios sin cedula (indice parcial), en `auth.prueba.js`.
+
+---
+
+## Fase 8 — Pago en linea del miembro (Wompi del dueño) · BACKEND COMPLETO
+
+Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (nivel de cobro
+"miembro"), desde el botón "Pagar ahora" del aviso de vencimiento por WhatsApp.
+
+### Backend (etapa 1) — hecho
+- [x] `tenant.config.wompi` (llaves del dueño: `llavePublica`, `secretoIntegridad`,
+      `secretoEventos`). Nunca se serializan al cliente (`Tenant.toJSON`).
+- [x] `Miembro.email` opcional (prellenado del checkout y recibo); `emailOpcional` en Zod.
+- [x] `Pago.transaccionWompi` + índice único parcial `{ tenant, transaccionWompi }`
+      (idempotencia); `metodoPago: 'wompi'`; `registradoPor` opcional (`null` = lo pagó el miembro).
+- [x] `pasarelas/wompi.pasarela.js` generalizada: `construirEnlaceCheckout` acepta las
+      credenciales del dueño + prellenado del cliente; `verificarChecksumEvento(evento, secreto)`.
+      Las llaves del entorno siguen siendo el default (el cobro de plataforma no se toca).
+- [x] `token.js`: `firmarTokenPagoMiembro` / `verificarTokenPagoMiembro` (JWT `prop: 'pago-miembro'`,
+      7 días, sin monto ni plan — se resuelven frescos).
+- [x] `pagosMiembro.servicio.js`: `construirCheckoutDesdeToken` (enlace) y `aplicarEventoPagoMiembro`
+      (webhook). La firma se verifica DENTRO del servicio (secreto por gimnasio, resuelto por la
+      referencia `MB-<tenant>-<miembro>-<plan>-<nonce>`). Renueva desde el fin vigente, no desde hoy.
+- [x] Rutas públicas `GET /api/pagar/:token` (302 al checkout) + `GET /api/pagar/gracias` +
+      `POST /api/webhooks/wompi-miembro`. `ORIGEN_PUBLICO` en el entorno.
+- [x] 13 pruebas (`pagosMiembro.prueba.js`): enlace firmado con prellenado, token/creds inválidos,
+      webhook crea el Pago, idempotencia, firma inválida (401), no-aprobado, monto que no cuadra,
+      referencia ajena, y el cableado HTTP real (302/400/200/401). Suite completa en verde.
+
+### Frontend (etapa 2) — pendiente
+- [ ] Pantalla del dueño para pegar sus llaves Wompi (`tenant.config.wompi`) + endpoint que las
+      guarde (nunca las devuelve).
+- [ ] Campo `email` (opcional) en el alta/edición de miembros.
+- [ ] Página de "gracias/pago en proceso" propia del frontend (hoy la sirve el backend como HTML).
+- [ ] Enganchar el enlace de pago (`enlacePagoMiembro`) al aviso de WhatsApp y documentar cómo
+      crear en Meta la plantilla con **botón URL dinámico** (base `ORIGEN_PUBLICO/api/pagar/`).
 
 ---
 

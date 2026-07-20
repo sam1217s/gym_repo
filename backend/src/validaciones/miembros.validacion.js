@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idMongo, telefonoWhatsApp } from './comunes.validacion.js';
+import { emailOpcional, idMongo, telefonoWhatsApp } from './comunes.validacion.js';
 
 export const esquemaListarMiembros = {
   query: z.object({
@@ -14,6 +14,8 @@ export const esquemaCrearMiembro = {
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
     documento: z.string().trim().min(1, 'El documento es obligatorio'),
     telefono: telefonoWhatsApp,
+    // Opcional: solo para prellenar el pago en linea y el recibo.
+    email: emailOpcional,
     // Para un sede_admin es opcional: el servicio la fuerza a la suya.
     sede: idMongo.optional(),
   }),
@@ -27,6 +29,7 @@ export const esquemaActualizarMiembro = {
       apellidos: z.string().trim().min(1),
       documento: z.string().trim().min(1),
       telefono: telefonoWhatsApp,
+      email: emailOpcional,
       sede: idMongo,
       activo: z.boolean(),
     })
