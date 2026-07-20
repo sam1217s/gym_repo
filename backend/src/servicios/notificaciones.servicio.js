@@ -87,6 +87,17 @@ export function construirMensaje({ miembro, ultimoPago, estado, tenant, ahora = 
   );
 }
 
+/**
+ * Las variables de la PLANTILLA de WhatsApp, en el orden que espera el cuerpo
+ * aprobado en Meta: nombre del miembro, gimnasio y fecha de vencimiento. El
+ * proveedor Cloud API las mete como parametros de la plantilla; los proveedores
+ * de texto (n8n) las ignoran y usan el `mensaje` completo.
+ */
+export function construirVariables({ miembro, ultimoPago, tenant }) {
+  const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
+  return [miembro.nombres, tenant.nombre, formatearFecha(ultimoPago.periodoFin, zonaHoraria)];
+}
+
 /** `true` si el plan de plataforma del gimnasio incluye el canal de WhatsApp. */
 function planIncluyeWhatsApp(tenant) {
   return tenant.planPlataforma?.features?.whatsapp === true;
@@ -134,11 +145,12 @@ async function avisarAMiembro({ miembro, ultimoPago, estado }, { tenant, proveed
   const Pago = obtenerModelo('Pago');
 
   const mensaje = construirMensaje({ miembro, ultimoPago, estado, tenant, ahora });
+  const variables = construirVariables({ miembro, ultimoPago, tenant });
 
   try {
     if (!miembro.telefono) throw new Error(SIN_TELEFONO);
 
-    await proveedor.enviar({ telefono: miembro.telefono, mensaje });
+    await proveedor.enviar({ telefono: miembro.telefono, mensaje, variables });
 
     await Notificacion.create({
       miembro: miembro._id,

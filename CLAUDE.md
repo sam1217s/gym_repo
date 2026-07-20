@@ -366,6 +366,16 @@ ejecutarConTenant(tenant._id, async () => {
 `DIAS_AVISO_VENCIMIENTO = 3` vive en `config/constantes.js`. El cron **debe** envolver cada
 tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto por el.
 
+**Texto libre vs. plantilla.** El servicio construye SIEMPRE dos cosas: el `mensaje` de texto
+(rico, varia segun el estado) y las `variables` de la plantilla (`[nombre, gimnasio, fecha]`,
+en ese orden). Cada proveedor usa lo que le sirve: **n8n** manda el `mensaje`; **cloud_api**
+ignora el texto y envia una **PLANTILLA** (`type: 'template'`), porque Meta solo acepta texto
+libre dentro de la ventana de 24 h y un aviso de vencimiento casi nunca cae ahi. El nombre y el
+idioma de la plantilla son una **convencion** (`PLANTILLA_VENCIMIENTO` = `aviso_vencimiento` /
+`es_CO`), igual que el plan `'Estandar'`: cada gimnasio registra en SU WABA una plantilla con
+ese nombre y esas 3 variables. El `mensaje` de texto se sigue guardando en `Notificacion` como
+registro, aunque cloud_api no lo mande.
+
 **La trampa del aviso.** Lo obvio seria
 `Pago.find({ periodoFin: { $lte: umbral }, notificado: false })`. Esta mal: un miembro que ya
 renovo conserva su pago viejo, con `periodoFin` pasado y `notificado: false`, y recibiria un

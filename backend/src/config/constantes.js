@@ -55,6 +55,21 @@ export const LISTA_PROVEEDORES_WHATSAPP = Object.values(PROVEEDORES_WHATSAPP);
 
 export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
 
+/**
+ * Plantilla de WhatsApp para el aviso de vencimiento (proveedor Cloud API).
+ *
+ * Meta solo deja mandar texto libre dentro de la ventana de 24h; un aviso de
+ * vencimiento casi nunca cae ahi, asi que en produccion se envia una PLANTILLA
+ * aprobada. Es una CONVENCION, igual que el plan 'Estandar': cada gimnasio
+ * registra en SU WABA una plantilla con este mismo nombre e idioma. El cuerpo
+ * aprobado espera 3 variables, en este orden:
+ *   {{1}} = nombre del miembro · {{2}} = gimnasio · {{3}} = fecha de vencimiento.
+ */
+export const PLANTILLA_VENCIMIENTO = Object.freeze({
+  nombre: 'aviso_vencimiento',
+  idioma: 'es_CO',
+});
+
 export const TIPOS_NOTIFICACION = Object.freeze({
   PROXIMO_VENCIMIENTO: 'proximo_vencimiento',
 });

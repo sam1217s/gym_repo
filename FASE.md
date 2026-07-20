@@ -206,9 +206,11 @@ Objetivo: que un gimnasio opere de verdad. Aqui el aislamiento se ejercita a dia
 > El codigo no la toma: el canal se elige por gimnasio en `tenant.config.whatsapp`.
 > Si se elige Baileys, hay que implementar `proveedores/baileys.proveedor.js` (dependencia
 > `@whiskeysockets/baileys`, sesion persistida y emparejamiento por QR por cada gimnasio).
-> Si se elige Cloud API, hay que registrar una **plantilla aprobada** por Meta: el envio de
-> texto libre solo funciona dentro de la ventana de 24 h, y un aviso de vencimiento casi
-> nunca cae dentro de ella (ver el comentario en `cloudApi.proveedor.js`).
+> Si se elige Cloud API, el proveedor ya envia una **plantilla** (`type: 'template'`,
+> `PLANTILLA_VENCIMIENTO` = `aviso_vencimiento` / `es_CO`) en vez de texto libre, porque Meta
+> solo acepta texto libre dentro de la ventana de 24 h. Lo que queda del lado de cada gimnasio
+> (no del codigo): registrar en SU WABA una plantilla aprobada con ese nombre y sus 3 variables,
+> y poner las credenciales `{ idTelefono, token }` en `tenant.config.whatsapp`.
 
 ---
 
@@ -353,8 +355,12 @@ Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones co
 - [ ] **Un envio fallido se reintenta cada dia, para siempre.** No hay tope de reintentos
       ni backoff: un telefono invalido genera una `Notificacion` fallida diaria.
 - [ ] **Baileys sin implementar.** Su fabrica lanza. Ver la decision abierta de la Fase 5.
-- [ ] **Cloud API envia texto libre**, que Meta solo acepta dentro de la ventana de 24 h.
-      Para produccion hace falta una plantilla aprobada (`type: 'template'`).
+- [ ] **La plantilla de Cloud API es una convencion, no configurable por gimnasio.** El
+      proveedor envia `type: 'template'` con `PLANTILLA_VENCIMIENTO` (nombre `aviso_vencimiento`,
+      idioma `es_CO`) fija en `config/constantes.js`. Todos los gimnasios deben registrar en su
+      WABA una plantilla con ESE nombre e idioma. Si alguno necesita otro nombre/idioma, habria
+      que moverlo a `tenant.config.whatsapp.plantilla` (el proveedor ya acepta el override por
+      parametro; solo falta exponerlo en el esquema del Tenant y en la fabrica).
 - [ ] **Sin llaves de Wompi no hay cobro.** `WOMPI_LLAVE_PUBLICA`, `WOMPI_SECRETO_INTEGRIDAD`
       y `WOMPI_SECRETO_EVENTOS` son opcionales para que el proyecto arranque en local; sin
       ellas el enlace de pago responde 503 y el webhook tambien. Antes de desplegar hay que

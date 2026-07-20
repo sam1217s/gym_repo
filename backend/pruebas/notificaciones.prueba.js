@@ -156,6 +156,13 @@ describe('a quien se avisa', () => {
     const textos = falso.enviados.map((aviso) => aviso.mensaje).join(' | ');
     expect(textos).toMatch(/vence en 2 dias/);
     expect(textos).toMatch(/vencio el/);
+
+    // Ademas del texto, cada aviso lleva las 3 variables de la plantilla
+    // (nombre, gimnasio, fecha) para el proveedor Cloud API.
+    for (const aviso of falso.enviados) {
+      expect(aviso.variables).toHaveLength(3);
+      expect(aviso.variables[1]).toBe('Gimnasio Avisos');
+    }
   });
 
   it('un miembro que RENOVO no recibe aviso, aunque su pago viejo siga sin notificar', async () => {
