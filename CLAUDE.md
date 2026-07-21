@@ -201,12 +201,19 @@ en memoria. `derivarEstado()` es la unica funcion que traduce un pago a
 `Pago.periodoFin` se calcula una vez, al registrar el pago
 (`periodoInicio + planMembresia.duracionMeses`), y despues es historia: no se muta.
 
-### La mensualidad dura un MES, no 30 dias
+### La mensualidad dura un MES, no 30 dias (pero un plan puede medirse en dias)
 
-`PlanMembresia.duracionMeses` (no `duracionDias`). Quien paga el 31 de enero vence el
-**28 de febrero**, no el 2 de marzo: `utilidades/fechas.js → sumarMeses()` recorta el dia al
-ultimo del mes destino. `setMonth()` a secas desborda al mes siguiente y le cobraria al
-miembro dias que no compro.
+Un `PlanMembresia` mide su vigencia en `duracionMeses` **O** en `duracionDias`, exactamente
+uno de los dos (lo exige un `pre('validate')` en el esquema y un `.refine` en Zod). Los planes
+recurrentes van en meses; un "Pase de dia" va en dias. La verdad para calcular el vencimiento
+es `utilidades/fechas.js → sumarDuracion(inicio, plan)`, que despacha a `sumarDias` o
+`sumarMeses` segun cual venga; `pagos.servicio.js` y `pagosMiembro.servicio.js` la usan para el
+`periodoFin`. **No calcular el vencimiento a mano en ningun sitio: siempre `sumarDuracion`.**
+
+Para los planes en meses la regla de calendario sigue en pie: quien paga el 31 de enero vence
+el **28 de febrero**, no el 2 de marzo: `sumarMeses()` recorta el dia al ultimo del mes
+destino. `setMonth()` a secas desborda al mes siguiente y le cobraria al miembro dias que no
+compro.
 
 Y una fecha sin hora (`"2026-07-09"`, la que manda un `<input type="date">`) es un **dia
 civil**, no un instante. `z.coerce.date()` la convierte en medianoche **UTC**, que en Bogota

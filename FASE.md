@@ -367,6 +367,39 @@ Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (
 
 ---
 
+## Fase 9 — Operacion del gimnasio (pase de dia · inventario · mantenimiento)
+
+Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
+**pase de dia → inventario → mantenimiento**.
+
+### Etapa 1 — Pase de dia · HECHO y desplegado
+- [x] `PlanMembresia` ahora mide en `duracionMeses` **O** `duracionDias` (exactamente uno, lo
+      exige un `pre('validate')` + un `.refine` en Zod). Virtual `descripcionDuracion` ("1 dia").
+- [x] `utilidades/fechas.js → sumarDuracion(inicio, plan)`: dias o meses segun el plan. Lo usan
+      `pagos.servicio.js` y `pagosMiembro.servicio.js` para el `periodoFin`.
+- [x] Frontend: `PaginaPlanes.vue` con numero + unidad (meses/dias); `FormularioPago.vue` deriva
+      el vencimiento con dias. Seed añade "Pase de dia" ($8.000 / 1 dia).
+- [x] Pruebas: pase de dia vence al dia siguiente; un plan no puede tener meses y dias a la vez.
+
+### Etapa 2 — Inventario por sede · HECHO y desplegado
+- [x] `modelos/Producto.js` tenant-scoped (con plugin de aislamiento): `sede` (req), `nombre`,
+      `cantidad` (min 0), `precio` (opcional), `activo`. Indice `{ tenant, sede, nombre }` unico.
+- [x] `inventario.servicio.js` respeta el contrato `filtroSede`: un sede_admin solo ve/toca lo
+      de SU sede (producto de otra sede = 404), y al crear se le fuerza su sede. `ajustarStock`
+      rechaza dejar la cantidad en negativo ("No hay existencias suficientes").
+- [x] Rutas `GET/POST /inventario`, `PATCH /:id/ajuste` (entrada/salida), `PATCH /:id`,
+      `DELETE /:id` (archiva). Cadena de middlewares estandar + `limitarASede`.
+- [x] Frontend: `PaginaInventario.vue` (tabla con existencias en chip verde/rojo, entrada/salida
+      por dialogo, editar, archivar; selector de sede solo para el dueño), en el store y el nav.
+- [x] 6 pruebas (`inventario.prueba.js`), todas en verde. Seed añade productos de demo por sede.
+
+### Etapa 3 — Mantenimiento de maquinas · PENDIENTE
+- [ ] Lista de maquinas/implementos por sede con estado **operativa / mantenimiento / dañada**,
+      para que el dueño sepa que necesita revision. Modelo tenant-scoped por sede (mismo patron
+      que inventario), servicio con `filtroSede`, rutas, pantalla, nav y pruebas.
+
+---
+
 ## Deuda tecnica conocida
 
 Cosas que funcionan pero tienen un borde afilado. No son bugs; son decisiones con coste.

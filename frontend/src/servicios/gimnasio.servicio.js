@@ -23,6 +23,33 @@ export async function actualizarSede(id, datos) {
   return respuesta.data;
 }
 
+// --- Inventario (por sede) -----------------------------------------------------
+
+export async function listarInventario() {
+  const { data: respuesta } = await api.get('/inventario');
+  return respuesta.data;
+}
+
+export async function crearProducto(datos) {
+  const { data: respuesta } = await api.post('/inventario', datos);
+  return respuesta.data;
+}
+
+export async function actualizarProducto(id, datos) {
+  const { data: respuesta } = await api.patch(`/inventario/${id}`, datos);
+  return respuesta.data;
+}
+
+export async function ajustarStock(id, delta) {
+  const { data: respuesta } = await api.patch(`/inventario/${id}/ajuste`, { delta });
+  return respuesta.data;
+}
+
+export async function archivarProducto(id) {
+  const { data: respuesta } = await api.delete(`/inventario/${id}`);
+  return respuesta.data;
+}
+
 // --- Usuarios (staff) ----------------------------------------------------------
 
 export async function listarUsuarios() {

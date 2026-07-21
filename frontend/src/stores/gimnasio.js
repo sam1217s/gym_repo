@@ -13,6 +13,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const sedes = ref([]);
   const usuarios = ref([]);
   const planesMembresia = ref([]);
+  const inventario = ref([]);
 
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
   const vencimientos = ref([]);
@@ -112,6 +113,37 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     return pago;
   }
 
+  // --- Inventario (por sede) -------------------------------------------------
+
+  async function cargarInventario() {
+    inventario.value = await servicioGimnasio.listarInventario();
+  }
+
+  async function crearProducto(datos) {
+    const creado = await servicioGimnasio.crearProducto(datos);
+    inventario.value.push(creado);
+    return creado;
+  }
+
+  async function actualizarProducto(id, datos) {
+    const actualizado = await servicioGimnasio.actualizarProducto(id, datos);
+    reemplazar(inventario, actualizado);
+    return actualizado;
+  }
+
+  async function ajustarStock(id, delta) {
+    const actualizado = await servicioGimnasio.ajustarStock(id, delta);
+    reemplazar(inventario, actualizado);
+    return actualizado;
+  }
+
+  async function archivarProducto(id) {
+    const archivado = await servicioGimnasio.archivarProducto(id);
+    // Archivar lo saca de la lista visible (solo mostramos activos).
+    inventario.value = inventario.value.filter((producto) => producto._id !== id);
+    return archivado;
+  }
+
   // --- Reportes ----------------------------------------------------------------
 
   async function cargarReportePanel() {
@@ -127,9 +159,15 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     sedes,
     usuarios,
     planesMembresia,
+    inventario,
     vencimientos,
     reportePanel,
     cargando,
+    cargarInventario,
+    crearProducto,
+    actualizarProducto,
+    ajustarStock,
+    archivarProducto,
     cargarSedes,
     crearSede,
     actualizarSede,

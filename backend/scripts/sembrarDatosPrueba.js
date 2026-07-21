@@ -178,6 +178,17 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
       Sede.create({ nombre: 'Sede Norte', direccion: 'Calle 100 #15-20', telefono: '6011234567' }),
       Sede.create({ nombre: 'Sede Sur', direccion: 'Carrera 30 #4-50', telefono: '6017654321' }),
     ]);
+
+    // Inventario de demo, por sede.
+    const Producto = obtenerModelo('Producto');
+    await Producto.create([
+      { sede: norte._id, nombre: 'Proteina 2lb', cantidad: 12, precio: 95_000 },
+      { sede: norte._id, nombre: 'Toalla', cantidad: 30, precio: 15_000 },
+      { sede: norte._id, nombre: 'Guantes', cantidad: 3, precio: 40_000 },
+      { sede: sur._id, nombre: 'Creatina', cantidad: 8, precio: 70_000 },
+      { sede: sur._id, nombre: 'Botella', cantidad: 0, precio: 20_000 },
+    ]);
+
     return { norte, sur };
   });
 

@@ -7,6 +7,7 @@ import * as pago from './Pago.js';
 import * as planMembresia from './PlanMembresia.js';
 import * as planPlataforma from './PlanPlataforma.js';
 import * as miembro from './Miembro.js';
+import * as producto from './Producto.js';
 import * as sede from './Sede.js';
 import * as tenant from './Tenant.js';
 import * as usuario from './Usuario.js';
@@ -33,6 +34,7 @@ const definiciones = [
   miembro,
   pago,
   notificacion,
+  producto,
 ];
 
 export const NOMBRES_MODELOS = Object.freeze(
