@@ -166,7 +166,7 @@
     </q-tab-panels>
 
     <!-- Alta de gasto -->
-    <q-dialog v-model="dialogoGasto">
+    <q-dialog v-model="dialogoGasto" class="dialogo-form">
       <q-card class="tarjeta-form">
         <q-card-section class="q-pb-sm">
           <div class="text-h6 titulo-display">Nuevo gasto</div>
@@ -230,7 +230,7 @@
     </q-dialog>
 
     <!-- Alta de deuda -->
-    <q-dialog v-model="dialogoDeuda">
+    <q-dialog v-model="dialogoDeuda" class="dialogo-form">
       <q-card class="tarjeta-form">
         <q-card-section class="q-pb-sm">
           <div class="text-h6 titulo-display">Nueva deuda</div>
@@ -604,5 +604,26 @@ onMounted(async () => {
   text-align: center;
   padding: 48px 16px;
   color: var(--q-secondary);
+}
+
+/* Los formularios de alta (gasto y deuda) llenan el ancho que Quasar permite en
+   un dialogo, en vez de encogerse al tamaño del contenido. */
+.tarjeta-form {
+  width: 100%;
+  max-width: 560px;
+  border-top: 4px solid var(--q-primary);
+}
+
+/* En movil ocupa el 90% de la pantalla; se recorta el relleno del dialogo para
+   que ese 90% quepa sin desbordar. */
+@media (max-width: 599px) {
+  .tarjeta-form {
+    width: 90vw;
+    max-width: 90vw;
+  }
+
+  .dialogo-form :deep(.q-dialog__inner--minimized) {
+    padding: 12px;
+  }
 }
 </style>
