@@ -50,6 +50,28 @@ export async function archivarProducto(id) {
   return respuesta.data;
 }
 
+// --- Maquinas (por sede) -------------------------------------------------------
+
+export async function listarMaquinas() {
+  const { data: respuesta } = await api.get('/maquinas');
+  return respuesta.data;
+}
+
+export async function crearMaquina(datos) {
+  const { data: respuesta } = await api.post('/maquinas', datos);
+  return respuesta.data;
+}
+
+export async function actualizarMaquina(id, datos) {
+  const { data: respuesta } = await api.patch(`/maquinas/${id}`, datos);
+  return respuesta.data;
+}
+
+export async function archivarMaquina(id) {
+  const { data: respuesta } = await api.delete(`/maquinas/${id}`);
+  return respuesta.data;
+}
+
 // --- Usuarios (staff) ----------------------------------------------------------
 
 export async function listarUsuarios() {

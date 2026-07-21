@@ -189,6 +189,16 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
       { sede: sur._id, nombre: 'Botella', cantidad: 0, precio: 20_000 },
     ]);
 
+    // Maquinas de demo, por sede, con distintos estados.
+    const Maquina = obtenerModelo('Maquina');
+    await Maquina.create([
+      { sede: norte._id, nombre: 'Caminadora 1', estado: 'operativa' },
+      { sede: norte._id, nombre: 'Caminadora 2', estado: 'mantenimiento', nota: 'Banda floja' },
+      { sede: norte._id, nombre: 'Prensa de pierna', estado: 'danada', nota: 'Cable partido' },
+      { sede: sur._id, nombre: 'Bicicleta estatica', estado: 'operativa' },
+      { sede: sur._id, nombre: 'Polea alta', estado: 'operativa' },
+    ]);
+
     return { norte, sur };
   });
 

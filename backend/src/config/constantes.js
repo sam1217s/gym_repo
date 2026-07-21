@@ -125,6 +125,27 @@ export const ESTADOS_VENCIMIENTO_AVISABLES = Object.freeze([
   ESTADOS_VENCIMIENTO.VENCIDO,
 ]);
 
+// --- Maquinas e implementos del gimnasio (mantenimiento) ---------------------
+
+/**
+ * Estado de una maquina o implemento. El dueño lo lee para saber que necesita
+ * revision: `mantenimiento` esta fuera de servicio temporalmente, `danada` esta
+ * rota y espera reparacion o baja.
+ */
+export const ESTADOS_MAQUINA = Object.freeze({
+  OPERATIVA: 'operativa',
+  MANTENIMIENTO: 'mantenimiento',
+  DANADA: 'danada',
+});
+
+export const LISTA_ESTADOS_MAQUINA = Object.values(ESTADOS_MAQUINA);
+
+/** Estados que el dueño debe atender: no operan. */
+export const ESTADOS_MAQUINA_REQUIEREN_ATENCION = Object.freeze([
+  ESTADOS_MAQUINA.MANTENIMIENTO,
+  ESTADOS_MAQUINA.DANADA,
+]);
+
 /** Todos los dias a las 9:00, en la zona horaria del producto. */
 export const EXPRESION_CRON_VENCIMIENTOS = '0 9 * * *';
 

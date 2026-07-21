@@ -14,6 +14,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const usuarios = ref([]);
   const planesMembresia = ref([]);
   const inventario = ref([]);
+  const maquinas = ref([]);
 
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
   const vencimientos = ref([]);
@@ -144,6 +145,31 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     return archivado;
   }
 
+  // --- Maquinas (por sede) ---------------------------------------------------
+
+  async function cargarMaquinas() {
+    maquinas.value = await servicioGimnasio.listarMaquinas();
+  }
+
+  async function crearMaquina(datos) {
+    const creada = await servicioGimnasio.crearMaquina(datos);
+    maquinas.value.push(creada);
+    return creada;
+  }
+
+  async function actualizarMaquina(id, datos) {
+    const actualizada = await servicioGimnasio.actualizarMaquina(id, datos);
+    reemplazar(maquinas, actualizada);
+    return actualizada;
+  }
+
+  async function archivarMaquina(id) {
+    const archivada = await servicioGimnasio.archivarMaquina(id);
+    // Archivar la saca de la lista visible (solo mostramos activas).
+    maquinas.value = maquinas.value.filter((maquina) => maquina._id !== id);
+    return archivada;
+  }
+
   // --- Reportes ----------------------------------------------------------------
 
   async function cargarReportePanel() {
@@ -160,6 +186,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     usuarios,
     planesMembresia,
     inventario,
+    maquinas,
     vencimientos,
     reportePanel,
     cargando,
@@ -168,6 +195,10 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     actualizarProducto,
     ajustarStock,
     archivarProducto,
+    cargarMaquinas,
+    crearMaquina,
+    actualizarMaquina,
+    archivarMaquina,
     cargarSedes,
     crearSede,
     actualizarSede,

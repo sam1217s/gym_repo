@@ -393,10 +393,19 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
       por dialogo, editar, archivar; selector de sede solo para el dueño), en el store y el nav.
 - [x] 6 pruebas (`inventario.prueba.js`), todas en verde. Seed añade productos de demo por sede.
 
-### Etapa 3 — Mantenimiento de maquinas · PENDIENTE
-- [ ] Lista de maquinas/implementos por sede con estado **operativa / mantenimiento / dañada**,
-      para que el dueño sepa que necesita revision. Modelo tenant-scoped por sede (mismo patron
-      que inventario), servicio con `filtroSede`, rutas, pantalla, nav y pruebas.
+### Etapa 3 — Mantenimiento de maquinas · HECHO y desplegado
+- [x] `modelos/Maquina.js` tenant-scoped por sede: `nombre`, `estado`
+      (`operativa`/`mantenimiento`/`danada`, en `ESTADOS_MAQUINA`), `nota` libre, `activo`.
+      Indice `{ tenant, sede, nombre }` unico. Mismo patron de aislamiento que Producto.
+- [x] `maquinas.servicio.js` con contrato `filtroSede`: un sede_admin solo ve/toca las de SU
+      sede (maquina de otra sede = 404) y al crear se le fuerza su sede. Rutas
+      `GET/POST /maquinas`, `PATCH /:id`, `DELETE /:id` (archiva).
+- [x] Frontend: `PaginaMaquinas.vue` con estado en chip de color (verde/ambar/rojo, reusando las
+      bandas de disco), banner de "N equipos requieren atencion", cambio rapido de estado por
+      dialogo de radios, editar (con nota) y archivar. En el store, el nav y el router.
+- [x] 6 pruebas (`maquinas.prueba.js`): arranca operativa, se marca dañada con nota, rechaza
+      estado invalido, aislamiento por sede (lista y 404), filtro por estado. Suite: 205 en verde.
+- [x] Seed con maquinas de demo por sede (una en mantenimiento, una dañada).
 
 ---
 
