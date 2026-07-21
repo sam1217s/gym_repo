@@ -70,45 +70,48 @@
         <q-td :props="props" class="text-right">
           <q-btn
             v-if="props.row.estado !== ESTADOS_GIMNASIO.CANCELADO"
+            round
             flat
             dense
-            no-caps
-            size="sm"
-            color="grey-8"
-            icon="qr_code_2"
-            label="Cobros"
+            color="primary"
+            icon="credit_card"
             @click="abrirCobros(props.row)"
-          />
+          >
+            <q-tooltip>Configurar cobro en línea (Wompi)</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="puedeSuspender(props.row)"
+            round
             flat
             dense
-            no-caps
-            size="sm"
             color="warning"
-            label="Suspender"
+            icon="pause_circle"
             @click="confirmarSuspension(props.row)"
-          />
+          >
+            <q-tooltip>Suspender</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="props.row.estado === ESTADOS_GIMNASIO.SUSPENDIDO"
+            round
             flat
             dense
-            no-caps
-            size="sm"
             color="positive"
-            label="Reactivar"
+            icon="play_circle"
             @click="confirmarReactivacion(props.row)"
-          />
+          >
+            <q-tooltip>Reactivar</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="props.row.estado !== ESTADOS_GIMNASIO.CANCELADO"
+            round
             flat
             dense
-            no-caps
-            size="sm"
             color="negative"
-            label="Cancelar"
+            icon="cancel"
             @click="confirmarCancelacion(props.row)"
-          />
+          >
+            <q-tooltip>Cancelar (definitivo)</q-tooltip>
+          </q-btn>
           <span v-if="props.row.estado === ESTADOS_GIMNASIO.CANCELADO" class="text-grey-6">—</span>
         </q-td>
       </template>
