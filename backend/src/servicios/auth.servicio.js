@@ -197,6 +197,7 @@ export function describirSesion(usuario, tenant = null) {
     rol: usuario.rol,
     tenant: usuario.tenant,
     tenantEstado: tenant?.estado ?? null,
+    tenantNombre: tenant?.nombre ?? null,
     sede: usuario.sede,
     debeCambiarContrasena: usuario.debeCambiarContrasena,
   };

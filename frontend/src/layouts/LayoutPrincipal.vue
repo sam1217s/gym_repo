@@ -5,14 +5,33 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="alternarMenu" />
 
-        <q-toolbar-title class="titulo-display">GymSaaS</q-toolbar-title>
+        <!-- Titulo: el NEGOCIO manda (nombre del gimnasio); GymSaaS queda como
+             ceja discreta. El super_admin ve la plataforma. -->
+        <q-toolbar-title class="columna-titulo">
+          <div class="ceja-marca">{{ esSuperAdmin ? 'GymSaaS' : 'GymSaaS · Panel' }}</div>
+          <div class="titulo-display titulo-negocio">{{ tituloNegocio }}</div>
+        </q-toolbar-title>
 
-        <div class="q-mr-md text-caption">
-          {{ usuario?.nombreCompleto }}
-          <q-badge outline align="middle" class="q-ml-sm">{{ etiquetaRol }}</q-badge>
-        </div>
-
-        <q-btn flat dense round icon="logout" aria-label="Cerrar sesion" @click="cerrarSesion" />
+        <!-- La identidad y el cierre de sesion se guardan tras el avatar: asi el
+             header no se satura en movil. -->
+        <q-btn flat round dense icon="account_circle" aria-label="Cuenta">
+          <q-menu anchor="bottom right" self="top right">
+            <div class="tarjeta-cuenta">
+              <div class="text-weight-medium">{{ usuario?.nombreCompleto }}</div>
+              <div class="text-caption text-grey-7">{{ usuario?.email }}</div>
+              <q-badge outline color="primary" class="q-mt-xs">{{ etiquetaRol }}</q-badge>
+            </div>
+            <q-separator />
+            <q-list>
+              <q-item v-close-popup clickable @click="cerrarSesion">
+                <q-item-section avatar>
+                  <q-icon name="logout" color="primary" />
+                </q-item-section>
+                <q-item-section>Cerrar sesion</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -99,6 +118,14 @@ const ENLACES = [
 const etiquetaRol = computed(() => ETIQUETAS_ROL[usuario.value?.rol] ?? '');
 
 const autenticacion = useAutenticacionStore();
+const esSuperAdmin = computed(() => usuario.value?.rol === ROLES.SUPER_ADMIN);
+
+// El titulo del header es el nombre del NEGOCIO. El super_admin opera la
+// plataforma, no un gimnasio; si por lo que sea no llega el nombre, cae a GymSaaS.
+const tituloNegocio = computed(() => {
+  if (esSuperAdmin.value) return 'Plataforma';
+  return usuario.value?.tenantNombre || 'GymSaaS';
+});
 
 const enlacesVisibles = computed(() => {
   // Un gimnasio suspendido solo puede ir a Facturacion: mostrar el resto seria
@@ -132,6 +159,35 @@ function alNavegar() {
 <style scoped>
 .encabezado-marca {
   border-bottom: 3px solid var(--q-primary);
+}
+
+.columna-titulo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+  min-width: 0; /* deja que el nombre largo se recorte en vez de empujar */
+}
+
+.ceja-marca {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.titulo-negocio {
+  font-size: 1.35rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tarjeta-cuenta {
+  padding: 12px 16px;
+  min-width: 200px;
+  max-width: 260px;
 }
 
 .etiqueta-nav {
