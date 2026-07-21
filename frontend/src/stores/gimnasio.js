@@ -14,6 +14,8 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const usuarios = ref([]);
   const planesMembresia = ref([]);
   const inventario = ref([]);
+  const ventas = ref([]);
+  const resumenVentas = ref({ total: 0, unidades: 0, operaciones: 0 });
   const maquinas = ref([]);
 
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
@@ -145,6 +147,22 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     return archivado;
   }
 
+  // --- Ventas de productos (por sede) ----------------------------------------
+
+  async function cargarVentas(params) {
+    const datos = await servicioGimnasio.listarVentas(params);
+    ventas.value = datos.ventas;
+    resumenVentas.value = datos.resumen;
+    return datos;
+  }
+
+  async function registrarVenta(productoId, cantidad) {
+    const { venta, producto } = await servicioGimnasio.registrarVenta(productoId, cantidad);
+    // Refleja el nuevo stock en la lista de inventario sin recargar todo.
+    reemplazar(inventario, producto);
+    return venta;
+  }
+
   // --- Maquinas (por sede) ---------------------------------------------------
 
   async function cargarMaquinas() {
@@ -186,6 +204,8 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     usuarios,
     planesMembresia,
     inventario,
+    ventas,
+    resumenVentas,
     maquinas,
     vencimientos,
     reportePanel,
@@ -195,6 +215,8 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     actualizarProducto,
     ajustarStock,
     archivarProducto,
+    cargarVentas,
+    registrarVenta,
     cargarMaquinas,
     crearMaquina,
     actualizarMaquina,

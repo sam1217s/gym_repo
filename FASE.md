@@ -393,6 +393,24 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
       por dialogo, editar, archivar; selector de sede solo para el dueño), en el store y el nav.
 - [x] 6 pruebas (`inventario.prueba.js`), todas en verde. Seed añade productos de demo por sede.
 
+### Etapa 2.1 — Ventas de productos (mini punto de venta) · HECHO y desplegado
+- [x] `Producto.precio` pasa a **obligatorio** (sin precio no se puede vender). Migracion
+      `scripts/migrarPrecioProducto.js` pone `precio: 0` a los productos viejos sin precio
+      (idempotente, sobre la coleccion cruda para arreglar todos los tenants).
+- [x] `modelos/VentaProducto.js` tenant-scoped por sede: guarda FOTO de `nombreProducto` y
+      `precioUnitario` al vender, `total = cantidad * precioUnitario`, y `registradoPor` (el
+      encargado). Es un TERCER flujo de dinero, distinto de la mensualidad del miembro y de la
+      suscripcion del gimnasio.
+- [x] `ventas.servicio.js`: `registrarVenta` descuenta stock y crea la venta (compensa
+      devolviendo el stock si falla el registro; no hay transacciones). `listarVentas` agrupa
+      por dia (por defecto HOY) y devuelve `{ ventas, resumen: { total, unidades, operaciones } }`.
+      Respeta `filtroSede`: un sede_admin solo vende/ve lo de SU sede. Rutas `GET/POST /ventas`.
+- [x] Frontend: accion **Vender** en el inventario (descuenta stock + registra ingreso) y
+      `PaginaVentas.vue` con el total del dia, unidades, operaciones y un selector de fecha.
+      En el store, el nav y el router. Precio repuesto en la tabla y como campo obligatorio.
+- [x] 5 pruebas (`ventas.prueba.js`) + inventario ampliado (rechaza producto sin precio).
+      Suite completa: 211 en verde.
+
 ### Etapa 3 — Mantenimiento de maquinas · HECHO y desplegado
 - [x] `modelos/Maquina.js` tenant-scoped por sede: `nombre`, `estado`
       (`operativa`/`mantenimiento`/`danada`, en `ESTADOS_MAQUINA`), `nota` libre, `activo`.

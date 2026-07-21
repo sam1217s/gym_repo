@@ -30,11 +30,14 @@
 
       <template #body-cell-acciones="props">
         <q-td :props="props" class="text-right">
+          <q-btn round flat dense color="primary" icon="point_of_sale" :disable="props.row.cantidad === 0" @click="vender(props.row)">
+            <q-tooltip>{{ props.row.cantidad === 0 ? 'Sin existencias' : 'Vender' }}</q-tooltip>
+          </q-btn>
           <q-btn round flat dense color="positive" icon="add_circle" @click="ajustar(props.row, 1)">
             <q-tooltip>Entrada de stock</q-tooltip>
           </q-btn>
           <q-btn round flat dense color="warning" icon="remove_circle" @click="ajustar(props.row, -1)">
-            <q-tooltip>Salida de stock</q-tooltip>
+            <q-tooltip>Salida (merma o ajuste)</q-tooltip>
           </q-btn>
           <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row)">
             <q-tooltip>Editar</q-tooltip>
@@ -70,14 +73,27 @@
               :rules="[reglaObligatorio]"
             />
 
-            <q-input
-              v-if="!editando"
-              v-model.number="formulario.cantidad"
-              type="number"
-              label="Existencias iniciales"
-              outlined
-              dense
-            />
+            <div class="row q-col-gutter-md">
+              <q-input
+                v-if="!editando"
+                v-model.number="formulario.cantidad"
+                class="col-6"
+                type="number"
+                label="Existencias iniciales"
+                outlined
+                dense
+              />
+              <q-input
+                v-model.number="formulario.precio"
+                :class="editando ? 'col-12' : 'col-6'"
+                type="number"
+                label="Precio de venta"
+                prefix="$"
+                outlined
+                dense
+                :rules="[reglaPrecio]"
+              />
+            </div>
           </q-card-section>
 
           <q-separator />
@@ -115,6 +131,8 @@ const editando = ref(false);
 const guardando = ref(false);
 const productoActivo = ref(null);
 
+const FORMATO_PESOS = new Intl.NumberFormat('es-CO');
+
 // El dueno elige sede; al sede_admin se la fuerza el backend, asi no la muestra.
 const sedesVisibles = computed(() => autenticacion.usuario?.rol === ROLES.TENANT_OWNER);
 
@@ -126,6 +144,14 @@ const COLUMNAS = [
   { name: 'nombre', label: 'Producto', field: 'nombre', align: 'left', sortable: true },
   { name: 'sede', label: 'Sede', field: (fila) => nombreSede(fila.sede), align: 'left' },
   { name: 'cantidad', label: 'Existencias', field: 'cantidad', align: 'right', sortable: true },
+  {
+    name: 'precio',
+    label: 'Precio',
+    field: 'precio',
+    align: 'right',
+    format: (valor) => `$${FORMATO_PESOS.format(valor ?? 0)}`,
+    classes: 'cifra-tabular',
+  },
   { name: 'acciones', label: '', field: '_id', align: 'right' },
 ];
 
@@ -136,20 +162,26 @@ const opcionesSede = computed(() =>
 );
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
+const reglaPrecio = (valor) => (Number(valor) >= 0 && valor !== null && valor !== '') || 'Indica el precio de venta';
 
-const formulario = reactive({ nombre: '', sede: null, cantidad: 0 });
+const formulario = reactive({ nombre: '', sede: null, cantidad: 0, precio: null });
 
 function abrirCreacion() {
   editando.value = false;
   productoActivo.value = null;
-  Object.assign(formulario, { nombre: '', sede: null, cantidad: 0 });
+  Object.assign(formulario, { nombre: '', sede: null, cantidad: 0, precio: null });
   dialogoAbierto.value = true;
 }
 
 function abrirEdicion(producto) {
   editando.value = true;
   productoActivo.value = producto;
-  Object.assign(formulario, { nombre: producto.nombre, sede: producto.sede, cantidad: producto.cantidad });
+  Object.assign(formulario, {
+    nombre: producto.nombre,
+    sede: producto.sede,
+    cantidad: producto.cantidad,
+    precio: producto.precio ?? null,
+  });
   dialogoAbierto.value = true;
 }
 
@@ -159,12 +191,14 @@ async function guardar() {
     if (editando.value) {
       await gimnasio.actualizarProducto(productoActivo.value._id, {
         nombre: formulario.nombre,
+        precio: formulario.precio,
       });
       quasar.notify({ type: 'positive', message: 'Producto actualizado' });
     } else {
       await gimnasio.crearProducto({
         nombre: formulario.nombre,
         cantidad: formulario.cantidad ?? 0,
+        precio: formulario.precio,
         ...(formulario.sede ? { sede: formulario.sede } : {}),
       });
       quasar.notify({ type: 'positive', message: 'Producto agregado' });
@@ -175,6 +209,30 @@ async function guardar() {
   } finally {
     guardando.value = false;
   }
+}
+
+/** Vende N unidades: descuenta stock y registra el ingreso del dia. */
+function vender(producto) {
+  quasar
+    .dialog({
+      title: `Vender — ${producto.nombre}`,
+      message: `Precio: $${FORMATO_PESOS.format(producto.precio)} c/u · Existencias: ${producto.cantidad}. ¿Cuántas unidades?`,
+      prompt: { model: '1', type: 'number', isValid: (v) => Number(v) > 0 && Number(v) <= producto.cantidad },
+      cancel: { flat: true, noCaps: true, label: 'Volver' },
+      ok: { color: 'primary', unelevated: true, noCaps: true, label: 'Registrar venta' },
+    })
+    .onOk(async (valor) => {
+      const cantidad = Math.floor(Number(valor));
+      try {
+        await gimnasio.registrarVenta(producto._id, cantidad);
+        quasar.notify({
+          type: 'positive',
+          message: `Venta registrada: ${cantidad} × ${producto.nombre} = $${FORMATO_PESOS.format(producto.precio * cantidad)}`,
+        });
+      } catch (error) {
+        quasar.notify({ type: 'negative', message: error.response?.data?.error?.mensaje ?? 'No se pudo registrar la venta' });
+      }
+    });
 }
 
 /** `signo` = +1 (entrada) o -1 (salida). Pregunta cuantas unidades. */

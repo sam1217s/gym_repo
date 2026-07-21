@@ -12,6 +12,7 @@ import * as producto from './Producto.js';
 import * as sede from './Sede.js';
 import * as tenant from './Tenant.js';
 import * as usuario from './Usuario.js';
+import * as ventaProducto from './VentaProducto.js';
 
 /**
  * Registro central de modelos y unico punto de acoplamiento con la conexion.
@@ -37,6 +38,7 @@ const definiciones = [
   notificacion,
   producto,
   maquina,
+  ventaProducto,
 ];
 
 export const NOMBRES_MODELOS = Object.freeze(

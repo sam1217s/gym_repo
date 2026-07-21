@@ -14,6 +14,7 @@ import rutasReportes from './reportes.rutas.js';
 import rutasSedes from './sedes.rutas.js';
 import rutasUsuarios from './usuarios.rutas.js';
 import rutasVencimientos from './vencimientos.rutas.js';
+import rutasVentas from './ventas.rutas.js';
 import rutasWebhooks from './webhooks.rutas.js';
 
 const rutas = Router();
@@ -37,6 +38,7 @@ rutas.use('/usuarios', rutasUsuarios);
 rutas.use('/planes-membresia', rutasPlanesMembresia);
 rutas.use('/miembros', rutasMiembros);
 rutas.use('/inventario', rutasInventario);
+rutas.use('/ventas', rutasVentas);
 rutas.use('/maquinas', rutasMaquinas);
 rutas.use('/pagos', rutasPagos);
 rutas.use('/vencimientos', rutasVencimientos);

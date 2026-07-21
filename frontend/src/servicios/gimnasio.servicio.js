@@ -50,6 +50,20 @@ export async function archivarProducto(id) {
   return respuesta.data;
 }
 
+// --- Ventas de productos (por sede) --------------------------------------------
+
+/** Registra una venta: descuenta stock y guarda el ingreso. Devuelve { venta, producto }. */
+export async function registrarVenta(producto, cantidad) {
+  const { data: respuesta } = await api.post('/ventas', { producto, cantidad });
+  return respuesta.data;
+}
+
+/** `{ ventas, resumen: { total, unidades, operaciones }, desde, hasta }`. Sin params: hoy. */
+export async function listarVentas(params = {}) {
+  const { data: respuesta } = await api.get('/ventas', { params });
+  return respuesta.data;
+}
+
 // --- Maquinas (por sede) -------------------------------------------------------
 
 export async function listarMaquinas() {

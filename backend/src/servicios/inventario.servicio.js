@@ -38,6 +38,7 @@ export async function crearProducto(datos, { filtroSede = {}, sedePorDefecto = n
       sede,
       nombre: datos.nombre,
       cantidad: datos.cantidad ?? 0,
+      precio: datos.precio,
     });
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {

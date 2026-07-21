@@ -64,24 +64,34 @@ async function entrarComo(email) {
 beforeEach(limpiarColecciones);
 
 describe('Inventario por sede', () => {
-  it('el dueno crea un producto con existencias', async () => {
+  it('el dueno crea un producto con existencias y precio', async () => {
     const { sedes } = await montarGimnasio();
     const dueno = await entrarComo('owner@gyminv.co');
 
     const respuesta = await dueno
       .post('/api/inventario')
-      .send({ nombre: 'Proteina', sede: String(sedes.norte._id), cantidad: 10 })
+      .send({ nombre: 'Proteina', sede: String(sedes.norte._id), cantidad: 10, precio: 90_000 })
       .expect(201);
 
-    expect(respuesta.body.data).toMatchObject({ nombre: 'Proteina', cantidad: 10 });
+    expect(respuesta.body.data).toMatchObject({ nombre: 'Proteina', cantidad: 10, precio: 90_000 });
     expect(respuesta.body.data.sede).toBe(String(sedes.norte._id));
+  });
+
+  it('rechaza un producto sin precio', async () => {
+    const { sedes } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gyminv.co');
+
+    await dueno
+      .post('/api/inventario')
+      .send({ nombre: 'Sin precio', sede: String(sedes.norte._id), cantidad: 5 })
+      .expect(400);
   });
 
   it('un sede_admin solo ve el inventario de SU sede', async () => {
     const { sedes } = await montarGimnasio();
     const dueno = await entrarComo('owner@gyminv.co');
-    await dueno.post('/api/inventario').send({ nombre: 'Norte-item', sede: String(sedes.norte._id) }).expect(201);
-    await dueno.post('/api/inventario').send({ nombre: 'Sur-item', sede: String(sedes.sur._id) }).expect(201);
+    await dueno.post('/api/inventario').send({ nombre: 'Norte-item', sede: String(sedes.norte._id), precio: 1_000 }).expect(201);
+    await dueno.post('/api/inventario').send({ nombre: 'Sur-item', sede: String(sedes.sur._id), precio: 1_000 }).expect(201);
 
     const recepcion = await entrarComo('norte@gyminv.co');
     const respuesta = await recepcion.get('/api/inventario').expect(200);
@@ -96,7 +106,7 @@ describe('Inventario por sede', () => {
 
     const respuesta = await recepcion
       .post('/api/inventario')
-      .send({ nombre: 'Toalla', sede: String(sedes.sur._id) }) // intenta la sur
+      .send({ nombre: 'Toalla', sede: String(sedes.sur._id), precio: 1_000 }) // intenta la sur
       .expect(201);
 
     expect(respuesta.body.data.sede).toBe(String(sedes.norte._id)); // se fuerza la norte
@@ -107,7 +117,7 @@ describe('Inventario por sede', () => {
     const dueno = await entrarComo('owner@gyminv.co');
     const creado = await dueno
       .post('/api/inventario')
-      .send({ nombre: 'Agua', sede: String(sedes.norte._id), cantidad: 5 })
+      .send({ nombre: 'Agua', sede: String(sedes.norte._id), cantidad: 5, precio: 3_000 })
       .expect(201);
     const id = creado.body.data._id;
 
@@ -123,7 +133,7 @@ describe('Inventario por sede', () => {
     const dueno = await entrarComo('owner@gyminv.co');
     const creado = await dueno
       .post('/api/inventario')
-      .send({ nombre: 'Barra', sede: String(sedes.norte._id), cantidad: 2 })
+      .send({ nombre: 'Barra', sede: String(sedes.norte._id), cantidad: 2, precio: 1_000 })
       .expect(201);
 
     const respuesta = await dueno.patch(`/api/inventario/${creado.body.data._id}/ajuste`).send({ delta: -5 }).expect(400);
@@ -135,7 +145,7 @@ describe('Inventario por sede', () => {
     const dueno = await entrarComo('owner@gyminv.co');
     const sur = await dueno
       .post('/api/inventario')
-      .send({ nombre: 'Item-sur', sede: String(sedes.sur._id), cantidad: 1 })
+      .send({ nombre: 'Item-sur', sede: String(sedes.sur._id), cantidad: 1, precio: 1_000 })
       .expect(201);
 
     const recepcion = await entrarComo('norte@gyminv.co');

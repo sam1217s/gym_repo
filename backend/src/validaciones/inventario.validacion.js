@@ -13,6 +13,7 @@ export const esquemaCrearProducto = {
     // Para un sede_admin es opcional: el servicio la fuerza a la suya.
     sede: idMongo.optional(),
     cantidad: z.number().int().min(0).optional(),
+    precio: z.number().min(0, 'El precio es obligatorio'),
   }),
 };
 
@@ -21,6 +22,7 @@ export const esquemaActualizarProducto = {
   body: z
     .object({
       nombre: z.string().trim().min(1),
+      precio: z.number().min(0),
       activo: z.boolean(),
     })
     .partial()

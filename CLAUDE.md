@@ -138,14 +138,24 @@ y `obtenerModelo()`. La logica de negocio no se toca.
 
 ---
 
-## Los DOS niveles de cobro (no mezclarlos)
+## Los TRES flujos de dinero (no mezclarlos)
 
-Son dos flujos de dinero distintos que se parecen y se confunden:
+Se parecen y se confunden. Los dos primeros son "cobros" con ciclo de vida; el tercero es
+una venta simple de mostrador:
 
 | | Quien paga | A quien | Modelos |
 | --- | --- | --- | --- |
 | **Facturacion de plataforma** | El gimnasio | A GymSaaS | `PlanPlataforma` + `Tenant.estado` + `FacturaPlataforma` (Wompi de la PLATAFORMA, en el entorno) |
 | **Facturacion de miembros** | El miembro | Al gimnasio | `PlanMembresia` + `Pago` (efectivo/transferencia, o Wompi DEL GIMNASIO en `tenant.config.wompi`) |
+| **Venta de productos** | Quien compra en el mostrador | Al gimnasio | `Producto` + `VentaProducto` (tenant-scoped POR SEDE; efectivo, sin pasarela) |
+
+La **venta de productos** (`servicios/ventas.servicio.js`) es un mini punto de venta, no un
+cobro con estados: `registrarVenta` descuenta el stock y crea una `VentaProducto` que guarda la
+FOTO del `nombreProducto` y el `precioUnitario` del momento (`total = cantidad * precioUnitario`),
+mas el `registradoPor` (el encargado). Sin transacciones, compensa a mano: si falla el registro
+de la venta, devuelve el stock. `listarVentas` agrupa por dia y devuelve el resumen
+(`total`/`unidades`/`operaciones`) para el panel de "ventas de hoy". Respeta `filtroSede` igual
+que Miembro/Pago. `Producto.precio` es **obligatorio**: sin el no se puede vender.
 
 **Hay DOS integraciones de Wompi, con cuentas y secretos distintos, y confundirlas es un
 agujero:** la de plataforma (una sola cuenta de GymSaaS, en el `.env`, webhook `/webhooks/wompi`)
