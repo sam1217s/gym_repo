@@ -4,7 +4,9 @@ import { auditar } from '../middlewares/auditoria.js';
 import { responderOk } from '../utilidades/respuesta.js';
 import rutasAuditoria from './auditoria.rutas.js';
 import rutasAuth from './auth.rutas.js';
+import rutasDeudas from './deudas.rutas.js';
 import rutasFacturacion from './facturacion.rutas.js';
+import rutasGastos from './gastos.rutas.js';
 import rutasInventario from './inventario.rutas.js';
 import rutasMaquinas from './maquinas.rutas.js';
 import rutasMiembros from './miembros.rutas.js';
@@ -53,5 +55,7 @@ rutas.use('/vencimientos', rutasVencimientos);
 rutas.use('/reportes', rutasReportes);
 rutas.use('/reportes-maquina', rutasReportesMaquina);
 rutas.use('/auditoria', rutasAuditoria);
+rutas.use('/gastos', rutasGastos);
+rutas.use('/deudas', rutasDeudas);
 
 export default rutas;

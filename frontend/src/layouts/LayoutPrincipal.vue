@@ -137,6 +137,12 @@ const ENLACES = [
     icono: 'fitness_center',
     roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
   },
+  {
+    nombre: 'finanzas',
+    titulo: 'Finanzas',
+    icono: 'account_balance_wallet',
+    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
+  },
   { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'auditoria', titulo: 'Auditoria', icono: 'fact_check', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },

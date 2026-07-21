@@ -411,6 +411,26 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
 - [x] 5 pruebas (`ventas.prueba.js`) + inventario ampliado (rechaza producto sin precio).
       Suite completa: 211 en verde.
 
+### Etapa 6 — Modulo de finanzas (gastos por sede + deudas del dueño) · HECHO y desplegado
+- [x] `modelos/Gasto.js` tenant-scoped con **`sede` OPCIONAL**: con sede es el gasto de esa sede
+      (arriendo/servicios/empleados/otros), sin sede es del gimnasio entero (obligaciones del
+      dueño). De ahi salen las dos trazabilidades: por sede y consolidada.
+- [x] `modelos/Deuda.js`: creditos y demas obligaciones con `montoTotal`. El **pagado y el saldo
+      NO se guardan**: se derivan de la suma de sus abonos (misma regla que el vencimiento).
+- [x] `abonarDeuda` crea un `Gasto` con `categoria: 'deuda'` ligado a la deuda: baja el saldo Y
+      cuenta como egreso del mes, sin duplicar. No deja abonar mas que el saldo ni a una saldada.
+- [x] `gastos.servicio → resumenFinanzas`: agrega por `{ sede, categoria }` en un rango (por
+      defecto el mes) y devuelve `porSede` + `general` + `total`, cruzando nombres en memoria
+      (sin `$lookup`). Toda sede visible aparece aunque este en cero.
+- [x] Rutas: `/api/gastos` (staff, con `limitarASede`) y `/api/deudas` (**solo dueño**).
+      La bitacora de auditoria mapea gastos, deudas y abonos.
+- [x] Frontend `PaginaFinanzas.vue` con 3 pestañas: **Resumen** (tarjeta por sede + tarjeta
+      general + consolidado, con desglose por categoria), **Gastos** (libro de egresos con alta
+      y borrado) y **Deudas** (solo dueño: saldo, barra de progreso y abonar). Filtro de fechas.
+- [x] 7 pruebas (`finanzas.prueba.js`): resumen sede/general/consolidado, aislamiento del
+      sede_admin, sede forzada, saldo derivado, abono como gasto, tope del abono y 403 en deudas.
+      Suite: 229 en verde.
+
 ### Etapa 5 — Planes de membresia POR SEDE · HECHO y desplegado
 - [x] `PlanMembresia.sede` obligatorio; indice unico `{ tenant, sede, nombre }` (el nombre solo
       choca dentro de la misma sede, asi dos sedes pueden tener "Mensual" a distinto precio).

@@ -105,6 +105,50 @@ export async function marcarReportesLeidos() {
   return respuesta.data;
 }
 
+// --- Finanzas: gastos y deudas ---------------------------------------------------
+
+/** `{ desde, hasta, porSede: [...], general, total }`. Sin params: el mes actual. */
+export async function obtenerResumenFinanzas(params = {}) {
+  const { data: respuesta } = await api.get('/gastos/resumen', { params });
+  return respuesta.data;
+}
+
+export async function listarGastos(params = {}) {
+  const { data: respuesta } = await api.get('/gastos', { params });
+  return respuesta.data;
+}
+
+export async function crearGasto(datos) {
+  const { data: respuesta } = await api.post('/gastos', datos);
+  return respuesta.data;
+}
+
+export async function eliminarGasto(id) {
+  const { data: respuesta } = await api.delete(`/gastos/${id}`);
+  return respuesta.data;
+}
+
+/** Cada deuda viene con `pagado` y `saldo` ya derivados de sus abonos. */
+export async function listarDeudas() {
+  const { data: respuesta } = await api.get('/deudas');
+  return respuesta.data;
+}
+
+export async function crearDeuda(datos) {
+  const { data: respuesta } = await api.post('/deudas', datos);
+  return respuesta.data;
+}
+
+export async function abonarDeuda(id, datos) {
+  const { data: respuesta } = await api.post(`/deudas/${id}/abonos`, datos);
+  return respuesta.data;
+}
+
+export async function archivarDeuda(id) {
+  const { data: respuesta } = await api.delete(`/deudas/${id}`);
+  return respuesta.data;
+}
+
 // --- Auditoria (bitacora del dueño) --------------------------------------------
 
 /** Movimientos recientes del gimnasio: quien hizo que y cuando. */

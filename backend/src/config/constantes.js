@@ -125,6 +125,23 @@ export const ESTADOS_VENCIMIENTO_AVISABLES = Object.freeze([
   ESTADOS_VENCIMIENTO.VENCIDO,
 ]);
 
+// --- Finanzas: gastos y deudas del gimnasio ----------------------------------
+
+/**
+ * En que se va la plata. Un gasto pertenece a UNA sede (arriendo, servicios,
+ * nomina...) o al gimnasio entero (`sede: null`), que es donde caen las
+ * obligaciones del dueño. `DEUDA` es la categoria de los abonos a una `Deuda`.
+ */
+export const CATEGORIAS_GASTO = Object.freeze({
+  ARRIENDO: 'arriendo',
+  SERVICIOS: 'servicios',
+  EMPLEADOS: 'empleados',
+  DEUDA: 'deuda',
+  OTROS: 'otros',
+});
+
+export const LISTA_CATEGORIAS_GASTO = Object.values(CATEGORIAS_GASTO);
+
 // --- Maquinas e implementos del gimnasio (mantenimiento) ---------------------
 
 /**

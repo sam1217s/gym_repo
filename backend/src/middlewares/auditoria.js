@@ -29,6 +29,12 @@ const MOVIMIENTOS = {
     PATCH: 'Actualizo una maquina',
     DELETE: 'Archivo una maquina',
   },
+  gastos: { POST: 'Registro un gasto', PATCH: 'Edito un gasto', DELETE: 'Elimino un gasto' },
+  deudas: {
+    POST: 'Registro una deuda',
+    PATCH: 'Actualizo una deuda',
+    DELETE: 'Archivo una deuda',
+  },
   sedes: { POST: 'Creo una sede', PATCH: 'Actualizo una sede' },
   usuarios: { POST: 'Agrego un usuario al equipo', PATCH: 'Actualizo un usuario' },
   'planes-membresia': {
@@ -51,6 +57,11 @@ function describirMovimiento(peticion) {
   // Caso especial: ajustar existencias no es "editar" el producto.
   if (recurso === 'inventario' && subaccion === 'ajuste') {
     return { recurso: 'inventario', accion: 'Ajusto existencias' };
+  }
+
+  // Abonar a una deuda no es "actualizarla": es un pago.
+  if (recurso === 'deudas' && subaccion === 'abonos') {
+    return { recurso: 'deudas', accion: 'Abono a una deuda' };
   }
 
   const accion = MOVIMIENTOS[recurso]?.[peticion.method];

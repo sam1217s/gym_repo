@@ -157,6 +157,28 @@ de la venta, devuelve el stock. `listarVentas` agrupa por dia y devuelve el resu
 (`total`/`unidades`/`operaciones`) para el panel de "ventas de hoy". Respeta `filtroSede` igual
 que Miembro/Pago. `Producto.precio` es **obligatorio**: sin el no se puede vender.
 
+### Finanzas: los egresos (la otra cara de los tres flujos de arriba)
+
+Los tres flujos anteriores son plata que ENTRA. `Gasto` es la que sale, y `Deuda` lo que se
+debe. Reglas no obvias:
+
+- **`Gasto.sede` es OPCIONAL y ahi esta todo el modulo**: con sede es un gasto de ESA sede
+  (arriendo, servicios, nomina); con `sede: null` es del GIMNASIO entero, que es donde caen
+  las obligaciones del dueño. De ahi salen las dos trazabilidades que pide el negocio.
+  Un `sede_admin` **nunca** ve ni crea los generales: su `filtroSede` es `{ sede: X }`, que no
+  casa con `null`. No hace falta ninguna regla extra.
+- **`Deuda` NO guarda cuanto lleva pagado.** El pagado es la SUMA de sus abonos y el saldo se
+  deriva (`deudas.servicio → conSaldo`), igual que el vencimiento sale del ultimo pago y por el
+  mismo motivo. Borrar un abono devuelve el saldo solo.
+- **Un abono ES un gasto**: `abonarDeuda` crea un `Gasto` con `categoria: 'deuda'` ligado a la
+  deuda, asi que baja el saldo Y cuenta como egreso del mes, sin duplicar el dato. Hereda la
+  sede de la deuda para que el resumen lo impute donde toca. Por eso un abono no se edita desde
+  Gastos (se borra y se vuelve a abonar) y no se puede abonar mas que el saldo.
+- El resumen (`gastos.servicio → resumenFinanzas`) agrega por `{ sede, categoria }` y cruza los
+  nombres de sede **en memoria**, sin `$lookup` (trampa #1 del plugin). Toda sede visible sale
+  aunque no haya gastado: un cero es informacion. Las **deudas son solo del dueño**
+  (`requiereDuenoGimnasio`); los **gastos** los registra cualquier staff, cada uno en su sede.
+
 ### Auditoria: la bitacora del dueño (middleware transversal)
 
 `middlewares/auditoria.js` anota en `Auditoria` (tenant-scoped) CADA operacion que muta datos

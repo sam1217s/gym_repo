@@ -20,6 +20,9 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const reportesMaquina = ref([]);
   const reportesNoLeidos = ref(0);
   const auditoria = ref([]);
+  const gastos = ref([]);
+  const deudas = ref([]);
+  const resumenFinanzas = ref(null);
 
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
   const vencimientos = ref([]);
@@ -212,6 +215,50 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     reportesMaquina.value = reportesMaquina.value.map((r) => ({ ...r, leido: true }));
   }
 
+  // --- Finanzas: gastos y deudas ----------------------------------------------
+
+  async function cargarFinanzas(params) {
+    const [resumen, lista] = await Promise.all([
+      servicioGimnasio.obtenerResumenFinanzas(params),
+      servicioGimnasio.listarGastos(params),
+    ]);
+    resumenFinanzas.value = resumen;
+    gastos.value = lista;
+    return resumen;
+  }
+
+  async function crearGasto(datos) {
+    const creado = await servicioGimnasio.crearGasto(datos);
+    gastos.value.unshift(creado);
+    return creado;
+  }
+
+  async function eliminarGasto(id) {
+    await servicioGimnasio.eliminarGasto(id);
+    gastos.value = gastos.value.filter((gasto) => gasto._id !== id);
+  }
+
+  async function cargarDeudas() {
+    deudas.value = await servicioGimnasio.listarDeudas();
+  }
+
+  async function crearDeuda(datos) {
+    const creada = await servicioGimnasio.crearDeuda(datos);
+    deudas.value.unshift(creada);
+    return creada;
+  }
+
+  async function abonarDeuda(id, datos) {
+    const actualizada = await servicioGimnasio.abonarDeuda(id, datos);
+    reemplazar(deudas, actualizada);
+    return actualizada;
+  }
+
+  async function archivarDeuda(id) {
+    await servicioGimnasio.archivarDeuda(id);
+    deudas.value = deudas.value.filter((deuda) => deuda._id !== id);
+  }
+
   // --- Auditoria (bitacora del dueño) ----------------------------------------
 
   async function cargarAuditoria() {
@@ -240,6 +287,9 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     reportesMaquina,
     reportesNoLeidos,
     auditoria,
+    gastos,
+    deudas,
+    resumenFinanzas,
     vencimientos,
     reportePanel,
     cargando,
@@ -257,6 +307,13 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     cargarReportesMaquina,
     contarReportesNoLeidos,
     marcarReportesLeidos,
+    cargarFinanzas,
+    crearGasto,
+    eliminarGasto,
+    cargarDeudas,
+    crearDeuda,
+    abonarDeuda,
+    archivarDeuda,
     cargarAuditoria,
     cargarSedes,
     crearSede,
