@@ -65,42 +65,45 @@
       :hide-bottom="filasFiltradas.length <= 15"
       no-data-label="Aun no hay miembros. Registra el primero."
     >
-      <template #body-cell-miembro="props">
-        <q-td :props="props">
-          <div class="text-weight-medium">
-            {{ props.row.miembro.nombres }} {{ props.row.miembro.apellidos }}
-          </div>
-          <div class="text-caption text-grey-7">doc. {{ props.row.miembro.documento }}</div>
-        </q-td>
-      </template>
+      <!-- Fila completa tintada con el color (suave) del estado del miembro, para
+           leer de un vistazo quien esta al dia, por vencer o vencido. `props.cols`
+           respeta el reordenamiento responsive de columnas. -->
+      <template #body="props">
+        <q-tr :props="props" :class="`fila-estado fila-${props.row.estado}`">
+          <q-td v-for="col in props.cols" :key="col.name" :props="props" :class="col.classes">
+            <template v-if="col.name === 'miembro'">
+              <div class="text-weight-medium">
+                {{ props.row.miembro.nombres }} {{ props.row.miembro.apellidos }}
+              </div>
+              <div class="text-caption text-grey-7">doc. {{ props.row.miembro.documento }}</div>
+            </template>
 
-      <template #body-cell-vence="props">
-        <q-td :props="props">
-          <div>{{ formatearFecha(props.row.ultimoPago?.periodoFin) }}</div>
-          <div class="text-caption text-grey-7">{{ describirVencimiento(props.row) }}</div>
-        </q-td>
-      </template>
+            <template v-else-if="col.name === 'vence'">
+              <div>{{ formatearFecha(props.row.ultimoPago?.periodoFin) }}</div>
+              <div class="text-caption text-grey-7">{{ describirVencimiento(props.row) }}</div>
+            </template>
 
-      <template #body-cell-estado="props">
-        <q-td :props="props">
-          <span
-            class="chip-banda"
-            :style="{ '--banda': APARIENCIA_VENCIMIENTO[props.row.estado].color }"
-          >
-            {{ APARIENCIA_VENCIMIENTO[props.row.estado].etiqueta }}
-          </span>
-        </q-td>
-      </template>
+            <template v-else-if="col.name === 'estado'">
+              <span
+                class="chip-banda"
+                :style="{ '--banda': APARIENCIA_VENCIMIENTO[props.row.estado].color }"
+              >
+                {{ APARIENCIA_VENCIMIENTO[props.row.estado].etiqueta }}
+              </span>
+            </template>
 
-      <template #body-cell-acciones="props">
-        <q-td :props="props" class="text-right">
-          <q-btn round flat dense color="primary" icon="payments" @click="abrirPago(props.row.miembro)">
-            <q-tooltip>Registrar pago</q-tooltip>
-          </q-btn>
-          <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row.miembro)">
-            <q-tooltip>Editar</q-tooltip>
-          </q-btn>
-        </q-td>
+            <template v-else-if="col.name === 'acciones'">
+              <q-btn round flat dense color="primary" icon="payments" @click="abrirPago(props.row.miembro)">
+                <q-tooltip>Registrar pago</q-tooltip>
+              </q-btn>
+              <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row.miembro)">
+                <q-tooltip>Editar</q-tooltip>
+              </q-btn>
+            </template>
+
+            <template v-else>{{ col.value }}</template>
+          </q-td>
+        </q-tr>
       </template>
     </q-table>
 
@@ -409,5 +412,54 @@ onMounted(async () => {
   width: 100%;
   max-width: 520px;
   border-top: 4px solid var(--q-primary);
+}
+
+/* Fondo suave por estado del miembro, para leer de un vistazo. Los colores son
+   los de las bandas de disco, muy diluidos para no competir con el texto. Una
+   banda a la izquierda refuerza el estado sin depender solo del color. */
+.fila-estado :deep(td:first-child) {
+  border-left: 3px solid transparent;
+}
+
+.fila-al_dia {
+  background: rgba(31, 122, 70, 0.08);
+}
+.fila-al_dia :deep(td:first-child) {
+  border-left-color: var(--q-positive);
+}
+
+.fila-por_vencer {
+  background: rgba(154, 112, 22, 0.12);
+}
+.fila-por_vencer :deep(td:first-child) {
+  border-left-color: var(--q-warning);
+}
+
+.fila-vencido {
+  background: rgba(143, 29, 20, 0.09);
+}
+.fila-vencido :deep(td:first-child) {
+  border-left-color: var(--q-negative);
+}
+
+.fila-sin_pagos {
+  background: rgba(102, 112, 133, 0.08);
+}
+.fila-sin_pagos :deep(td:first-child) {
+  border-left-color: #667085;
+}
+
+/* Al pasar el mouse, el tinte se intensifica un poco (gana al hover de Quasar). */
+.fila-al_dia:hover {
+  background: rgba(31, 122, 70, 0.15) !important;
+}
+.fila-por_vencer:hover {
+  background: rgba(154, 112, 22, 0.2) !important;
+}
+.fila-vencido:hover {
+  background: rgba(143, 29, 20, 0.16) !important;
+}
+.fila-sin_pagos:hover {
+  background: rgba(102, 112, 133, 0.14) !important;
 }
 </style>
