@@ -10,7 +10,8 @@
     "start": "node src/index.js",
     "sembrar": "node scripts/sembrarSuperAdmin.js",
     "sembrar:prueba": "node scripts/sembrarDatosPrueba.js",
-    "grafo": "node graph.js cerebro"
+    "grafo": "node graph.js cerebro",
+    "sembrar:plan": "node scripts/sembrarPlanPlataforma.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
