@@ -260,18 +260,25 @@ describe('roles sobre sedes, usuarios y planes de membresia', () => {
   });
 
   it('CRUD de sede y de plan de membresia con nombres duplicados en 409', async () => {
-    await crearGimnasio();
+    const { sedes } = await crearGimnasio();
     const dueno = await entrarComo('owner@gimnasio-a.co');
 
     await dueno.post('/api/sedes').send({ nombre: 'Norte', direccion: 'X' }).expect(409);
 
+    // El nombre del plan solo choca DENTRO de la misma sede.
     await dueno
       .post('/api/planes-membresia')
-      .send({ nombre: 'Mensual', precio: 60_000, duracionMeses: 1 })
+      .send({ nombre: 'Mensual', precio: 60_000, duracionMeses: 1, sede: String(sedes.norte._id) })
       .expect(201);
     await dueno
       .post('/api/planes-membresia')
-      .send({ nombre: 'Mensual', precio: 1, duracionMeses: 1 })
+      .send({ nombre: 'Mensual', precio: 1, duracionMeses: 1, sede: String(sedes.norte._id) })
       .expect(409);
+
+    // La otra sede si puede tener su propio plan "Mensual", a otro precio.
+    await dueno
+      .post('/api/planes-membresia')
+      .send({ nombre: 'Mensual', precio: 45_000, duracionMeses: 1, sede: String(sedes.sur._id) })
+      .expect(201);
   });
 });

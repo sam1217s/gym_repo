@@ -234,7 +234,7 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
   });
 
   const resumenPagos = await ejecutarConTenant(tenant._id, async () => {
-    const planesMembresia = await sembrarPlanesMembresia();
+    const planesMembresia = await sembrarPlanesMembresia(sedes);
     const miembros = await sembrarMiembros(definicion, sedes);
     return sembrarPagos(definicion, miembros, planesMembresia, sedes, usuarios.dueno);
   });
@@ -242,9 +242,22 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
   return { tenant, sedes, usuarios, resumenPagos };
 }
 
-async function sembrarPlanesMembresia() {
-  const planes = await obtenerModelo('PlanMembresia').insertMany(PLANES_MEMBRESIA);
-  return new Map(planes.map((plan) => [plan.nombre, plan]));
+/**
+ * Los planes son POR SEDE: se crea el mismo catalogo en cada sede. El mapa se
+ * indexa por "sede|nombre" porque el mismo nombre existe en ambas.
+ */
+async function sembrarPlanesMembresia(sedes) {
+  const PlanMembresia = obtenerModelo('PlanMembresia');
+  const mapa = new Map();
+
+  for (const [clave, sede] of Object.entries(sedes)) {
+    const creados = await PlanMembresia.insertMany(
+      PLANES_MEMBRESIA.map((plan) => ({ ...plan, sede: sede._id })),
+    );
+    creados.forEach((plan) => mapa.set(`${clave}|${plan.nombre}`, plan));
+  }
+
+  return mapa;
 }
 
 async function sembrarMiembros(definicion, sedes) {
@@ -271,7 +284,8 @@ async function sembrarPagos(definicion, miembros, planesMembresia, sedes, regist
 
   definicion.miembros.forEach((definicionMiembro, posicion) => {
     const miembro = miembros[posicion];
-    const plan = planesMembresia.get(definicionMiembro.plan);
+    // El plan tiene que ser el de LA SEDE del miembro (hay uno por sede).
+    const plan = planesMembresia.get(`${definicionMiembro.sede}|${definicionMiembro.plan}`);
     const sede = sedes[definicionMiembro.sede];
 
     // Algunos miembros arrastran un pago anterior ya consumido. Sirve para

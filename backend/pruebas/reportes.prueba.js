@@ -48,6 +48,7 @@ async function montarGimnasio(slug = 'gimnasio-reportes') {
     const sur = await Sede.create({ nombre: 'Sur', direccion: 'Carrera 30' });
 
     const planMensual = await obtenerModelo('PlanMembresia').create({
+      sede: norte._id,
       nombre: 'Mensual',
       precio: 60_000,
       duracionMeses: 1,

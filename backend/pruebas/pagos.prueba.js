@@ -49,6 +49,7 @@ async function montarGimnasio() {
     const sur = await Sede.create({ nombre: 'Sur', direccion: 'Carrera 30' });
 
     const planMensual = await obtenerModelo('PlanMembresia').create({
+      sede: norte._id,
       nombre: 'Mensual',
       precio: 60_000,
       duracionMeses: 1,
@@ -146,11 +147,16 @@ describe('POST /api/pagos', () => {
   });
 
   it('un plan medido en DIAS (pase de dia) vence al dia siguiente', async () => {
-    const { tenant, miembros } = await montarGimnasio();
+    const { tenant, sedes, miembros } = await montarGimnasio();
     const dueno = await entrarComo('owner@gimnasio-pagos.co');
 
     const pase = await ejecutarConTenant(tenant._id, () =>
-      obtenerModelo('PlanMembresia').create({ nombre: 'Pase de dia', precio: 8_000, duracionDias: 1 }),
+      obtenerModelo('PlanMembresia').create({
+        sede: sedes.norte._id, // el plan es de la sede de Ana
+        nombre: 'Pase de dia',
+        precio: 8_000,
+        duracionDias: 1,
+      }),
     );
 
     const respuesta = await dueno
@@ -168,11 +174,53 @@ describe('POST /api/pagos', () => {
     expect(fin.getDate()).toBe(10); // 9 + 1 dia
   });
 
+  it('un sede_admin solo ve los planes de SU sede', async () => {
+    const { tenant, sedes } = await montarGimnasio();
+
+    // La sede sur tiene su propio plan, con el mismo nombre y otro precio.
+    await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('PlanMembresia').create({
+        sede: sedes.sur._id,
+        nombre: 'Mensual',
+        precio: 45_000,
+        duracionMeses: 1,
+      }),
+    );
+
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+    const todos = await dueno.get('/api/planes-membresia').expect(200);
+    expect(todos.body.data).toHaveLength(2); // el dueno ve los de ambas sedes
+
+    const recepcion = await entrarComo('norte@gimnasio-pagos.co');
+    const suyos = await recepcion.get('/api/planes-membresia').expect(200);
+    expect(suyos.body.data).toHaveLength(1);
+    expect(suyos.body.data[0].precio).toBe(60_000); // el de la norte
+  });
+
+  it('no se puede cobrar con un plan de OTRA sede', async () => {
+    const { planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+
+    // El plan Mensual es de la sede norte; Beto es de la sur. El dueno ve ambas
+    // sedes, pero aun asi no puede cruzar el plan.
+    const respuesta = await dueno
+      .post('/api/pagos')
+      .send({
+        miembro: String(miembros.beto._id),
+        planMembresia: String(planMensual._id),
+        metodoPago: METODOS_PAGO.EFECTIVO,
+      })
+      .expect(400);
+
+    expect(respuesta.body.error.mensaje).toMatch(/otra sede/i);
+  });
+
   it('un plan no puede tener meses y dias a la vez', async () => {
-    const { tenant } = await montarGimnasio();
+    const { tenant, sedes } = await montarGimnasio();
     await expect(
       ejecutarConTenant(tenant._id, () =>
         obtenerModelo('PlanMembresia').create({
+          sede: sedes.norte._id,
           nombre: 'Raro',
           precio: 1000,
           duracionMeses: 1,

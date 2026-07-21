@@ -21,6 +21,7 @@
             map-options
             :options="opcionesPlan"
             :rules="[reglaObligatorio]"
+            :hint="opcionesPlan.length === 0 ? 'Esta sede aun no tiene planes. Crealos en Planes.' : ''"
           />
 
           <div class="row q-col-gutter-md">
@@ -170,9 +171,14 @@ const formulario = reactive({
   referencia: '',
 });
 
+/**
+ * Los planes son POR SEDE: solo se ofrecen los de la sede DEL MIEMBRO. El dueño
+ * ve los de todas, asi que sin este filtro podria elegir uno de otra sede y el
+ * backend lo rechazaria ("Ese plan es de otra sede").
+ */
 const opcionesPlan = computed(() =>
   gimnasio.planesMembresia
-    .filter((plan) => plan.activo)
+    .filter((plan) => plan.activo && plan.sede === propiedades.miembro?.sede)
     .map((plan) => ({
       label: `${plan.nombre} — $${plan.precio.toLocaleString('es-CO')} · ${describirDuracion(plan)}`,
       value: plan._id,

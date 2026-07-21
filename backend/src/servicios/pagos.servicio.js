@@ -41,6 +41,12 @@ export async function registrarPago(datos, filtroSede = {}) {
   if (!plan) throw ErrorApi.solicitudInvalida('El plan de membresia no existe');
   if (!plan.activo) throw ErrorApi.solicitudInvalida('Ese plan esta archivado');
 
+  // Los planes son POR SEDE: a un miembro solo se le cobra con un plan de SU
+  // sede, aunque quien cobre sea el dueno y vea los de todas.
+  if (String(plan.sede) !== String(miembro.sede)) {
+    throw ErrorApi.solicitudInvalida('Ese plan es de otra sede');
+  }
+
   const periodoInicio = datos.periodoInicio ?? new Date();
   const periodoFin = sumarDuracion(periodoInicio, plan);
 

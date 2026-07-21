@@ -10,6 +10,9 @@ const cuerpoPlan = z
   .object({
     nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
     precio: z.number().min(0),
+    // Cada plan es de UNA sede. Para un sede_admin es opcional: el servicio la
+    // fuerza a la suya (mismo contrato que inventario/maquinas).
+    sede: idMongo.optional(),
     duracionMeses: z.number().int().min(1).optional(),
     duracionDias: z.number().int().min(1).optional(),
   })
@@ -19,6 +22,10 @@ const cuerpoPlan = z
   });
 
 export const esquemaCrearPlanMembresia = { body: cuerpoPlan };
+
+export const esquemaListarPlanesMembresia = {
+  query: z.object({ sede: idMongo.optional() }),
+};
 
 export const esquemaActualizarPlanMembresia = {
   params: z.object({ id: idMongo }),

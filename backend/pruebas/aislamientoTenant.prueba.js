@@ -67,6 +67,7 @@ async function sembrarGimnasio(tenantId, etiqueta, montoPago) {
     });
 
     const planMembresia = await obtenerModelo('PlanMembresia').create({
+      sede: sede._id,
       nombre: 'Mensual',
       precio: montoPago,
       duracionMeses: 1,

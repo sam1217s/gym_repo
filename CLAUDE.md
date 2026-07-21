@@ -198,8 +198,12 @@ y la de cada gimnasio (las llaves del dueno en `tenant.config.wompi`, webhook
 `/webhooks/wompi-miembro`). El miembro paga al Wompi del DUENO, no al de GymSaaS.
 
 `PlanPlataforma` es de nivel plataforma y define **limites** (`maxSedes`, `maxMiembros`) y
-**features** (`whatsapp`, `reportes`). `PlanMembresia` es tenant-scoped y lo configura cada
-gimnasio ("Mensual" 60000 / 30 dias).
+**features** (`whatsapp`, `reportes`). `PlanMembresia` es tenant-scoped **y por sede**: cada
+sede define los suyos y con su propio precio ("Mensual" 60000 en la Norte, 45000 en la Sur).
+El indice unico es `{ tenant, sede, nombre }`, asi que el nombre solo choca dentro de la misma
+sede. Consecuencia que hace cumplir `pagos.servicio`: **a un miembro solo se le cobra con un
+plan de SU sede** (si no, 400 "Ese plan es de otra sede"), aunque quien cobre sea el dueno y
+vea los de todas. El formulario de pago filtra las opciones por la sede del miembro.
 
 Los limites los hace cumplir `middlewares/limitesPlan.js` en las rutas de creacion. Cuenta
 solo recursos **activos**: un miembro dado de baja no ocupa cupo.

@@ -4,7 +4,9 @@
       <div>
         <div class="ceja">Mi gimnasio</div>
         <h1 class="titulo-display titulo-pagina q-my-none">Planes de membresia</h1>
-        <div class="text-caption text-grey-7">Lo que tus miembros pagan y cada cuánto (meses o días)</div>
+        <div class="text-caption text-grey-7">
+          Cada sede define sus propios planes y precios
+        </div>
       </div>
 
       <q-btn color="primary" unelevated no-caps icon="add" label="Nuevo plan" @click="abrirCreacion" />
@@ -61,6 +63,20 @@
 
         <q-form @submit.prevent="guardar">
           <q-card-section class="q-gutter-y-sm">
+            <!-- La sede se elige al crear y no se mueve despues: los pagos ya
+                 registrados con este plan pertenecen a esa sede. -->
+            <q-select
+              v-if="!editando && sedesVisibles"
+              v-model="formulario.sede"
+              label="Sede"
+              outlined
+              dense
+              emit-value
+              map-options
+              :options="opcionesSede"
+              :rules="[reglaObligatorio]"
+            />
+
             <q-input v-model="formulario.nombre" label="Nombre" outlined dense :rules="[reglaObligatorio]" />
             <q-input
               v-model.number="formulario.precio"
@@ -118,13 +134,15 @@
 
 <script setup>
 import { useQuasar } from 'quasar';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
 
+import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const gimnasio = useGimnasioStore();
+const autenticacion = useAutenticacionStore();
 const quasar = useQuasar();
 
 const dialogoAbierto = ref(false);
@@ -134,8 +152,20 @@ const planActivo = ref(null);
 
 const FORMATO_PESOS = new Intl.NumberFormat('es-CO');
 
+// El dueno elige sede; al sede_admin se la fuerza el backend, asi no la muestra.
+const sedesVisibles = computed(() => autenticacion.usuario?.rol === ROLES.TENANT_OWNER);
+
+function nombreSede(sedeId) {
+  return gimnasio.sedes.find((sede) => sede._id === sedeId)?.nombre ?? '—';
+}
+
+const opcionesSede = computed(() =>
+  gimnasio.sedes.filter((sede) => sede.activa).map((sede) => ({ label: sede.nombre, value: sede._id })),
+);
+
 const COLUMNAS = [
   { name: 'nombre', label: 'Plan', field: 'nombre', align: 'left', sortable: true },
+  { name: 'sede', label: 'Sede', field: (fila) => nombreSede(fila.sede), align: 'left', sortable: true },
   {
     name: 'precio',
     label: 'Precio',
@@ -169,12 +199,12 @@ const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este
 const reglaPrecio = (valor) => (typeof valor === 'number' && valor >= 0) || 'Precio invalido';
 const reglaDuracion = (valor) => (Number.isInteger(valor) && valor >= 1) || 'Minimo 1';
 
-const formulario = reactive({ nombre: '', precio: null, duracion: null, unidad: 'mes' });
+const formulario = reactive({ nombre: '', precio: null, duracion: null, unidad: 'mes', sede: null });
 
 function abrirCreacion() {
   editando.value = false;
   planActivo.value = null;
-  Object.assign(formulario, { nombre: '', precio: null, duracion: null, unidad: 'mes' });
+  Object.assign(formulario, { nombre: '', precio: null, duracion: null, unidad: 'mes', sede: null });
   dialogoAbierto.value = true;
 }
 
@@ -188,6 +218,7 @@ function abrirEdicion(plan) {
     precio: plan.precio,
     duracion: enDias ? plan.duracionDias : plan.duracionMeses,
     unidad: enDias ? 'dia' : 'mes',
+    sede: plan.sede,
   });
   dialogoAbierto.value = true;
 }
@@ -205,10 +236,14 @@ async function guardar() {
     };
 
     if (editando.value) {
+      // La sede de un plan no se cambia: sus pagos historicos pertenecen a ella.
       await gimnasio.actualizarPlanMembresia(planActivo.value._id, datos);
       quasar.notify({ type: 'positive', message: 'Plan actualizado' });
     } else {
-      await gimnasio.crearPlanMembresia(datos);
+      await gimnasio.crearPlanMembresia({
+        ...datos,
+        ...(formulario.sede ? { sede: formulario.sede } : {}),
+      });
       quasar.notify({ type: 'positive', message: 'Plan creado' });
     }
 
@@ -247,7 +282,8 @@ function confirmarArchivado(plan) {
 
 onMounted(async () => {
   try {
-    await gimnasio.cargarPlanesMembresia();
+    // Las sedes hacen falta para la columna y el selector: cada plan es de una.
+    await Promise.all([gimnasio.cargarPlanesMembresia(), gimnasio.cargarSedes()]);
   } catch {
     quasar.notify({ type: 'negative', message: 'No se pudieron cargar los planes' });
   }

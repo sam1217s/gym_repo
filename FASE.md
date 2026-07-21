@@ -411,6 +411,22 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
 - [x] 5 pruebas (`ventas.prueba.js`) + inventario ampliado (rechaza producto sin precio).
       Suite completa: 211 en verde.
 
+### Etapa 5 — Planes de membresia POR SEDE · HECHO y desplegado
+- [x] `PlanMembresia.sede` obligatorio; indice unico `{ tenant, sede, nombre }` (el nombre solo
+      choca dentro de la misma sede, asi dos sedes pueden tener "Mensual" a distinto precio).
+- [x] `planesMembresia.servicio` adopta el contrato `filtroSede` (listar/crear/actualizar/
+      archivar) y las rutas suman `limitarASede`: un sede_admin solo ve y cobra con los suyos.
+      Escribirlos sigue siendo del dueño; leerlos, de cualquier staff (formulario de pago).
+- [x] **Regla nueva en `pagos.servicio`**: el plan tiene que ser de la sede del miembro; si no,
+      400 "Ese plan es de otra sede". Aplica tambien al dueño, que ve los de todas las sedes.
+- [x] Frontend: columna Sede y selector de sede al crear en `PaginaPlanes.vue`;
+      `FormularioPago.vue` solo ofrece los planes de la sede del miembro (con aviso si esa sede
+      aun no tiene planes).
+- [x] `scripts/migrarSedePlanMembresia.js` (idempotente): adopta los planes sin sede en la
+      primera sede activa de su gimnasio. Ejecutado en produccion (1 plan migrado).
+- [x] 2 pruebas nuevas (un sede_admin solo ve los planes de su sede; no se puede cobrar con un
+      plan de otra sede) + seed y 6 archivos de prueba adaptados. Suite: 222 en verde.
+
 ### Etapa 4 — Auditoria de movimientos (bitacora del dueño) · HECHO y desplegado
 - [x] `modelos/Auditoria.js` tenant-scoped: guarda quien (foto de nombre y rol), que
       (`accion` legible + `recurso`), un `detalle` corto y la fecha. Registro historico:

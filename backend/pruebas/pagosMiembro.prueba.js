@@ -50,6 +50,7 @@ async function montar({ conWompi = true, email } = {}) {
   const contexto = await ejecutarConTenant(tenant._id, async () => {
     const sede = await obtenerModelo('Sede').create({ nombre: 'Norte', direccion: 'Calle 100' });
     const planMembresia = await obtenerModelo('PlanMembresia').create({
+      sede: sede._id,
       nombre: 'Mensual',
       precio: PRECIO,
       duracionMeses: 1,

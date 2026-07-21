@@ -75,6 +75,7 @@ async function montarGimnasio({
   const contexto = await ejecutarConTenant(tenant._id, async () => {
     const sede = await obtenerModelo('Sede').create({ nombre: 'Norte', direccion: 'Calle 100' });
     const planMembresia = await obtenerModelo('PlanMembresia').create({
+      sede: sede._id,
       nombre: 'Mensual',
       precio: 60_000,
       duracionMeses: 1,
