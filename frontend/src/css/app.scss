@@ -83,6 +83,29 @@ body {
   color: #667085;
 }
 
+// En movil los discos ocupaban demasiado y se partian en dos filas: se achican
+// para caber en una sola linea.
+@media (max-width: 599px) {
+  .fila-discos {
+    gap: 14px;
+    justify-content: center;
+  }
+
+  .disco {
+    width: 56px;
+    height: 56px;
+    border-width: 5px;
+  }
+
+  .numero-disco {
+    font-size: 1.3rem;
+  }
+
+  .etiqueta-disco {
+    font-size: 0.62rem;
+  }
+}
+
 // Chip de estado con banda izquierda. El color entra por `--banda`.
 .chip-banda {
   display: inline-flex;
