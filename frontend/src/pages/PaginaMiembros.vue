@@ -144,15 +144,7 @@
                 dense
                 :rules="[reglaObligatorio]"
               />
-              <q-input
-                v-model="formulario.telefono"
-                class="col-6"
-                label="Telefono (WhatsApp)"
-                hint="Formato internacional: 573001234567"
-                outlined
-                dense
-                :rules="[reglaObligatorio, reglaTelefono]"
-              />
+              <campo-telefono v-model="formulario.telefono" class="col-12" />
               <q-input
                 v-model="formulario.email"
                 class="col-12"
@@ -205,6 +197,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
 
+import CampoTelefono from 'src/components/CampoTelefono.vue';
 import FormularioPago from 'src/components/FormularioPago.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import {
@@ -313,8 +306,6 @@ function nombreSede(sedeId) {
 // --- Alta y edicion -----------------------------------------------------------
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
-const reglaTelefono = (valor) =>
-  /^\d{10,15}$/.test(valor) || 'Solo digitos, con indicativo de pais (57...)';
 // Vacio es valido (opcional); si viene, debe parecer un correo.
 const reglaEmailOpcional = (valor) =>
   !String(valor ?? '').trim() || /.+@.+\..+/.test(valor) || 'Correo invalido';
