@@ -35,14 +35,20 @@
       </q-toolbar>
     </q-header>
 
+    <!-- En escritorio descansa minimizado (solo iconos) y se despliega al pasar
+         el mouse; `mini-to-overlay` hace que se despliegue ENCIMA del panel, sin
+         empujar el contenido. En movil sigue siendo un overlay normal. -->
     <q-drawer
       v-model="menuAbierto"
       show-if-above
       bordered
+      mini-to-overlay
       :width="252"
       :mini="miniActivo"
       :mini-width="64"
       class="drawer-nav"
+      @mouseenter="sobreMenu = true"
+      @mouseleave="sobreMenu = false"
     >
       <q-list padding class="q-px-sm">
         <q-item-label v-if="!miniActivo" header class="etiqueta-nav">Navegacion</q-item-label>
@@ -98,10 +104,19 @@ const gimnasio = useGimnasioStore();
 
 const menuAbierto = ref(false);
 
-// En escritorio el drawer puede colapsar a solo iconos ("mini"). No aplica en
-// movil, donde es un overlay que se abre y cierra entero.
-const mini = ref(false);
-const miniActivo = computed(() => mini.value && $q.screen.gt.sm);
+/**
+ * En escritorio el drawer descansa minimizado (solo iconos) y se despliega solo
+ * con pasar el mouse por encima. `mini` es el estado en REPOSO (lo fija el boton
+ * hamburguesa o navegar a una opcion) y `sobreMenu` lo desplaza mientras el
+ * puntero esta dentro. Nada de esto aplica en movil, donde el drawer es un
+ * overlay que se abre y se cierra entero.
+ *
+ * Se usan mouseenter/mouseleave (no mouseover/mouseout) porque estos ultimos
+ * vuelven a dispararse al pasar de un hijo a otro y el menu parpadearia.
+ */
+const mini = ref(true);
+const sobreMenu = ref(false);
+const miniActivo = computed(() => mini.value && !sobreMenu.value && $q.screen.gt.sm);
 
 const ETIQUETAS_ROL = {
   [ROLES.SUPER_ADMIN]: 'Plataforma',
@@ -181,8 +196,9 @@ const enlacesVisibles = computed(() => {
   );
 });
 
-// El boton hamburguesa: en movil abre/cierra el overlay; en escritorio alterna
-// entre el menu completo y el minimizado (solo iconos).
+// El boton hamburguesa: en movil abre/cierra el overlay; en escritorio FIJA el
+// menu abierto (deja de recogerse al quitar el mouse) o lo devuelve al modo
+// "se despliega al pasar por encima".
 function alternarMenu() {
   if ($q.screen.lt.md) {
     menuAbierto.value = !menuAbierto.value;
