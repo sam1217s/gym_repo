@@ -122,7 +122,7 @@
             <div class="row q-col-gutter-md">
               <q-input
                 v-model="formulario.nombres"
-                class="col-6"
+                class="col-12 col-sm-6"
                 label="Nombres"
                 outlined
                 dense
@@ -130,7 +130,7 @@
               />
               <q-input
                 v-model="formulario.apellidos"
-                class="col-6"
+                class="col-12 col-sm-6"
                 label="Apellidos"
                 outlined
                 dense
@@ -138,7 +138,7 @@
               />
               <q-input
                 v-model="formulario.documento"
-                class="col-6"
+                class="col-12 col-sm-6"
                 label="Documento"
                 outlined
                 dense

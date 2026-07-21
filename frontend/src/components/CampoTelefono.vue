@@ -57,7 +57,7 @@ import { ref, watch } from 'vue';
 const props = defineProps({
   modelValue: { type: String, default: '' },
   label: { type: String, default: 'Telefono (WhatsApp)' },
-  hint: { type: String, default: 'Escribe el numero sin el indicativo del pais' },
+  hint: { type: String, default: '' },
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -162,12 +162,14 @@ watch(
 
 <style scoped>
 .campo-telefono {
-  gap: 8px;
+  gap: 6px;
 }
 
+/* Compacto a proposito: la bandera y el indicativo caben justos, para dejarle
+   el mayor ancho posible al numero (importa en moviles de 350px). */
 .selector-pais {
-  width: 108px;
-  flex: 0 0 108px;
+  width: 82px;
+  flex: 0 0 82px;
 }
 
 /* Une visualmente los dos controles: el selector redondea solo a la izquierda
@@ -175,6 +177,13 @@ watch(
 .selector-pais :deep(.q-field__control) {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+  padding: 0 8px;
+}
+
+/* Sin flecha ni relleno de sobra: el contenido manda el ancho. */
+.selector-pais :deep(.q-field__native) {
+  padding: 0;
+  min-width: 0;
 }
 
 .numero :deep(.q-field__control) {
