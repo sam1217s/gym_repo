@@ -64,16 +64,16 @@ async function entrarComo(email) {
 beforeEach(limpiarColecciones);
 
 describe('Inventario por sede', () => {
-  it('el dueno crea un producto con existencias y precio', async () => {
+  it('el dueno crea un producto con existencias', async () => {
     const { sedes } = await montarGimnasio();
     const dueno = await entrarComo('owner@gyminv.co');
 
     const respuesta = await dueno
       .post('/api/inventario')
-      .send({ nombre: 'Proteina', sede: String(sedes.norte._id), cantidad: 10, precio: 90_000 })
+      .send({ nombre: 'Proteina', sede: String(sedes.norte._id), cantidad: 10 })
       .expect(201);
 
-    expect(respuesta.body.data).toMatchObject({ nombre: 'Proteina', cantidad: 10, precio: 90_000 });
+    expect(respuesta.body.data).toMatchObject({ nombre: 'Proteina', cantidad: 10 });
     expect(respuesta.body.data.sede).toBe(String(sedes.norte._id));
   });
 

@@ -70,26 +70,14 @@
               :rules="[reglaObligatorio]"
             />
 
-            <div class="row q-col-gutter-md">
-              <q-input
-                v-if="!editando"
-                v-model.number="formulario.cantidad"
-                class="col-6"
-                type="number"
-                label="Existencias iniciales"
-                outlined
-                dense
-              />
-              <q-input
-                v-model.number="formulario.precio"
-                :class="editando ? 'col-12' : 'col-6'"
-                type="number"
-                label="Precio (opcional)"
-                prefix="$"
-                outlined
-                dense
-              />
-            </div>
+            <q-input
+              v-if="!editando"
+              v-model.number="formulario.cantidad"
+              type="number"
+              label="Existencias iniciales"
+              outlined
+              dense
+            />
           </q-card-section>
 
           <q-separator />
@@ -127,8 +115,6 @@ const editando = ref(false);
 const guardando = ref(false);
 const productoActivo = ref(null);
 
-const FORMATO_PESOS = new Intl.NumberFormat('es-CO');
-
 // El dueno elige sede; al sede_admin se la fuerza el backend, asi no la muestra.
 const sedesVisibles = computed(() => autenticacion.usuario?.rol === ROLES.TENANT_OWNER);
 
@@ -140,14 +126,6 @@ const COLUMNAS = [
   { name: 'nombre', label: 'Producto', field: 'nombre', align: 'left', sortable: true },
   { name: 'sede', label: 'Sede', field: (fila) => nombreSede(fila.sede), align: 'left' },
   { name: 'cantidad', label: 'Existencias', field: 'cantidad', align: 'right', sortable: true },
-  {
-    name: 'precio',
-    label: 'Precio',
-    field: 'precio',
-    align: 'right',
-    format: (valor) => (valor == null ? '—' : `$${FORMATO_PESOS.format(valor)}`),
-    classes: 'cifra-tabular',
-  },
   { name: 'acciones', label: '', field: '_id', align: 'right' },
 ];
 
@@ -159,19 +137,19 @@ const opcionesSede = computed(() =>
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 
-const formulario = reactive({ nombre: '', sede: null, cantidad: 0, precio: null });
+const formulario = reactive({ nombre: '', sede: null, cantidad: 0 });
 
 function abrirCreacion() {
   editando.value = false;
   productoActivo.value = null;
-  Object.assign(formulario, { nombre: '', sede: null, cantidad: 0, precio: null });
+  Object.assign(formulario, { nombre: '', sede: null, cantidad: 0 });
   dialogoAbierto.value = true;
 }
 
 function abrirEdicion(producto) {
   editando.value = true;
   productoActivo.value = producto;
-  Object.assign(formulario, { nombre: producto.nombre, sede: producto.sede, cantidad: producto.cantidad, precio: producto.precio ?? null });
+  Object.assign(formulario, { nombre: producto.nombre, sede: producto.sede, cantidad: producto.cantidad });
   dialogoAbierto.value = true;
 }
 
@@ -181,7 +159,6 @@ async function guardar() {
     if (editando.value) {
       await gimnasio.actualizarProducto(productoActivo.value._id, {
         nombre: formulario.nombre,
-        ...(formulario.precio != null ? { precio: formulario.precio } : {}),
       });
       quasar.notify({ type: 'positive', message: 'Producto actualizado' });
     } else {
@@ -189,7 +166,6 @@ async function guardar() {
         nombre: formulario.nombre,
         cantidad: formulario.cantidad ?? 0,
         ...(formulario.sede ? { sede: formulario.sede } : {}),
-        ...(formulario.precio != null ? { precio: formulario.precio } : {}),
       });
       quasar.notify({ type: 'positive', message: 'Producto agregado' });
     }

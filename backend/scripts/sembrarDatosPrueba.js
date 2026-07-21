@@ -182,11 +182,11 @@ async function sembrarGimnasio(definicion, planPlataforma, contrasenaHash) {
     // Inventario de demo, por sede.
     const Producto = obtenerModelo('Producto');
     await Producto.create([
-      { sede: norte._id, nombre: 'Proteina 2lb', cantidad: 12, precio: 95_000 },
-      { sede: norte._id, nombre: 'Toalla', cantidad: 30, precio: 15_000 },
-      { sede: norte._id, nombre: 'Guantes', cantidad: 3, precio: 40_000 },
-      { sede: sur._id, nombre: 'Creatina', cantidad: 8, precio: 70_000 },
-      { sede: sur._id, nombre: 'Botella', cantidad: 0, precio: 20_000 },
+      { sede: norte._id, nombre: 'Proteina 2lb', cantidad: 12 },
+      { sede: norte._id, nombre: 'Toalla', cantidad: 30 },
+      { sede: norte._id, nombre: 'Guantes', cantidad: 3 },
+      { sede: sur._id, nombre: 'Creatina', cantidad: 8 },
+      { sede: sur._id, nombre: 'Botella', cantidad: 0 },
     ]);
 
     // Maquinas de demo, por sede, con distintos estados.

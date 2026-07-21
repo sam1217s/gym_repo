@@ -15,8 +15,6 @@ const esquemaProducto = new mongoose.Schema(
     nombre: { type: String, required: true, trim: true },
     // Existencias actuales. Nunca baja de 0 (el servicio de ajuste lo impide).
     cantidad: { type: Number, required: true, min: 0, default: 0 },
-    // Precio de venta, opcional (no todo lo del inventario se vende).
-    precio: { type: Number, min: 0 },
     activo: { type: Boolean, default: true },
   },
   { timestamps: true },
