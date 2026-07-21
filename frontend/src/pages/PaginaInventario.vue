@@ -7,7 +7,10 @@
         <div class="text-caption text-grey-7">Productos y existencias, por sede</div>
       </div>
 
-      <q-btn color="primary" unelevated no-caps icon="add" label="Nuevo producto" @click="abrirCreacion" />
+      <div class="row q-gutter-sm">
+        <q-btn color="primary" outline no-caps icon="point_of_sale" label="Vender producto" @click="abrirVenta" />
+        <q-btn color="primary" unelevated no-caps icon="add" label="Nuevo producto" @click="abrirCreacion" />
+      </div>
     </div>
 
     <q-table
@@ -48,6 +51,88 @@
         </q-td>
       </template>
     </q-table>
+
+    <!-- Venta desde buscador: encuentra el producto por nombre y lo vende. -->
+    <q-dialog v-model="dialogoVenta">
+      <q-card class="tarjeta-producto">
+        <q-card-section class="q-pb-sm">
+          <div class="text-h6 titulo-display">Vender producto</div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-form @submit.prevent="confirmarVenta">
+          <q-card-section class="q-gutter-y-md">
+            <q-select
+              v-model="ventaProducto"
+              label="Buscar producto"
+              hint="Escribe para filtrar por nombre"
+              outlined
+              dense
+              use-input
+              input-debounce="0"
+              :options="opcionesVenta"
+              option-label="nombre"
+              :rules="[(v) => !!v || 'Elige un producto']"
+              @filter="filtrarProductos"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                    <q-item-label caption>
+                      {{ nombreSede(scope.opt.sede) }} · {{ scope.opt.cantidad }} en stock
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side class="cifra-tabular">
+                    ${{ FORMATO_PESOS.format(scope.opt.precio) }}
+                  </q-item-section>
+                </q-item>
+              </template>
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Sin productos con existencias</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+
+            <div v-if="ventaProducto" class="resumen-venta q-gutter-y-sm">
+              <div class="text-caption text-grey-7">
+                {{ nombreSede(ventaProducto.sede) }} · {{ ventaProducto.cantidad }} disponibles ·
+                ${{ FORMATO_PESOS.format(ventaProducto.precio) }} c/u
+              </div>
+              <q-input
+                v-model.number="ventaCantidad"
+                type="number"
+                label="Cantidad a vender"
+                outlined
+                dense
+                autofocus
+                :rules="[reglaCantidadVenta]"
+              />
+              <div class="total-venta">
+                Total: <span class="cifra-tabular">${{ FORMATO_PESOS.format(totalVenta) }}</span>
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat no-caps label="Descartar" :disable="vendiendo" @click="dialogoVenta = false" />
+            <q-btn
+              type="submit"
+              color="primary"
+              unelevated
+              no-caps
+              label="Registrar venta"
+              :loading="vendiendo"
+              :disable="!ventaProducto"
+            />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-model="dialogoAbierto">
       <q-card class="tarjeta-producto">
@@ -131,6 +216,13 @@ const editando = ref(false);
 const guardando = ref(false);
 const productoActivo = ref(null);
 
+// Venta desde el buscador.
+const dialogoVenta = ref(false);
+const ventaProducto = ref(null);
+const ventaCantidad = ref(1);
+const vendiendo = ref(false);
+const opcionesVenta = ref([]);
+
 const FORMATO_PESOS = new Intl.NumberFormat('es-CO');
 
 // El dueno elige sede; al sede_admin se la fuerza el backend, asi no la muestra.
@@ -163,6 +255,59 @@ const opcionesSede = computed(() =>
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaPrecio = (valor) => (Number(valor) >= 0 && valor !== null && valor !== '') || 'Indica el precio de venta';
+
+// --- Venta desde el buscador ---------------------------------------------------
+
+// Solo se puede vender lo que tiene existencias.
+const productosVendibles = computed(() => gimnasio.inventario.filter((p) => p.cantidad > 0));
+
+const totalVenta = computed(() =>
+  ventaProducto.value ? ventaProducto.value.precio * (ventaCantidad.value || 0) : 0,
+);
+
+const reglaCantidadVenta = (valor) => {
+  const n = Number(valor);
+  if (!Number.isInteger(n) || n <= 0) return 'Cantidad invalida';
+  if (ventaProducto.value && n > ventaProducto.value.cantidad) {
+    return `Solo hay ${ventaProducto.value.cantidad} en existencia`;
+  }
+  return true;
+};
+
+/** Filtro del q-select: acota por nombre a medida que se escribe. */
+function filtrarProductos(texto, update) {
+  update(() => {
+    const needle = texto.toLowerCase();
+    opcionesVenta.value = productosVendibles.value.filter((p) =>
+      p.nombre.toLowerCase().includes(needle),
+    );
+  });
+}
+
+function abrirVenta() {
+  ventaProducto.value = null;
+  ventaCantidad.value = 1;
+  opcionesVenta.value = productosVendibles.value;
+  dialogoVenta.value = true;
+}
+
+async function confirmarVenta() {
+  if (!ventaProducto.value) return;
+  vendiendo.value = true;
+  try {
+    const cantidad = Math.floor(Number(ventaCantidad.value));
+    await gimnasio.registrarVenta(ventaProducto.value._id, cantidad);
+    quasar.notify({
+      type: 'positive',
+      message: `Venta registrada: ${cantidad} × ${ventaProducto.value.nombre} = $${FORMATO_PESOS.format(ventaProducto.value.precio * cantidad)}`,
+    });
+    dialogoVenta.value = false;
+  } catch (error) {
+    quasar.notify({ type: 'negative', message: error.response?.data?.error?.mensaje ?? 'No se pudo registrar la venta' });
+  } finally {
+    vendiendo.value = false;
+  }
+}
 
 const formulario = reactive({ nombre: '', sede: null, cantidad: 0, precio: null });
 
@@ -292,5 +437,12 @@ onMounted(async () => {
   width: 100%;
   max-width: 480px;
   border-top: 4px solid var(--q-primary);
+}
+
+.total-venta {
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--q-secondary);
 }
 </style>
