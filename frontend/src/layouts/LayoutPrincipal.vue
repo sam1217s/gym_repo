@@ -78,7 +78,15 @@ const enlacesVisibles = computed(() => {
     return ENLACES.filter((enlace) => enlace.nombre === 'facturacion');
   }
 
-  return ENLACES.filter((enlace) => !enlace.roles || enlace.roles.includes(usuario.value?.rol));
+  // Facturacion (la suscripcion del gimnasio a la plataforma) se oculta mientras
+  // el gimnasio opera normal: durante la prueba gratis no hay nada que cobrar, y
+  // no queremos mostrarle cobros al cliente. Reaparece solo si se le suspende
+  // por impago (rama de arriba), que es cuando de verdad necesita pagar.
+  return ENLACES.filter(
+    (enlace) =>
+      enlace.nombre !== 'facturacion' &&
+      (!enlace.roles || enlace.roles.includes(usuario.value?.rol)),
+  );
 });
 
 function alternarMenu() {
