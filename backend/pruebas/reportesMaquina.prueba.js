@@ -151,6 +151,38 @@ describe('Reportes de maquinas', () => {
     expect(lista.body.data.reportes[0].leido).toBe(true);
   });
 
+  it('el reporte muestra el estado ACTUAL: si el dueño la arregla, queda operativa', async () => {
+    const { sedes } = await montarGimnasio();
+    const recepcion = await entrarComo('norte@gymrep.co');
+    const maquina = await recepcion
+      .post('/api/maquinas')
+      .send({ nombre: 'Remo', sede: String(sedes.norte._id) })
+      .expect(201);
+    await recepcion
+      .patch(`/api/maquinas/${maquina.body.data._id}`)
+      .send({ estado: ESTADOS_MAQUINA.DANADA })
+      .expect(200);
+
+    const dueno = await entrarComo('owner@gymrep.co');
+    const pendiente = await dueno.get('/api/reportes-maquina').expect(200);
+    expect(pendiente.body.data.reportes[0].estadoActual).toBe(ESTADOS_MAQUINA.DANADA);
+
+    // El dueño la arregla desde su panel: el reporte conserva su foto pero el
+    // estado actual ya es otro.
+    await dueno
+      .patch(`/api/maquinas/${maquina.body.data._id}`)
+      .send({ estado: ESTADOS_MAQUINA.OPERATIVA })
+      .expect(200);
+
+    const resuelto = await dueno.get('/api/reportes-maquina').expect(200);
+    expect(resuelto.body.data.reportes[0]).toMatchObject({
+      estado: ESTADOS_MAQUINA.DANADA, // la foto de cuando se reporto
+      estadoActual: ESTADOS_MAQUINA.OPERATIVA, // como esta hoy
+    });
+    // Y arreglarla desde el panel del dueño no genera un reporte nuevo.
+    expect(resuelto.body.data.reportes).toHaveLength(1);
+  });
+
   it('un encargado de sede no puede ver el panel de reportes (403)', async () => {
     await montarGimnasio();
     const recepcion = await entrarComo('norte@gymrep.co');

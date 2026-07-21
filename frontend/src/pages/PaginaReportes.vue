@@ -27,6 +27,18 @@
             <span class="chip-banda q-ml-sm" :style="{ '--banda': `var(--q-${COLOR_ESTADO[reporte.estado]})` }">
               {{ ETIQUETA_ESTADO[reporte.estado] }}
             </span>
+            <!-- Como esta HOY: si ya se arreglo, el reporte queda resuelto. -->
+            <q-badge v-if="reporte.estadoActual === 'operativa'" color="positive" class="q-ml-sm">
+              Resuelta
+            </q-badge>
+            <q-badge
+              v-else-if="reporte.estadoActual && reporte.estadoActual !== reporte.estado"
+              outline
+              :color="COLOR_ESTADO[reporte.estadoActual]"
+              class="q-ml-sm"
+            >
+              Ahora: {{ ETIQUETA_ESTADO[reporte.estadoActual] }}
+            </q-badge>
           </q-item-label>
           <q-item-label caption>
             {{ nombreSede(reporte.sede) }} · Reporto {{ reporte.reportadoPorNombre }}
@@ -34,8 +46,20 @@
           <q-item-label v-if="reporte.nota" class="q-mt-xs nota">"{{ reporte.nota }}"</q-item-label>
         </q-item-section>
 
-        <q-item-section side top class="text-caption text-grey-7">
-          {{ formatearFecha(reporte.createdAt) }}
+        <q-item-section side top>
+          <div class="text-caption text-grey-7">{{ formatearFecha(reporte.createdAt) }}</div>
+          <q-btn
+            v-if="reporte.estadoActual"
+            flat
+            dense
+            no-caps
+            size="sm"
+            color="primary"
+            icon="swap_horiz"
+            label="Cambiar estado"
+            class="q-mt-sm"
+            @click="cambiarEstado(reporte)"
+          />
         </q-item-section>
       </q-item>
     </q-list>
@@ -77,6 +101,43 @@ function formatearFecha(valor) {
 
 function nombreSede(sedeId) {
   return gimnasio.sedes.find((sede) => sede._id === sedeId)?.nombre ?? 'Sede';
+}
+
+const OPCIONES_ESTADO = [
+  { label: 'Operativa', value: 'operativa' },
+  { label: 'En mantenimiento', value: 'mantenimiento' },
+  { label: 'Dañada', value: 'danada' },
+];
+
+/**
+ * El dueño resuelve el caso desde aqui: cambia el estado de LA MAQUINA (unica
+ * fuente de verdad). El reporte no se toca: conserva su foto de lo que se
+ * reporto, y solo cambia el `estadoActual` que se recalcula al recargar.
+ */
+function cambiarEstado(reporte) {
+  quasar
+    .dialog({
+      title: `Estado — ${reporte.nombreMaquina}`,
+      message: '¿Como esta el equipo ahora?',
+      options: { type: 'radio', model: reporte.estadoActual, items: OPCIONES_ESTADO },
+      cancel: { flat: true, noCaps: true, label: 'Volver' },
+      ok: { color: 'primary', unelevated: true, noCaps: true, label: 'Guardar' },
+    })
+    .onOk(async (estado) => {
+      if (!estado || estado === reporte.estadoActual) return;
+      try {
+        await gimnasio.actualizarMaquina(reporte.maquina, { estado });
+        // Se recarga para refrescar el estado actual de TODOS los reportes de
+        // esa maquina, no solo el de la fila tocada.
+        await gimnasio.cargarReportesMaquina();
+        quasar.notify({ type: 'positive', message: 'Estado actualizado' });
+      } catch (error) {
+        quasar.notify({
+          type: 'negative',
+          message: error.response?.data?.error?.mensaje ?? 'No se pudo actualizar',
+        });
+      }
+    });
 }
 
 onMounted(async () => {
