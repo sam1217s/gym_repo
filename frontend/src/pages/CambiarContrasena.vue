@@ -12,30 +12,54 @@
         <q-form class="q-gutter-md" @submit.prevent="enviar">
           <q-input
             v-model="formulario.contrasenaActual"
-            type="password"
+            :type="verContrasenas ? 'text' : 'password'"
             label="Contrasena actual"
             autocomplete="current-password"
             outlined
             :rules="[reglaObligatorio]"
-          />
+          >
+            <template #append>
+              <q-icon
+                :name="verContrasenas ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="verContrasenas = !verContrasenas"
+              />
+            </template>
+          </q-input>
 
           <q-input
             v-model="formulario.contrasenaNueva"
-            type="password"
+            :type="verContrasenas ? 'text' : 'password'"
             label="Contrasena nueva"
             autocomplete="new-password"
             outlined
             :rules="reglasContrasenaNueva"
-          />
+          >
+            <template #append>
+              <q-icon
+                :name="verContrasenas ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="verContrasenas = !verContrasenas"
+              />
+            </template>
+          </q-input>
 
           <q-input
             v-model="confirmacion"
-            type="password"
+            :type="verContrasenas ? 'text' : 'password'"
             label="Repite la contrasena nueva"
             autocomplete="new-password"
             outlined
             :rules="[reglaCoincide]"
-          />
+          >
+            <template #append>
+              <q-icon
+                :name="verContrasenas ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="verContrasenas = !verContrasenas"
+              />
+            </template>
+          </q-input>
 
           <q-btn
             type="submit"
@@ -66,6 +90,9 @@ const esObligatorio = computed(() => autenticacion.debeCambiarContrasena);
 
 const formulario = reactive({ contrasenaActual: '', contrasenaNueva: '' });
 const confirmacion = ref('');
+
+// Un solo interruptor revela las tres contrasenas, para poder comprobarlas.
+const verContrasenas = ref(false);
 
 const reglaObligatorio = (valor) => Boolean(valor) || 'Este campo es obligatorio';
 
