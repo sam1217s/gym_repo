@@ -358,6 +358,21 @@ Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (
 - [x] Campo `email` (opcional) en el alta/edición de miembros (`PaginaMiembros.vue`). Verificado.
 - [x] Página de "gracias/pago en proceso": la sirve el backend en `/api/pagar/gracias` (HTML).
 
+### Canal de WhatsApp: configurable por gimnasio · HECHO y desplegado
+- [x] `tenant.config.whatsapp` existia en el modelo pero NO habia forma de ponerlo. Ahora
+      `GET/PUT /api/plataforma/tenants/:id/whatsapp` (**solo super_admin**, igual que las llaves
+      de Wompi y por el mismo motivo: el token de Meta es un secreto).
+- [x] El **token NUNCA se devuelve** al cliente; el `idTelefono` y la URL de n8n si (son
+      identificadores). La respuesta incluye que plantilla debe tener aprobada el gimnasio
+      (`aviso_vencimiento` / `es_CO`), para no adivinarlo.
+- [x] Validacion como union discriminada por proveedor: `cloud_api` exige idTelefono + token,
+      `n8n` exige URL, `ninguno` apaga el canal. **`baileys` no se acepta**: no esta
+      implementado y dejaria el canal roto en silencio hasta la corrida del cron.
+- [x] Frontend: boton "Configurar avisos por WhatsApp" por gimnasio en `PanelPlataforma.vue`.
+- [x] `scripts/enviarAvisosAhora.js`: dispara la MISMA corrida del cron a mano, para probar el
+      envio sin esperar a las 9:00.
+- [x] 5 pruebas (`whatsapp.prueba.js`). Suite: 235 en verde.
+
 ### Pendiente (etapa 3): enganchar el botón de WhatsApp
 - [ ] La plantilla de Meta hoy es solo texto, sin botón. Para el flujo completo hay que: (a) editar
       la plantilla en Meta y añadir un **botón URL dinámico** con base `ORIGEN_PUBLICO/api/pagar/`;

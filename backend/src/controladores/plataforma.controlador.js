@@ -1,4 +1,5 @@
 import * as servicioCobros from '../servicios/cobros.servicio.js';
+import * as servicioWhatsapp from '../servicios/whatsapp.servicio.js';
 import * as servicioFacturacion from '../servicios/facturacionPlataforma.servicio.js';
 import * as servicioOnboarding from '../servicios/onboarding.servicio.js';
 import * as servicioPlanes from '../servicios/planesPlataforma.servicio.js';
@@ -73,4 +74,15 @@ export const configCobrosTenant = manejadorAsync(async (peticion, respuesta) =>
 
 export const guardarCobrosTenant = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioCobros.guardarConfigCobros(peticion.params.id, peticion.body)),
+);
+
+export const configWhatsappTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioWhatsapp.obtenerConfigWhatsapp(peticion.params.id)),
+);
+
+export const guardarWhatsappTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(
+    respuesta,
+    await servicioWhatsapp.guardarConfigWhatsapp(peticion.params.id, peticion.body),
+  ),
 );

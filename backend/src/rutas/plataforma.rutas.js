@@ -8,6 +8,7 @@ import {
 import { abrirContextoTenant } from '../middlewares/contextoTenant.js';
 import { validar } from '../middlewares/validar.js';
 import { esquemaGuardarCobros } from '../validaciones/cobros.validacion.js';
+import { esquemaGuardarWhatsapp } from '../validaciones/whatsapp.validacion.js';
 import {
   esquemaActualizarPlan,
   esquemaCrearGimnasio,
@@ -44,5 +45,10 @@ rutas.get('/tenants/:id/facturas', validar(esquemaIdParam), controlador.facturas
 // configura por gimnasio (los secretos no se devuelven en el GET).
 rutas.get('/tenants/:id/cobros', validar(esquemaIdParam), controlador.configCobrosTenant);
 rutas.put('/tenants/:id/cobros', validar(esquemaGuardarCobros), controlador.guardarCobrosTenant);
+
+// Canal de WhatsApp del gimnasio: el token de Meta es un secreto, asi que lo
+// configura el operador, igual que las llaves de Wompi.
+rutas.get('/tenants/:id/whatsapp', validar(esquemaIdParam), controlador.configWhatsappTenant);
+rutas.put('/tenants/:id/whatsapp', validar(esquemaGuardarWhatsapp), controlador.guardarWhatsappTenant);
 
 export default rutas;

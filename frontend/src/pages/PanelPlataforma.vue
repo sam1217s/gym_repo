@@ -80,6 +80,17 @@
             <q-tooltip>Configurar cobro en línea (Wompi)</q-tooltip>
           </q-btn>
           <q-btn
+            v-if="props.row.estado !== ESTADOS_GIMNASIO.CANCELADO"
+            round
+            flat
+            dense
+            color="positive"
+            icon="chat"
+            @click="abrirWhatsapp(props.row)"
+          >
+            <q-tooltip>Configurar avisos por WhatsApp</q-tooltip>
+          </q-btn>
+          <q-btn
             v-if="puedeSuspender(props.row)"
             round
             flat
@@ -189,6 +200,95 @@
           <q-card-actions align="right" class="q-pa-md">
             <q-btn flat no-caps label="Cerrar" :disable="cobros.guardando" @click="dialogoCobros = false" />
             <q-btn type="submit" color="primary" unelevated no-caps label="Guardar llaves" :loading="cobros.guardando" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
+    <!-- Canal de WhatsApp del gimnasio (avisos de vencimiento) -->
+    <q-dialog v-model="dialogoWhatsapp">
+      <q-card class="tarjeta-cobros">
+        <q-card-section class="q-pb-sm">
+          <div class="text-h6 titulo-display">WhatsApp — {{ whatsapp.gimnasio?.nombre }}</div>
+          <div class="text-caption text-grey-7">
+            Con esto salen los avisos de vencimiento a los miembros
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-form @submit.prevent="guardarWhatsapp">
+          <q-card-section class="q-gutter-y-md">
+            <span
+              class="chip-banda"
+              :style="{ '--banda': whatsapp.config.configurado ? 'var(--q-positive)' : 'var(--q-warning)' }"
+            >
+              {{ whatsapp.config.configurado ? 'Avisos activos' : 'Sin configurar' }}
+            </span>
+
+            <q-select
+              v-model="whatsapp.formulario.proveedor"
+              label="Proveedor"
+              outlined
+              dense
+              emit-value
+              map-options
+              :options="OPCIONES_PROVEEDOR"
+            />
+
+            <template v-if="whatsapp.formulario.proveedor === 'cloud_api'">
+              <q-input
+                v-model="whatsapp.formulario.idTelefono"
+                label="Phone number ID"
+                hint="El ID del numero en Meta (no el telefono)"
+                outlined
+                dense
+                :rules="[reglaObligatorio]"
+              />
+              <q-input
+                v-model="whatsapp.formulario.token"
+                :type="whatsapp.verToken ? 'text' : 'password'"
+                label="Token permanente"
+                hint="Se guarda cifrado en el servidor y no se vuelve a mostrar"
+                outlined
+                dense
+                :rules="[reglaObligatorio]"
+              >
+                <template #append>
+                  <q-icon
+                    :name="whatsapp.verToken ? 'visibility_off' : 'visibility'"
+                    class="cursor-pointer"
+                    @click="whatsapp.verToken = !whatsapp.verToken"
+                  />
+                </template>
+              </q-input>
+
+              <div class="aviso-plantilla">
+                Este gimnasio debe tener aprobada en SU cuenta de Meta la plantilla
+                <strong>{{ whatsapp.config.plantilla?.nombre }}</strong>
+                ({{ whatsapp.config.plantilla?.idioma }}) con 3 variables: nombre, gimnasio y fecha.
+              </div>
+            </template>
+
+            <q-input
+              v-else-if="whatsapp.formulario.proveedor === 'n8n'"
+              v-model="whatsapp.formulario.urlWebhook"
+              label="URL del webhook de n8n"
+              outlined
+              dense
+              :rules="[reglaObligatorio]"
+            />
+
+            <div v-else class="text-caption text-grey-7">
+              Con "ninguno" el gimnasio no envia avisos por WhatsApp.
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat no-caps label="Cerrar" :disable="whatsapp.guardando" @click="dialogoWhatsapp = false" />
+            <q-btn type="submit" color="primary" unelevated no-caps label="Guardar" :loading="whatsapp.guardando" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -337,6 +437,68 @@ const cobros = reactive({
   guardando: false,
 });
 
+// --- Canal de WhatsApp del gimnasio -------------------------------------------
+
+// `baileys` no se ofrece: no esta implementado y dejaria el canal roto.
+const OPCIONES_PROVEEDOR = [
+  { label: 'Ninguno (sin avisos)', value: 'ninguno' },
+  { label: 'WhatsApp Cloud API (Meta)', value: 'cloud_api' },
+  { label: 'n8n (webhook propio)', value: 'n8n' },
+];
+
+const dialogoWhatsapp = ref(false);
+
+const whatsapp = reactive({
+  gimnasio: null,
+  config: { proveedor: 'ninguno', configurado: false, idTelefono: null, plantilla: null },
+  formulario: { proveedor: 'ninguno', idTelefono: '', token: '', urlWebhook: '' },
+  verToken: false,
+  guardando: false,
+});
+
+async function abrirWhatsapp(gimnasio) {
+  whatsapp.gimnasio = gimnasio;
+  whatsapp.formulario = { proveedor: 'ninguno', idTelefono: '', token: '', urlWebhook: '' };
+  whatsapp.verToken = false;
+  whatsapp.config = { proveedor: 'ninguno', configurado: false, idTelefono: null, plantilla: null };
+  dialogoWhatsapp.value = true;
+
+  try {
+    whatsapp.config = await servicioPlataforma.obtenerWhatsapp(gimnasio._id);
+    // El token es secreto y no vuelve: se deja vacio y hay que reescribirlo si
+    // se cambia algo. Lo demas son identificadores y se prellenan.
+    whatsapp.formulario.proveedor = whatsapp.config.proveedor;
+    whatsapp.formulario.idTelefono = whatsapp.config.idTelefono ?? '';
+    whatsapp.formulario.urlWebhook = whatsapp.config.urlWebhook ?? '';
+  } catch {
+    quasar.notify({ type: 'negative', message: 'No se pudo cargar la configuracion de WhatsApp' });
+  }
+}
+
+async function guardarWhatsapp() {
+  whatsapp.guardando = true;
+  try {
+    const { proveedor, idTelefono, token, urlWebhook } = whatsapp.formulario;
+    const datos =
+      proveedor === 'cloud_api'
+        ? { proveedor, idTelefono, token }
+        : proveedor === 'n8n'
+          ? { proveedor, urlWebhook }
+          : { proveedor };
+
+    whatsapp.config = await servicioPlataforma.guardarWhatsapp(whatsapp.gimnasio._id, datos);
+    whatsapp.formulario.token = '';
+    quasar.notify({ type: 'positive', message: 'WhatsApp configurado' });
+  } catch (error) {
+    quasar.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo guardar',
+    });
+  } finally {
+    whatsapp.guardando = false;
+  }
+}
+
 async function abrirCobros(gimnasio) {
   cobros.gimnasio = gimnasio;
   cobros.formulario = { llavePublica: '', secretoIntegridad: '', secretoEventos: '' };
@@ -408,5 +570,15 @@ onMounted(async () => {
 .url-webhook {
   word-break: break-all;
   font-size: 0.8rem;
+}
+
+.aviso-plantilla {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #7a5b12;
+  background: #fff8ec;
+  border-left: 3px solid var(--q-warning);
+  border-radius: 4px;
+  padding: 8px 12px;
 }
 </style>

@@ -46,3 +46,14 @@ export async function guardarCobros(id, datos) {
   const { data: respuesta } = await api.put(`/plataforma/tenants/${id}/cobros`, datos);
   return respuesta.data;
 }
+
+/** Canal de WhatsApp del gimnasio. El token nunca vuelve del backend. */
+export async function obtenerWhatsapp(id) {
+  const { data: respuesta } = await api.get(`/plataforma/tenants/${id}/whatsapp`);
+  return respuesta.data;
+}
+
+export async function guardarWhatsapp(id, datos) {
+  const { data: respuesta } = await api.put(`/plataforma/tenants/${id}/whatsapp`, datos);
+  return respuesta.data;
+}
