@@ -145,6 +145,43 @@ describe('POST /api/pagos', () => {
     expect(respuesta.body.data.sede).toBe(String(miembros.ana.sede));
   });
 
+  it('un plan medido en DIAS (pase de dia) vence al dia siguiente', async () => {
+    const { tenant, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+
+    const pase = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('PlanMembresia').create({ nombre: 'Pase de dia', precio: 8_000, duracionDias: 1 }),
+    );
+
+    const respuesta = await dueno
+      .post('/api/pagos')
+      .send({
+        miembro: String(miembros.ana._id),
+        planMembresia: String(pase._id),
+        metodoPago: METODOS_PAGO.EFECTIVO,
+        periodoInicio: '2026-07-09',
+      })
+      .expect(201);
+
+    const fin = new Date(respuesta.body.data.periodoFin);
+    expect(fin.getMonth()).toBe(6); // julio
+    expect(fin.getDate()).toBe(10); // 9 + 1 dia
+  });
+
+  it('un plan no puede tener meses y dias a la vez', async () => {
+    const { tenant } = await montarGimnasio();
+    await expect(
+      ejecutarConTenant(tenant._id, () =>
+        obtenerModelo('PlanMembresia').create({
+          nombre: 'Raro',
+          precio: 1000,
+          duracionMeses: 1,
+          duracionDias: 7,
+        }),
+      ),
+    ).rejects.toThrow(/exactamente una/i);
+  });
+
   /**
    * Un mes NO son 30 dias. Quien paga el 31 de enero vence el 28 de febrero;
    * sumando 30 dias caeria el 2 de marzo y cobraria dias que nadie compro.

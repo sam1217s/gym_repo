@@ -55,3 +55,16 @@ export function sumarMeses(fecha, meses) {
 
   return resultado;
 }
+
+/**
+ * Fin del periodo que cubre un plan de membresia, a partir de un inicio. Un plan
+ * se mide en dias (`duracionDias`: pases de dia, semanales) o en meses de
+ * calendario (`duracionMeses`: mensualidades), nunca en ambos. Es la unica
+ * funcion que traduce "un plan" a "cuando vence"; la usan pagos.servicio y
+ * pagosMiembro.servicio para no duplicar la regla.
+ */
+export function sumarDuracion(inicio, plan) {
+  return plan.duracionDias != null
+    ? sumarDias(inicio, plan.duracionDias)
+    : sumarMeses(inicio, plan.duracionMeses);
+}

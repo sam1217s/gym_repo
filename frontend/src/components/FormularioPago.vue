@@ -138,6 +138,9 @@ function sumarMeses(fecha, meses) {
 }
 
 function describirDuracion(plan) {
+  if (plan.duracionDias != null) {
+    return plan.duracionDias === 1 ? '1 dia' : `${plan.duracionDias} dias`;
+  }
   return plan.duracionMeses === 1 ? '1 mes' : `${plan.duracionMeses} meses`;
 }
 
@@ -186,7 +189,14 @@ const periodoFin = computed(() => {
   if (!planElegido.value || !formulario.periodoInicio) return null;
   const inicio = interpretarDiaCivil(formulario.periodoInicio);
   if (Number.isNaN(inicio.getTime())) return null;
-  return sumarMeses(inicio, planElegido.value.duracionMeses);
+
+  const plan = planElegido.value;
+  if (plan.duracionDias != null) {
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate() + plan.duracionDias);
+    return fin;
+  }
+  return sumarMeses(inicio, plan.duracionMeses);
 });
 
 const periodoFinLegible = computed(() =>

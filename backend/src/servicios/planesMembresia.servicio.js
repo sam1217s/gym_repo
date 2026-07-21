@@ -35,6 +35,11 @@ export async function actualizarPlanMembresia(id, datos) {
 
   Object.assign(plan, datos);
 
+  // Un plan lleva UNA sola unidad de duracion: si llego una, se borra la otra,
+  // o el hook del modelo rechazaria por tener meses y dias a la vez.
+  if (datos.duracionDias != null) plan.duracionMeses = undefined;
+  if (datos.duracionMeses != null) plan.duracionDias = undefined;
+
   try {
     return await plan.save();
   } catch (error) {

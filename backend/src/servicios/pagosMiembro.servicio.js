@@ -9,7 +9,7 @@ import { ejecutarConTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { aCentavos, construirEnlaceCheckout, verificarChecksumEvento } from '../pasarelas/wompi.pasarela.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
-import { sumarMeses } from '../utilidades/fechas.js';
+import { sumarDuracion } from '../utilidades/fechas.js';
 import { firmarTokenPagoMiembro, verificarTokenPagoMiembro } from '../utilidades/token.js';
 
 /**
@@ -173,7 +173,7 @@ async function registrarPagoAprobado(transaccion, ref) {
   }
 
   const periodoInicio = await inicioDeRenovacion(miembro._id);
-  const periodoFin = sumarMeses(periodoInicio, plan.duracionMeses);
+  const periodoFin = sumarDuracion(periodoInicio, plan);
 
   try {
     const pago = await Pago.create({

@@ -98,6 +98,7 @@ const PLANES_PLATAFORMA = [
 ];
 
 const PLANES_MEMBRESIA = [
+  { nombre: 'Pase de dia', precio: 8_000, duracionDias: 1 },
   { nombre: 'Mensual', precio: 60_000, duracionMeses: 1 },
   { nombre: 'Trimestral', precio: 160_000, duracionMeses: 3 },
 ];

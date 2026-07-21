@@ -4,7 +4,7 @@
       <div>
         <div class="ceja">Mi gimnasio</div>
         <h1 class="titulo-display titulo-pagina q-my-none">Planes de membresia</h1>
-        <div class="text-caption text-grey-7">Lo que tus miembros pagan y por cuantos meses</div>
+        <div class="text-caption text-grey-7">Lo que tus miembros pagan y cada cuánto (meses o días)</div>
       </div>
 
       <q-btn color="primary" unelevated no-caps icon="add" label="Nuevo plan" @click="abrirCreacion" />
@@ -62,27 +62,38 @@
         <q-form @submit.prevent="guardar">
           <q-card-section class="q-gutter-y-sm">
             <q-input v-model="formulario.nombre" label="Nombre" outlined dense :rules="[reglaObligatorio]" />
+            <q-input
+              v-model.number="formulario.precio"
+              type="number"
+              label="Precio"
+              prefix="$"
+              outlined
+              dense
+              :rules="[reglaPrecio]"
+            />
             <div class="row q-col-gutter-md">
               <q-input
-                v-model.number="formulario.precio"
+                v-model.number="formulario.duracion"
                 class="col-6"
                 type="number"
-                label="Precio"
-                prefix="$"
-                outlined
-                dense
-                :rules="[reglaPrecio]"
-              />
-              <q-input
-                v-model.number="formulario.duracionMeses"
-                class="col-6"
-                type="number"
-                label="Duracion (meses)"
-                hint="1 = mensual, 3 = trimestral"
+                label="Duracion"
                 outlined
                 dense
                 :rules="[reglaDuracion]"
               />
+              <q-select
+                v-model="formulario.unidad"
+                class="col-6"
+                label="Unidad"
+                outlined
+                dense
+                emit-value
+                map-options
+                :options="OPCIONES_UNIDAD"
+              />
+            </div>
+            <div class="text-caption text-grey-7">
+              Ej.: 1 mes = mensual · 3 meses = trimestral · 1 día = pase de día · 7 días = semanal
             </div>
           </q-card-section>
 
@@ -137,10 +148,9 @@ const COLUMNAS = [
   {
     name: 'duracion',
     label: 'Duracion',
-    field: 'duracionMeses',
+    // El backend calcula la descripcion ("1 mes", "1 dia"...) como virtual.
+    field: (fila) => fila.descripcionDuracion,
     align: 'right',
-    sortable: true,
-    format: (valor) => (valor === 1 ? '1 mes' : `${valor} meses`),
     classes: 'cifra-tabular',
   },
   { name: 'estado', label: 'Estado', field: 'activo', align: 'left', sortable: true },
@@ -150,26 +160,34 @@ const COLUMNAS = [
 // En movil, la columna de acciones va primero (ver el composable).
 const columnasResponsivas = useColumnasResponsive(COLUMNAS);
 
+const OPCIONES_UNIDAD = [
+  { label: 'meses', value: 'mes' },
+  { label: 'dias', value: 'dia' },
+];
+
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaPrecio = (valor) => (typeof valor === 'number' && valor >= 0) || 'Precio invalido';
-const reglaDuracion = (valor) => (Number.isInteger(valor) && valor >= 1) || 'Minimo 1 mes';
+const reglaDuracion = (valor) => (Number.isInteger(valor) && valor >= 1) || 'Minimo 1';
 
-const formulario = reactive({ nombre: '', precio: null, duracionMeses: null });
+const formulario = reactive({ nombre: '', precio: null, duracion: null, unidad: 'mes' });
 
 function abrirCreacion() {
   editando.value = false;
   planActivo.value = null;
-  Object.assign(formulario, { nombre: '', precio: null, duracionMeses: null });
+  Object.assign(formulario, { nombre: '', precio: null, duracion: null, unidad: 'mes' });
   dialogoAbierto.value = true;
 }
 
 function abrirEdicion(plan) {
   editando.value = true;
   planActivo.value = plan;
+  // El plan lleva meses O dias: se descompone en cantidad + unidad para el form.
+  const enDias = plan.duracionDias != null;
   Object.assign(formulario, {
     nombre: plan.nombre,
     precio: plan.precio,
-    duracionMeses: plan.duracionMeses,
+    duracion: enDias ? plan.duracionDias : plan.duracionMeses,
+    unidad: enDias ? 'dia' : 'mes',
   });
   dialogoAbierto.value = true;
 }
@@ -180,7 +198,10 @@ async function guardar() {
     const datos = {
       nombre: formulario.nombre,
       precio: formulario.precio,
-      duracionMeses: formulario.duracionMeses,
+      // Se manda una sola unidad de duracion segun lo elegido.
+      ...(formulario.unidad === 'dia'
+        ? { duracionDias: formulario.duracion }
+        : { duracionMeses: formulario.duracion }),
     };
 
     if (editando.value) {
