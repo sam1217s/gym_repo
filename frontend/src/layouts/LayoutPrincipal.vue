@@ -35,9 +35,17 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="menuAbierto" show-if-above bordered :width="252" class="drawer-nav">
+    <q-drawer
+      v-model="menuAbierto"
+      show-if-above
+      bordered
+      :width="252"
+      :mini="miniActivo"
+      :mini-width="64"
+      class="drawer-nav"
+    >
       <q-list padding class="q-px-sm">
-        <q-item-label header class="etiqueta-nav">Navegacion</q-item-label>
+        <q-item-label v-if="!miniActivo" header class="etiqueta-nav">Navegacion</q-item-label>
 
         <q-item
           v-for="enlace in enlacesVisibles"
@@ -49,13 +57,23 @@
           active-class="enlace-activo"
           @click="alNavegar"
         >
-          <q-item-section avatar>
+          <q-item-section avatar class="relative-position">
             <q-icon :name="enlace.icono" />
+            <q-badge
+              v-if="enlace.nombre === 'reportes' && gimnasio.reportesNoLeidos > 0"
+              floating
+              color="primary"
+              rounded
+            >
+              {{ gimnasio.reportesNoLeidos }}
+            </q-badge>
           </q-item-section>
           <q-item-section>{{ enlace.titulo }}</q-item-section>
-          <q-item-section v-if="enlace.nombre === 'reportes' && gimnasio.reportesNoLeidos > 0" side>
-            <q-badge color="primary" rounded>{{ gimnasio.reportesNoLeidos }}</q-badge>
-          </q-item-section>
+
+          <!-- En modo mini (escritorio) el texto se oculta: el tooltip lo trae de vuelta. -->
+          <q-tooltip v-if="miniActivo" anchor="center right" self="center left">
+            {{ enlace.titulo }}
+          </q-tooltip>
         </q-item>
       </q-list>
     </q-drawer>
@@ -79,6 +97,11 @@ const $q = useQuasar();
 const gimnasio = useGimnasioStore();
 
 const menuAbierto = ref(false);
+
+// En escritorio el drawer puede colapsar a solo iconos ("mini"). No aplica en
+// movil, donde es un overlay que se abre y cierra entero.
+const mini = ref(false);
+const miniActivo = computed(() => mini.value && $q.screen.gt.sm);
 
 const ETIQUETAS_ROL = {
   [ROLES.SUPER_ADMIN]: 'Plataforma',
@@ -152,14 +175,24 @@ const enlacesVisibles = computed(() => {
   );
 });
 
+// El boton hamburguesa: en movil abre/cierra el overlay; en escritorio alterna
+// entre el menu completo y el minimizado (solo iconos).
 function alternarMenu() {
-  menuAbierto.value = !menuAbierto.value;
+  if ($q.screen.lt.md) {
+    menuAbierto.value = !menuAbierto.value;
+  } else {
+    mini.value = !mini.value;
+  }
 }
 
-// En movil el drawer es un overlay: al elegir una opcion, se cierra solo. En
-// escritorio (>= 1024px) es fijo y se queda abierto.
+// Al elegir una opcion: en movil se cierra el overlay; en escritorio el menu se
+// minimiza a solo iconos (con su tooltip), para dejarle mas espacio al panel.
 function alNavegar() {
-  if ($q.screen.lt.md) menuAbierto.value = false;
+  if ($q.screen.lt.md) {
+    menuAbierto.value = false;
+  } else {
+    mini.value = true;
+  }
 }
 
 // El badge de "Reportes" (solo dueño). Se cuenta al montar el panel; la propia
