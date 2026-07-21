@@ -35,7 +35,7 @@
       bordered
       row-key="_id"
       :rows="plataforma.gimnasios"
-      :columns="COLUMNAS"
+      :columns="columnasResponsivas"
       :loading="plataforma.cargando"
       :pagination="{ rowsPerPage: 15 }"
       :hide-bottom="plataforma.gimnasios.length <= 15"
@@ -201,6 +201,7 @@ import { useQuasar } from 'quasar';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import FormularioOnboarding from 'src/components/FormularioOnboarding.vue';
+import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
 import * as servicioPlataforma from 'src/servicios/plataforma.servicio.js';
 import { ESTADOS_GIMNASIO, usePlataformaStore } from 'src/stores/plataforma.js';
 
@@ -252,6 +253,9 @@ const COLUMNAS = [
   { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
   { name: 'acciones', label: '', field: '_id', align: 'right' },
 ];
+
+// En movil, la columna de acciones va primero (ver el composable).
+const columnasResponsivas = useColumnasResponsive(COLUMNAS);
 
 const discosEstado = computed(() =>
   [

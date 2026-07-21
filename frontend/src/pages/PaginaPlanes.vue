@@ -15,7 +15,7 @@
       bordered
       row-key="_id"
       :rows="gimnasio.planesMembresia"
-      :columns="COLUMNAS"
+      :columns="columnasResponsivas"
       :pagination="{ rowsPerPage: 15 }"
       :hide-bottom="gimnasio.planesMembresia.length <= 15"
       no-data-label="Aun no hay planes. Sin un plan no se pueden registrar pagos."
@@ -33,17 +33,20 @@
 
       <template #body-cell-acciones="props">
         <q-td :props="props" class="text-right">
-          <q-btn flat dense no-caps size="sm" color="grey-8" label="Editar" @click="abrirEdicion(props.row)" />
+          <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row)">
+            <q-tooltip>Editar</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="props.row.activo"
+            round
             flat
             dense
-            no-caps
-            size="sm"
             color="negative"
-            label="Archivar"
+            icon="archive"
             @click="confirmarArchivado(props.row)"
-          />
+          >
+            <q-tooltip>Archivar</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </q-table>
@@ -106,6 +109,8 @@
 import { useQuasar } from 'quasar';
 import { onMounted, reactive, ref } from 'vue';
 
+import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
+
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const gimnasio = useGimnasioStore();
@@ -141,6 +146,9 @@ const COLUMNAS = [
   { name: 'estado', label: 'Estado', field: 'activo', align: 'left', sortable: true },
   { name: 'acciones', label: '', field: '_id', align: 'right' },
 ];
+
+// En movil, la columna de acciones va primero (ver el composable).
+const columnasResponsivas = useColumnasResponsive(COLUMNAS);
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaPrecio = (valor) => (typeof valor === 'number' && valor >= 0) || 'Precio invalido';

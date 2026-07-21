@@ -22,7 +22,7 @@
       bordered
       row-key="_id"
       :rows="gimnasio.usuarios"
-      :columns="COLUMNAS"
+      :columns="columnasResponsivas"
       :pagination="{ rowsPerPage: 15 }"
       :hide-bottom="gimnasio.usuarios.length <= 15"
     >
@@ -58,24 +58,19 @@
       <template #body-cell-acciones="props">
         <q-td :props="props" class="text-right">
           <template v-if="props.row.rol === ROLES.SEDE_ADMIN">
+            <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row)">
+              <q-tooltip>Editar</q-tooltip>
+            </q-btn>
             <q-btn
+              round
               flat
               dense
-              no-caps
-              size="sm"
-              color="grey-8"
-              label="Editar"
-              @click="abrirEdicion(props.row)"
-            />
-            <q-btn
-              flat
-              dense
-              no-caps
-              size="sm"
               :color="props.row.activo ? 'negative' : 'positive'"
-              :label="props.row.activo ? 'Desactivar' : 'Reactivar'"
+              :icon="props.row.activo ? 'block' : 'check_circle'"
               @click="confirmarCambioActivo(props.row)"
-            />
+            >
+              <q-tooltip>{{ props.row.activo ? 'Desactivar' : 'Reactivar' }}</q-tooltip>
+            </q-btn>
           </template>
           <span v-else class="text-grey-6">—</span>
         </q-td>
@@ -189,6 +184,8 @@
 import { useQuasar } from 'quasar';
 import { computed, onMounted, reactive, ref } from 'vue';
 
+import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
+
 import { ROLES } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
@@ -218,6 +215,9 @@ const COLUMNAS = [
   { name: 'estado', label: 'Estado', field: 'activo', align: 'left', sortable: true },
   { name: 'acciones', label: '', field: '_id', align: 'right' },
 ];
+
+// En movil, la columna de acciones va primero (ver el composable).
+const columnasResponsivas = useColumnasResponsive(COLUMNAS);
 
 const opcionesSede = computed(() =>
   gimnasio.sedes

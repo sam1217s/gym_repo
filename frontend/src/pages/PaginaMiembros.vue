@@ -59,7 +59,7 @@
       bordered
       row-key="_id"
       :rows="filasFiltradas"
-      :columns="COLUMNAS"
+      :columns="columnasResponsivas"
       :loading="cargando"
       :pagination="{ rowsPerPage: 15 }"
       :hide-bottom="filasFiltradas.length <= 15"
@@ -94,24 +94,12 @@
 
       <template #body-cell-acciones="props">
         <q-td :props="props" class="text-right">
-          <q-btn
-            flat
-            dense
-            no-caps
-            size="sm"
-            color="primary"
-            label="Registrar pago"
-            @click="abrirPago(props.row.miembro)"
-          />
-          <q-btn
-            flat
-            dense
-            no-caps
-            size="sm"
-            color="grey-8"
-            label="Editar"
-            @click="abrirEdicion(props.row.miembro)"
-          />
+          <q-btn round flat dense color="primary" icon="payments" @click="abrirPago(props.row.miembro)">
+            <q-tooltip>Registrar pago</q-tooltip>
+          </q-btn>
+          <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row.miembro)">
+            <q-tooltip>Editar</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </q-table>
@@ -215,6 +203,8 @@
 import { useQuasar } from 'quasar';
 import { computed, onMounted, reactive, ref } from 'vue';
 
+import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
+
 import FormularioPago from 'src/components/FormularioPago.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import {
@@ -285,6 +275,9 @@ const COLUMNAS = [
   { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
   { name: 'acciones', label: '', field: (fila) => fila.miembro._id, align: 'right' },
 ];
+
+// En movil, la columna de acciones va primero (ver el composable).
+const columnasResponsivas = useColumnasResponsive(COLUMNAS);
 
 const ORDEN_DISCOS = [
   ESTADOS_VENCIMIENTO.AL_DIA,
