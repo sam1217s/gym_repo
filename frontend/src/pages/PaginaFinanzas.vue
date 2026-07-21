@@ -207,7 +207,16 @@
                 dense
                 :rules="[reglaMonto]"
               />
-              <q-input v-model="formGasto.fecha" class="col-6" type="date" label="Fecha" outlined dense />
+              <!-- Los servicios se pagan por mes completo: se elige el MES, no el dia. -->
+              <q-input
+                v-model="formGasto.fecha"
+                class="col-6"
+                :type="esGastoMensual ? 'month' : 'date'"
+                :label="esGastoMensual ? 'Mes' : 'Fecha'"
+                :hint="esGastoMensual ? 'Cubre el mes completo' : ''"
+                outlined
+                dense
+              />
             </div>
           </q-card-section>
           <q-separator />
@@ -263,7 +272,7 @@
 
 <script setup>
 import { useQuasar } from 'quasar';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
@@ -352,7 +361,12 @@ const columnasGasto = [
     field: 'fecha',
     align: 'left',
     sortable: true,
-    format: (v) => new Date(v).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }),
+    // Un gasto mensual se muestra como mes ("julio 2026"): el dia no significa
+    // nada ahi, cubre el mes completo.
+    format: (v, fila) =>
+      CATEGORIAS_MENSUALES.includes(fila.categoria)
+        ? new Date(v).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+        : new Date(v).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }),
   },
   {
     name: 'categoria',
@@ -384,7 +398,30 @@ const columnasGasto = [
 const reglaObligatorio = (v) => Boolean(String(v ?? '').trim()) || 'Este campo es obligatorio';
 const reglaMonto = (v) => (typeof v === 'number' && v >= 0) || 'Monto invalido';
 
+/**
+ * Categorias que se pagan por MES completo: en ellas la fecha se elige como mes
+ * ("2026-07") y se guarda el dia 1, no un dia suelto que confundiria el reporte.
+ */
+const CATEGORIAS_MENSUALES = ['servicios'];
+
 const formGasto = reactive({ categoria: null, sede: null, concepto: '', monto: null, fecha: isoDia(hoy) });
+
+const esGastoMensual = computed(() => CATEGORIAS_MENSUALES.includes(formGasto.categoria));
+
+// Al cambiar de categoria se ajusta el formato del valor para que el input
+// (date <-> month) no se quede con una cadena que no entiende.
+watch(
+  () => formGasto.categoria,
+  (nueva, anterior) => {
+    if (!formGasto.fecha) return;
+    const ahoraMensual = CATEGORIAS_MENSUALES.includes(nueva);
+    if (ahoraMensual === CATEGORIAS_MENSUALES.includes(anterior)) return;
+
+    formGasto.fecha = ahoraMensual
+      ? formGasto.fecha.slice(0, 7) // "2026-07-09" -> "2026-07"
+      : `${formGasto.fecha}-01`; // "2026-07" -> "2026-07-01"
+  },
+);
 const formDeuda = reactive({ descripcion: '', acreedor: '', montoTotal: null, sede: null });
 
 function abrirGasto() {
@@ -410,7 +447,9 @@ async function guardarGasto() {
       categoria: formGasto.categoria,
       concepto: formGasto.concepto,
       monto: formGasto.monto,
-      fecha: formGasto.fecha,
+      // Un gasto mensual llega como "2026-07": se guarda el dia 1 de ese mes.
+      // El backend espera un dia civil completo (ver `diaCivil`).
+      fecha: esGastoMensual.value ? `${formGasto.fecha}-01` : formGasto.fecha,
       ...(formGasto.sede ? { sede: formGasto.sede } : {}),
     });
     quasar.notify({ type: 'positive', message: 'Gasto registrado' });
