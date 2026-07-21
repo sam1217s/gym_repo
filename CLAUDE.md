@@ -157,6 +157,24 @@ de la venta, devuelve el stock. `listarVentas` agrupa por dia y devuelve el resu
 (`total`/`unidades`/`operaciones`) para el panel de "ventas de hoy". Respeta `filtroSede` igual
 que Miembro/Pago. `Producto.precio` es **obligatorio**: sin el no se puede vender.
 
+### Auditoria: la bitacora del dueño (middleware transversal)
+
+`middlewares/auditoria.js` anota en `Auditoria` (tenant-scoped) CADA operacion que muta datos
+y termina bien, para que el dueño vea quien hizo que. Va montado lo primero en el router de
+`/api` (`rutas.use(auditar)`) y trabaja en `res.on('finish')`. Trampas y decisiones:
+
+- **Lee `originalUrl`, no `path`.** En `finish` la pila de routers ya se desenrollo, asi que
+  `peticion.path` volveria a ser `/api/miembros`. Se parte `originalUrl` y se quita el `api`.
+- **Escribe con `ejecutarConTenant(usuario.tenant, ...)`**: el contexto de la peticion ya se
+  cerro cuando corre el `finish`. Es **fire-and-forget** (`.catch(() => {})`): la auditoria
+  jamas rompe una operacion ya completada.
+- **Traduce la ruta a una frase** con el mapa `MOVIMIENTOS` (recurso→metodo→etiqueta). Lo que
+  no esta en el mapa no se audita. Los servicios NO saben que la auditoria existe: cero
+  acoplamiento, un solo sitio que la conoce.
+- **No audita**: GETs, login/refresh, webhooks, `/pagar`, respuestas >=400 ni al `super_admin`
+  (opera la plataforma, no un gimnasio). El panel `/api/auditoria` es **solo del dueño** y ve
+  los movimientos de todas sus sedes.
+
 ### Reportes de maquinas: el aviso al dueño
 
 Cuando un `sede_admin` marca una `Maquina` en `mantenimiento` o `dañada`, `maquinas.servicio`

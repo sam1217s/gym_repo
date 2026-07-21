@@ -105,6 +105,14 @@ export async function marcarReportesLeidos() {
   return respuesta.data;
 }
 
+// --- Auditoria (bitacora del dueño) --------------------------------------------
+
+/** Movimientos recientes del gimnasio: quien hizo que y cuando. */
+export async function listarAuditoria() {
+  const { data: respuesta } = await api.get('/auditoria');
+  return respuesta.data;
+}
+
 // --- Usuarios (staff) ----------------------------------------------------------
 
 export async function listarUsuarios() {

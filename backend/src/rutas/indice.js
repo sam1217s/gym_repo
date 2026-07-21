@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { estaConectada } from '../config/baseDatos.js';
+import { auditar } from '../middlewares/auditoria.js';
 import { responderOk } from '../utilidades/respuesta.js';
+import rutasAuditoria from './auditoria.rutas.js';
 import rutasAuth from './auth.rutas.js';
 import rutasFacturacion from './facturacion.rutas.js';
 import rutasInventario from './inventario.rutas.js';
@@ -24,6 +26,11 @@ rutas.get('/salud', (_peticion, respuesta) =>
   responderOk(respuesta, { estado: 'ok', baseDatos: estaConectada() ? 'conectada' : 'caida' }),
 );
 
+// Bitacora transversal: anota cada mutacion exitosa. Va lo primero para que su
+// `res.on('finish')` quede registrado antes de que cualquier ruta responda. Las
+// rutas publicas (webhooks, /pagar) no tienen usuario, asi que no dejan rastro.
+rutas.use(auditar);
+
 // Publica: la llama Wompi. Se autentica por checksum, no por cookie.
 rutas.use('/webhooks', rutasWebhooks);
 
@@ -45,5 +52,6 @@ rutas.use('/pagos', rutasPagos);
 rutas.use('/vencimientos', rutasVencimientos);
 rutas.use('/reportes', rutasReportes);
 rutas.use('/reportes-maquina', rutasReportesMaquina);
+rutas.use('/auditoria', rutasAuditoria);
 
 export default rutas;

@@ -19,6 +19,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const maquinas = ref([]);
   const reportesMaquina = ref([]);
   const reportesNoLeidos = ref(0);
+  const auditoria = ref([]);
 
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
   const vencimientos = ref([]);
@@ -211,6 +212,12 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     reportesMaquina.value = reportesMaquina.value.map((r) => ({ ...r, leido: true }));
   }
 
+  // --- Auditoria (bitacora del dueño) ----------------------------------------
+
+  async function cargarAuditoria() {
+    auditoria.value = await servicioGimnasio.listarAuditoria();
+  }
+
   // --- Reportes ----------------------------------------------------------------
 
   async function cargarReportePanel() {
@@ -232,6 +239,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     maquinas,
     reportesMaquina,
     reportesNoLeidos,
+    auditoria,
     vencimientos,
     reportePanel,
     cargando,
@@ -249,6 +257,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     cargarReportesMaquina,
     contarReportesNoLeidos,
     marcarReportesLeidos,
+    cargarAuditoria,
     cargarSedes,
     crearSede,
     actualizarSede,

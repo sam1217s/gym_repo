@@ -1,6 +1,7 @@
 import { obtenerConexion } from '../config/baseDatos.js';
 import { obtenerContexto } from '../contexto/contextoTenant.js';
 
+import * as auditoria from './Auditoria.js';
 import * as facturaPlataforma from './FacturaPlataforma.js';
 import * as maquina from './Maquina.js';
 import * as notificacion from './Notificacion.js';
@@ -41,6 +42,7 @@ const definiciones = [
   maquina,
   ventaProducto,
   reporteMaquina,
+  auditoria,
 ];
 
 export const NOMBRES_MODELOS = Object.freeze(

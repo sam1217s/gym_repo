@@ -115,6 +115,7 @@ const ENLACES = [
     roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
   },
   { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: [ROLES.TENANT_OWNER] },
+  { nombre: 'auditoria', titulo: 'Auditoria', icono: 'fact_check', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },

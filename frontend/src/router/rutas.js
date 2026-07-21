@@ -87,6 +87,12 @@ const rutas = [
         meta: { roles: [ROLES.TENANT_OWNER] },
       },
       {
+        path: 'auditoria',
+        name: 'auditoria',
+        component: () => import('pages/PaginaAuditoria.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER] },
+      },
+      {
         path: 'sedes',
         name: 'sedes',
         component: () => import('pages/PaginaSedes.vue'),

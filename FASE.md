@@ -411,6 +411,23 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
 - [x] 5 pruebas (`ventas.prueba.js`) + inventario ampliado (rechaza producto sin precio).
       Suite completa: 211 en verde.
 
+### Etapa 4 — Auditoria de movimientos (bitacora del dueño) · HECHO y desplegado
+- [x] `modelos/Auditoria.js` tenant-scoped: guarda quien (foto de nombre y rol), que
+      (`accion` legible + `recurso`), un `detalle` corto y la fecha. Registro historico:
+      no se edita ni se borra.
+- [x] `middlewares/auditoria.js` transversal: anota en `res.on('finish')` CADA mutacion
+      exitosa (POST/PATCH/DELETE) de personal del gimnasio. Traduce la ruta a una frase
+      legible (mapa `MOVIMIENTOS`); los servicios no saben que existe (cero acoplamiento).
+      TRAMPA: en `finish` la pila de routers ya se desenrollo, asi que se lee `originalUrl`
+      (no `path`, que volveria a ser "/api/..."). Escribe con `ejecutarConTenant` (el contexto
+      de la peticion ya se cerro) y es fire-and-forget: nunca rompe la operacion.
+- [x] No audita: GETs, login/refresh, webhooks, `/pagar`, operaciones fallidas (>=400) ni al
+      super_admin (opera la plataforma, no un gimnasio).
+- [x] `/api/auditoria` (GET, SOLO dueño) lista los ultimos 300 movimientos de TODAS sus sedes.
+      Frontend: `PaginaAuditoria.vue` con buscador (usuario/accion/detalle), chip de rol y
+      banda de color por recurso. En el nav y el router (solo dueño).
+- [x] 4 pruebas (`auditoria.prueba.js`, con poll por la escritura async). Suite: 220 en verde.
+
 ### Etapa 3.1 — Reportes de maquinas para el dueño · HECHO y desplegado
 - [x] `modelos/ReporteMaquina.js` tenant-scoped: se crea cuando un `sede_admin` marca una
       maquina en mantenimiento/dañada (`maquinas.servicio` lo dispara pasando el `actor` desde
