@@ -11,6 +11,7 @@ import rutasPagosMiembro from './pagosMiembro.rutas.js';
 import rutasPlanesMembresia from './planesMembresia.rutas.js';
 import rutasPlataforma from './plataforma.rutas.js';
 import rutasReportes from './reportes.rutas.js';
+import rutasReportesMaquina from './reportesMaquina.rutas.js';
 import rutasSedes from './sedes.rutas.js';
 import rutasUsuarios from './usuarios.rutas.js';
 import rutasVencimientos from './vencimientos.rutas.js';
@@ -43,5 +44,6 @@ rutas.use('/maquinas', rutasMaquinas);
 rutas.use('/pagos', rutasPagos);
 rutas.use('/vencimientos', rutasVencimientos);
 rutas.use('/reportes', rutasReportes);
+rutas.use('/reportes-maquina', rutasReportesMaquina);
 
 export default rutas;

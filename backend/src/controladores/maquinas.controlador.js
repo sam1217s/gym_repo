@@ -11,14 +11,22 @@ export const listarMaquinas = manejadorAsync(async (peticion, respuesta) =>
 export const crearMaquina = manejadorAsync(async (peticion, respuesta) =>
   responderCreado(
     respuesta,
-    await servicioMaquinas.crearMaquina(peticion.body, { filtroSede: peticion.filtroSede }),
+    await servicioMaquinas.crearMaquina(peticion.body, {
+      filtroSede: peticion.filtroSede,
+      actor: peticion.usuario,
+    }),
   ),
 );
 
 export const actualizarMaquina = manejadorAsync(async (peticion, respuesta) =>
   responderOk(
     respuesta,
-    await servicioMaquinas.actualizarMaquina(peticion.params.id, peticion.body, peticion.filtroSede),
+    await servicioMaquinas.actualizarMaquina(
+      peticion.params.id,
+      peticion.body,
+      peticion.filtroSede,
+      peticion.usuario,
+    ),
   ),
 );
 

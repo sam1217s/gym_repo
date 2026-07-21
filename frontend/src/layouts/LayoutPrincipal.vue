@@ -53,6 +53,9 @@
             <q-icon :name="enlace.icono" />
           </q-item-section>
           <q-item-section>{{ enlace.titulo }}</q-item-section>
+          <q-item-section v-if="enlace.nombre === 'reportes' && gimnasio.reportesNoLeidos > 0" side>
+            <q-badge color="primary" rounded>{{ gimnasio.reportesNoLeidos }}</q-badge>
+          </q-item-section>
         </q-item>
       </q-list>
     </q-drawer>
@@ -65,13 +68,15 @@
 
 <script setup>
 import { useQuasar } from 'quasar';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
+import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const { usuario, cerrarSesion } = useAutenticacion();
 const $q = useQuasar();
+const gimnasio = useGimnasioStore();
 
 const menuAbierto = ref(false);
 
@@ -109,6 +114,7 @@ const ENLACES = [
     icono: 'fitness_center',
     roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
   },
+  { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },
@@ -154,6 +160,14 @@ function alternarMenu() {
 function alNavegar() {
   if ($q.screen.lt.md) menuAbierto.value = false;
 }
+
+// El badge de "Reportes" (solo dueño). Se cuenta al montar el panel; la propia
+// pagina de reportes lo baja a 0 cuando el dueño la abre.
+onMounted(() => {
+  if (usuario.value?.rol === ROLES.TENANT_OWNER) {
+    gimnasio.contarReportesNoLeidos().catch(() => {});
+  }
+});
 </script>
 
 <style scoped>

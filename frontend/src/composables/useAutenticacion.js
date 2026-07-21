@@ -2,7 +2,8 @@ import { useQuasar } from 'quasar';
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAutenticacionStore } from 'src/stores/autenticacion.js';
+import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
+import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 /** El backend pide el gimnasio cuando el mismo correo o cedula existe en varios. */
 const CAMPO_GIMNASIO_REQUERIDO = 'slugGimnasio';
@@ -14,6 +15,7 @@ const CAMPO_GIMNASIO_REQUERIDO = 'slugGimnasio';
  */
 export function useAutenticacion() {
   const autenticacion = useAutenticacionStore();
+  const gimnasio = useGimnasioStore();
   const enrutador = useRouter();
   const ruta = useRoute();
   const quasar = useQuasar();
@@ -30,6 +32,26 @@ export function useAutenticacion() {
     return error.response?.data?.error?.mensaje ?? respaldo;
   }
 
+  /** Cuenta los reportes de maquina sin leer y, si hay, lanza el aviso. */
+  async function hayReportesPendientes() {
+    try {
+      const total = await gimnasio.contarReportesNoLeidos();
+      if (total > 0) {
+        quasar.notify({
+          type: 'warning',
+          icon: 'report_problem',
+          position: 'top',
+          timeout: 6000,
+          message: `Tienes ${total} ${total === 1 ? 'maquina reportada' : 'maquinas reportadas'} para revisar`,
+        });
+        return true;
+      }
+    } catch {
+      // Un fallo aqui no debe impedir entrar: se sigue al panel normal.
+    }
+    return false;
+  }
+
   async function iniciarSesion(credenciales) {
     cargando.value = true;
     try {
@@ -37,6 +59,14 @@ export function useAutenticacion() {
 
       if (sesion.debeCambiarContrasena) {
         await enrutador.push({ name: 'cambiar-contrasena' });
+        return sesion;
+      }
+
+      // Dueño con maquinas reportadas SIN LEER: se le avisa y se le lleva directo
+      // al panel de reportes. Una vez ahi se marcan leidas y no vuelve a saltar,
+      // aunque el equipo siga sin arreglarse (para verlas de nuevo entra a Reportes).
+      if (sesion.rol === ROLES.TENANT_OWNER && (await hayReportesPendientes())) {
+        await enrutador.push({ name: 'reportes' });
         return sesion;
       }
 

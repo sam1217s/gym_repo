@@ -8,6 +8,7 @@ import * as pago from './Pago.js';
 import * as planMembresia from './PlanMembresia.js';
 import * as planPlataforma from './PlanPlataforma.js';
 import * as miembro from './Miembro.js';
+import * as reporteMaquina from './ReporteMaquina.js';
 import * as producto from './Producto.js';
 import * as sede from './Sede.js';
 import * as tenant from './Tenant.js';
@@ -39,6 +40,7 @@ const definiciones = [
   producto,
   maquina,
   ventaProducto,
+  reporteMaquina,
 ];
 
 export const NOMBRES_MODELOS = Object.freeze(

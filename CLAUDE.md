@@ -157,6 +157,23 @@ de la venta, devuelve el stock. `listarVentas` agrupa por dia y devuelve el resu
 (`total`/`unidades`/`operaciones`) para el panel de "ventas de hoy". Respeta `filtroSede` igual
 que Miembro/Pago. `Producto.precio` es **obligatorio**: sin el no se puede vender.
 
+### Reportes de maquinas: el aviso al dueño
+
+Cuando un `sede_admin` marca una `Maquina` en `mantenimiento` o `dañada`, `maquinas.servicio`
+crea un `ReporteMaquina` (tenant-scoped) para el **dueño**. Reglas no obvias:
+
+- El reporte se crea **solo si el estado CAMBIA** a mantenimiento/dañada, y **solo si el actor
+  es `sede_admin`** (si el propio dueño cambia el estado no se avisa a si mismo). El `actor` lo
+  pasa el controlador (`peticion.usuario`), no se lee del contexto.
+- Es un registro de **evento con foto** (nombre, estado, nota, quien reporto): se sostiene
+  aunque la maquina cambie o se archive despues.
+- `leido` es del dueño: al abrir `/reportes-maquina` se marcan todos leidos (`updateMany`, que
+  el plugin SI intercepta). A partir de ahi dejan de dispararle la notificacion de inicio de
+  sesion, **aunque la maquina siga sin arreglarse**; el reporte no se borra. Al entrar, si hay
+  reportes sin leer, el frontend lleva al dueño directo a Reportes (`useAutenticacion`).
+- El panel es **solo del dueño** (`requiereDuenoGimnasio`) y ve los de TODAS sus sedes (sin
+  `filtroSede`): el plugin ya acota al tenant y su alcance es el gimnasio entero.
+
 **Hay DOS integraciones de Wompi, con cuentas y secretos distintos, y confundirlas es un
 agujero:** la de plataforma (una sola cuenta de GymSaaS, en el `.env`, webhook `/webhooks/wompi`)
 y la de cada gimnasio (las llaves del dueno en `tenant.config.wompi`, webhook

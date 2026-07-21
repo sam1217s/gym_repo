@@ -86,6 +86,25 @@ export async function archivarMaquina(id) {
   return respuesta.data;
 }
 
+// --- Reportes de maquinas (para el dueño) --------------------------------------
+
+/** `{ reportes: [...], noLeidos }`. */
+export async function listarReportesMaquina() {
+  const { data: respuesta } = await api.get('/reportes-maquina');
+  return respuesta.data;
+}
+
+/** Conteo ligero de reportes sin leer, para la notificacion de login y el badge. */
+export async function contarReportesNoLeidos() {
+  const { data: respuesta } = await api.get('/reportes-maquina/no-leidos');
+  return respuesta.data.noLeidos;
+}
+
+export async function marcarReportesLeidos() {
+  const { data: respuesta } = await api.post('/reportes-maquina/marcar-leidos');
+  return respuesta.data;
+}
+
 // --- Usuarios (staff) ----------------------------------------------------------
 
 export async function listarUsuarios() {

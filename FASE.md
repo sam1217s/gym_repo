@@ -411,6 +411,22 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
 - [x] 5 pruebas (`ventas.prueba.js`) + inventario ampliado (rechaza producto sin precio).
       Suite completa: 211 en verde.
 
+### Etapa 3.1 — Reportes de maquinas para el dueño · HECHO y desplegado
+- [x] `modelos/ReporteMaquina.js` tenant-scoped: se crea cuando un `sede_admin` marca una
+      maquina en mantenimiento/dañada (`maquinas.servicio` lo dispara pasando el `actor` desde
+      el controlador). Guarda foto del nombre/estado/nota, quien reporto y `leido`.
+- [x] Solo cuando el ESTADO cambia a mantenimiento/dañada: editar la nota de una maquina ya
+      reportada no genera aviso nuevo. Si el propio dueño cambia el estado, no se reporta (no
+      hace falta avisarse a si mismo).
+- [x] `reportesMaquina.servicio` + rutas `/api/reportes-maquina` (GET lista, GET /no-leidos,
+      POST /marcar-leidos), SOLO dueño (`requiereDuenoGimnasio`). Ve los de TODAS sus sedes.
+- [x] Frontend: `PaginaReportes.vue` (lista con estado, sede, quien y nota); al abrirla se
+      marcan leidos (updateMany, cubierto por el plugin). Badge de no leidos en el nav.
+- [x] Al iniciar sesion, si el dueño tiene reportes SIN LEER, se le avisa y se le lleva directo
+      a Reportes. Marcarlos leidos apaga la notificacion aunque la maquina siga sin arreglarse;
+      para verlos de nuevo entra a Reportes. (`useAutenticacion.iniciarSesion`).
+- [x] 5 pruebas (`reportesMaquina.prueba.js`). Suite completa: 216 en verde.
+
 ### Etapa 3 — Mantenimiento de maquinas · HECHO y desplegado
 - [x] `modelos/Maquina.js` tenant-scoped por sede: `nombre`, `estado`
       (`operativa`/`mantenimiento`/`danada`, en `ESTADOS_MAQUINA`), `nota` libre, `activo`.

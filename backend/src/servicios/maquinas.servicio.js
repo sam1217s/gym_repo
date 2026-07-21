@@ -1,3 +1,4 @@
+import { ESTADOS_MAQUINA, ESTADOS_MAQUINA_REQUIEREN_ATENCION, ROLES } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { exigirSede } from './sedes.servicio.js';
@@ -14,6 +15,27 @@ import { exigirSede } from './sedes.servicio.js';
 
 const CODIGO_DUPLICADO_MONGO = 11000;
 
+/**
+ * Deja constancia para el dueño cuando un ENCARGADO de sede reporta una maquina
+ * en mantenimiento o dañada. Solo cuenta si lo hace un `sede_admin`: si el propio
+ * dueño cambia el estado, no hace falta avisarse a si mismo.
+ */
+async function registrarReporteSiSedeAdmin(maquina, actor) {
+  if (!actor || actor.rol !== ROLES.SEDE_ADMIN) return;
+  if (!ESTADOS_MAQUINA_REQUIEREN_ATENCION.includes(maquina.estado)) return;
+
+  const ReporteMaquina = obtenerModelo('ReporteMaquina');
+  await ReporteMaquina.create({
+    sede: maquina.sede,
+    maquina: maquina._id,
+    nombreMaquina: maquina.nombre,
+    estado: maquina.estado,
+    nota: maquina.nota,
+    reportadoPor: actor._id,
+    reportadoPorNombre: actor.nombreCompleto,
+  });
+}
+
 export function listarMaquinas(filtroSede = {}, { sede, estado, activo } = {}) {
   const Maquina = obtenerModelo('Maquina');
 
@@ -26,7 +48,7 @@ export function listarMaquinas(filtroSede = {}, { sede, estado, activo } = {}) {
   return Maquina.find(filtro).sort({ nombre: 1 });
 }
 
-export async function crearMaquina(datos, { filtroSede = {}, sedePorDefecto = null } = {}) {
+export async function crearMaquina(datos, { filtroSede = {}, sedePorDefecto = null, actor = null } = {}) {
   const Maquina = obtenerModelo('Maquina');
 
   // Un sede_admin crea siempre en SU sede, diga lo que diga el cuerpo.
@@ -35,8 +57,9 @@ export async function crearMaquina(datos, { filtroSede = {}, sedePorDefecto = nu
 
   await exigirSede(sede);
 
+  let maquina;
   try {
-    return await Maquina.create({
+    maquina = await Maquina.create({
       sede,
       nombre: datos.nombre,
       estado: datos.estado,
@@ -48,9 +71,13 @@ export async function crearMaquina(datos, { filtroSede = {}, sedePorDefecto = nu
     }
     throw error;
   }
+
+  // Si nace ya en mantenimiento/dañada y la registra un encargado, se reporta.
+  await registrarReporteSiSedeAdmin(maquina, actor);
+  return maquina;
 }
 
-export async function actualizarMaquina(id, datos, filtroSede = {}) {
+export async function actualizarMaquina(id, datos, filtroSede = {}, actor = null) {
   const Maquina = obtenerModelo('Maquina');
 
   // El filtro de sede va en la BUSQUEDA: para un sede_admin, una maquina de otra
@@ -58,16 +85,25 @@ export async function actualizarMaquina(id, datos, filtroSede = {}) {
   const maquina = await Maquina.findOne({ _id: id, ...filtroSede });
   if (!maquina) throw ErrorApi.noEncontrado('La maquina no existe');
 
+  const estadoAnterior = maquina.estado;
   Object.assign(maquina, datos);
 
+  let guardada;
   try {
-    return await maquina.save();
+    guardada = await maquina.save();
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {
       throw ErrorApi.conflicto('Ya existe una maquina con ese nombre en esa sede');
     }
     throw error;
   }
+
+  // Solo cuando el estado CAMBIA a mantenimiento/dañada: editar la nota de una
+  // maquina que ya estaba reportada no genera un aviso nuevo.
+  if (guardada.estado !== estadoAnterior) {
+    await registrarReporteSiSedeAdmin(guardada, actor);
+  }
+  return guardada;
 }
 
 export async function archivarMaquina(id, filtroSede = {}) {
