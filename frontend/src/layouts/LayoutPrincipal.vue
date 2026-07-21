@@ -16,11 +16,20 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="menuAbierto" show-if-above bordered>
-      <q-list>
-        <q-item-label header>Navegacion</q-item-label>
+    <q-drawer v-model="menuAbierto" show-if-above bordered :width="252" class="drawer-nav">
+      <q-list padding class="q-px-sm">
+        <q-item-label header class="etiqueta-nav">Navegacion</q-item-label>
 
-        <q-item v-for="enlace in enlacesVisibles" :key="enlace.nombre" clickable :to="{ name: enlace.nombre }" exact>
+        <q-item
+          v-for="enlace in enlacesVisibles"
+          :key="enlace.nombre"
+          clickable
+          :to="{ name: enlace.nombre }"
+          exact
+          class="enlace-nav q-mb-xs"
+          active-class="enlace-activo"
+          @click="alNavegar"
+        >
           <q-item-section avatar>
             <q-icon :name="enlace.icono" />
           </q-item-section>
@@ -36,12 +45,14 @@
 </template>
 
 <script setup>
+import { useQuasar } from 'quasar';
 import { computed, ref } from 'vue';
 
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 
 const { usuario, cerrarSesion } = useAutenticacion();
+const $q = useQuasar();
 
 const menuAbierto = ref(false);
 
@@ -110,10 +121,46 @@ const enlacesVisibles = computed(() => {
 function alternarMenu() {
   menuAbierto.value = !menuAbierto.value;
 }
+
+// En movil el drawer es un overlay: al elegir una opcion, se cierra solo. En
+// escritorio (>= 1024px) es fijo y se queda abierto.
+function alNavegar() {
+  if ($q.screen.lt.md) menuAbierto.value = false;
+}
 </script>
 
 <style scoped>
 .encabezado-marca {
   border-bottom: 3px solid var(--q-primary);
+}
+
+.etiqueta-nav {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--q-secondary);
+  opacity: 0.7;
+}
+
+/* Enlaces con forma de pastilla; el activo lleva la banda de disco roja. */
+.enlace-nav {
+  border-radius: 10px;
+  min-height: 46px;
+  color: var(--q-secondary);
+}
+
+.enlace-nav:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.enlace-activo {
+  background: rgba(206, 17, 38, 0.1);
+  color: var(--q-primary);
+  font-weight: 600;
+}
+
+.enlace-activo :deep(.q-icon) {
+  color: var(--q-primary);
 }
 </style>
