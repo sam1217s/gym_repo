@@ -249,10 +249,14 @@
                 v-model="whatsapp.formulario.token"
                 :type="whatsapp.verToken ? 'text' : 'password'"
                 label="Token permanente"
-                hint="Se guarda cifrado en el servidor y no se vuelve a mostrar"
+                :hint="
+                  whatsapp.config.configurado
+                    ? 'Ya hay uno guardado. Dejalo vacio para conservarlo.'
+                    : 'Se guarda en el servidor y no se vuelve a mostrar'
+                "
                 outlined
                 dense
-                :rules="[reglaObligatorio]"
+                :rules="whatsapp.config.configurado ? [] : [reglaObligatorio]"
               >
                 <template #append>
                   <q-icon
@@ -268,6 +272,54 @@
                 <strong>{{ whatsapp.config.plantilla?.nombre }}</strong>
                 ({{ whatsapp.config.plantilla?.idioma }}) con 3 variables: nombre, gimnasio y fecha.
               </div>
+
+              <!-- Recibir es una configuracion aparte de enviar: sin el secreto
+                   de la app no se puede verificar la firma de Meta, y sin firma
+                   no se acepta ningun mensaje entrante. -->
+              <q-separator />
+              <div class="row items-center q-gutter-sm">
+                <span class="text-weight-medium">Bandeja de entrada</span>
+                <span
+                  class="chip-banda"
+                  :style="{
+                    '--banda': whatsapp.config.recibeMensajes
+                      ? 'var(--q-positive)'
+                      : 'var(--q-warning)',
+                  }"
+                >
+                  {{ whatsapp.config.recibeMensajes ? 'Recibe mensajes' : 'No recibe' }}
+                </span>
+              </div>
+
+              <q-input
+                v-model="whatsapp.formulario.secretoApp"
+                type="password"
+                label="Clave secreta de la app (App Secret)"
+                :hint="
+                  whatsapp.config.recibeMensajes
+                    ? 'Ya hay una guardada. Dejala vacia para conservarla.'
+                    : 'Meta > Configuracion de la app > Basica. Sin esto no se reciben mensajes.'
+                "
+                outlined
+                dense
+              />
+
+              <q-input
+                :model-value="whatsapp.config.urlWebhookEntrante"
+                label="URL de devolucion de llamada"
+                hint="Pegala en Meta > WhatsApp > Configuracion > Webhooks"
+                outlined
+                dense
+                readonly
+              />
+              <q-input
+                :model-value="whatsapp.config.tokenVerificacion"
+                label="Token de verificacion"
+                hint="El mismo campo de Meta, junto a la URL"
+                outlined
+                dense
+                readonly
+              />
             </template>
 
             <q-input
@@ -448,19 +500,36 @@ const OPCIONES_PROVEEDOR = [
 
 const dialogoWhatsapp = ref(false);
 
+const CONFIG_VACIA = {
+  proveedor: 'ninguno',
+  configurado: false,
+  idTelefono: null,
+  plantilla: null,
+  recibeMensajes: false,
+  urlWebhookEntrante: '',
+  tokenVerificacion: '',
+};
+const FORMULARIO_VACIO = {
+  proveedor: 'ninguno',
+  idTelefono: '',
+  token: '',
+  secretoApp: '',
+  urlWebhook: '',
+};
+
 const whatsapp = reactive({
   gimnasio: null,
-  config: { proveedor: 'ninguno', configurado: false, idTelefono: null, plantilla: null },
-  formulario: { proveedor: 'ninguno', idTelefono: '', token: '', urlWebhook: '' },
+  config: { ...CONFIG_VACIA },
+  formulario: { ...FORMULARIO_VACIO },
   verToken: false,
   guardando: false,
 });
 
 async function abrirWhatsapp(gimnasio) {
   whatsapp.gimnasio = gimnasio;
-  whatsapp.formulario = { proveedor: 'ninguno', idTelefono: '', token: '', urlWebhook: '' };
+  whatsapp.formulario = { ...FORMULARIO_VACIO };
   whatsapp.verToken = false;
-  whatsapp.config = { proveedor: 'ninguno', configurado: false, idTelefono: null, plantilla: null };
+  whatsapp.config = { ...CONFIG_VACIA };
   dialogoWhatsapp.value = true;
 
   try {
@@ -478,16 +547,23 @@ async function abrirWhatsapp(gimnasio) {
 async function guardarWhatsapp() {
   whatsapp.guardando = true;
   try {
-    const { proveedor, idTelefono, token, urlWebhook } = whatsapp.formulario;
+    const { proveedor, idTelefono, token, secretoApp, urlWebhook } = whatsapp.formulario;
+    // Los secretos vacios NO se mandan: el backend conserva los que ya tiene.
     const datos =
       proveedor === 'cloud_api'
-        ? { proveedor, idTelefono, token }
+        ? {
+            proveedor,
+            idTelefono,
+            ...(token ? { token } : {}),
+            ...(secretoApp ? { secretoApp } : {}),
+          }
         : proveedor === 'n8n'
           ? { proveedor, urlWebhook }
           : { proveedor };
 
     whatsapp.config = await servicioPlataforma.guardarWhatsapp(whatsapp.gimnasio._id, datos);
     whatsapp.formulario.token = '';
+    whatsapp.formulario.secretoApp = '';
     quasar.notify({ type: 'positive', message: 'WhatsApp configurado' });
   } catch (error) {
     quasar.notify({

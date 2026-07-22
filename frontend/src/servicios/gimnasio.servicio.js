@@ -149,6 +149,37 @@ export async function archivarDeuda(id) {
   return respuesta.data;
 }
 
+// --- Bandeja de WhatsApp -------------------------------------------------------
+
+/** `{ mensajes: [...], pendientes }`. El backend ya acota por sede segun el rol. */
+export async function listarMensajes(params = {}) {
+  const { data: respuesta } = await api.get('/mensajes', { params });
+  return respuesta.data;
+}
+
+export async function contarMensajesPendientes() {
+  const { data: respuesta } = await api.get('/mensajes/pendientes');
+  return respuesta.data.pendientes;
+}
+
+export async function responderMensaje(datos) {
+  const { data: respuesta } = await api.post('/mensajes/responder', datos);
+  return respuesta.data;
+}
+
+export async function marcarMensajesLeidos(ids) {
+  const { data: respuesta } = await api.post('/mensajes/marcar-leidos', { ids });
+  return respuesta.data;
+}
+
+/**
+ * URL del comprobante. Es una ruta de la API, no del almacen: la sirve el
+ * backend con la cookie de sesion, asi que nadie ve el archivo de otro gimnasio.
+ */
+export function urlArchivoMensaje(id) {
+  return `${api.defaults.baseURL}/mensajes/${id}/archivo`;
+}
+
 // --- Auditoria (bitacora del dueño) --------------------------------------------
 
 /** Movimientos recientes del gimnasio: quien hizo que y cuando. */

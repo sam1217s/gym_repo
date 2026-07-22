@@ -19,6 +19,8 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const maquinas = ref([]);
   const reportesMaquina = ref([]);
   const reportesNoLeidos = ref(0);
+  const mensajes = ref([]);
+  const mensajesPendientes = ref(0);
   const auditoria = ref([]);
   const gastos = ref([]);
   const deudas = ref([]);
@@ -259,6 +261,33 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     deudas.value = deudas.value.filter((deuda) => deuda._id !== id);
   }
 
+  // --- Bandeja de WhatsApp ----------------------------------------------------
+
+  async function cargarMensajes(params) {
+    const datos = await servicioGimnasio.listarMensajes(params);
+    mensajes.value = datos.mensajes;
+    mensajesPendientes.value = datos.pendientes;
+    return datos;
+  }
+
+  async function contarMensajesPendientes() {
+    mensajesPendientes.value = await servicioGimnasio.contarMensajesPendientes();
+    return mensajesPendientes.value;
+  }
+
+  async function responderMensaje(datos) {
+    const enviado = await servicioGimnasio.responderMensaje(datos);
+    // Se recarga: responder tambien marca leido el hilo entero en el backend.
+    await cargarMensajes();
+    return enviado;
+  }
+
+  async function marcarMensajesLeidos(ids) {
+    await servicioGimnasio.marcarMensajesLeidos(ids);
+    mensajes.value = mensajes.value.map((mensaje) => ({ ...mensaje, leido: true }));
+    mensajesPendientes.value = 0;
+  }
+
   // --- Auditoria (bitacora del dueño) ----------------------------------------
 
   async function cargarAuditoria() {
@@ -286,6 +315,8 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     maquinas,
     reportesMaquina,
     reportesNoLeidos,
+    mensajes,
+    mensajesPendientes,
     auditoria,
     gastos,
     deudas,
@@ -314,6 +345,10 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     crearDeuda,
     abonarDeuda,
     archivarDeuda,
+    cargarMensajes,
+    contarMensajesPendientes,
+    responderMensaje,
+    marcarMensajesLeidos,
     cargarAuditoria,
     cargarSedes,
     crearSede,

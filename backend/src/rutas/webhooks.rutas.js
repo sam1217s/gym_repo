@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as controlador from '../controladores/webhooks.controlador.js';
+import * as controladorMensajes from '../controladores/mensajes.controlador.js';
 import * as controladorMiembro from '../controladores/pagosMiembro.controlador.js';
 
 const rutas = Router();
@@ -15,5 +16,15 @@ const rutas = Router();
  */
 rutas.post('/wompi', controlador.recibirEventoWompi);
 rutas.post('/wompi-miembro', controladorMiembro.recibirEventoWompiMiembro);
+
+/**
+ * WhatsApp: los mensajes que mandan los miembros (comprobantes de pago). Mismo
+ * criterio que los de Wompi, con dos pasos:
+ *   - GET  -> el handshake con el que Meta da de alta la URL
+ *   - POST -> el evento; el `phone_number_id` dice de que gimnasio es y con que
+ *             secreto verificar la firma, que es lo que de verdad autentica.
+ */
+rutas.get('/whatsapp', controladorMensajes.verificarWebhook);
+rutas.post('/whatsapp', controladorMensajes.recibirWebhook);
 
 export default rutas;

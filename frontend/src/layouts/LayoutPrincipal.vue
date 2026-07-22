@@ -65,13 +65,8 @@
         >
           <q-item-section avatar class="relative-position">
             <q-icon :name="enlace.icono" />
-            <q-badge
-              v-if="enlace.nombre === 'reportes' && gimnasio.reportesNoLeidos > 0"
-              floating
-              color="primary"
-              rounded
-            >
-              {{ gimnasio.reportesNoLeidos }}
+            <q-badge v-if="pendientesDe(enlace.nombre) > 0" floating color="primary" rounded>
+              {{ pendientesDe(enlace.nombre) }}
             </q-badge>
           </q-item-section>
           <q-item-section>{{ enlace.titulo }}</q-item-section>
@@ -158,6 +153,12 @@ const ENLACES = [
     icono: 'account_balance_wallet',
     roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
   },
+  {
+    nombre: 'mensajes',
+    titulo: 'Mensajes',
+    icono: 'chat',
+    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
+  },
   { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'auditoria', titulo: 'Auditoria', icono: 'fact_check', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
@@ -217,11 +218,21 @@ function alNavegar() {
   }
 }
 
-// El badge de "Reportes" (solo dueño). Se cuenta al montar el panel; la propia
-// pagina de reportes lo baja a 0 cuando el dueño la abre.
+/** Contador del enlace: lo que esta sin atender. 0 = sin badge. */
+function pendientesDe(nombre) {
+  if (nombre === 'reportes') return gimnasio.reportesNoLeidos;
+  if (nombre === 'mensajes') return gimnasio.mensajesPendientes;
+  return 0;
+}
+
+// Los badges se cuentan al montar el panel; cada pagina los baja a 0 al abrirse.
+// Reportes es solo del dueño; la bandeja la atiende tambien el encargado de sede.
 onMounted(() => {
   if (usuario.value?.rol === ROLES.TENANT_OWNER) {
     gimnasio.contarReportesNoLeidos().catch(() => {});
+  }
+  if ([ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN].includes(usuario.value?.rol)) {
+    gimnasio.contarMensajesPendientes().catch(() => {});
   }
 });
 </script>

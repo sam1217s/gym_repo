@@ -63,6 +63,17 @@ const esquemaEntorno = z.object({
    * (nadie envia nada); en produccion, `correos/correo.js` LANZA en cuanto se
    * intenta enviar, para no fingir que el correo salio. Mismo patron que Wompi.
    */
+  /**
+   * Token del handshake con el que Meta da de alta el webhook de WhatsApp. NO
+   * autentica los mensajes (de eso se encarga la firma HMAC con el secreto de
+   * la app de CADA gimnasio): solo evita que un tercero registre el webhook.
+   * Tiene que coincidir con el que se escriba en el panel de Meta.
+   */
+  WHATSAPP_TOKEN_VERIFICACION: z.string().min(1).default('gymsaas-verificacion'),
+
+  /** Carpeta donde se guardan los comprobantes que mandan los miembros. */
+  ALMACEN_ARCHIVOS: z.string().default('almacen'),
+
   SMTP_HOST: z.string().default(''),
   SMTP_PUERTO: z.coerce.number().int().positive().default(587),
   SMTP_USUARIO: z.string().default(''),

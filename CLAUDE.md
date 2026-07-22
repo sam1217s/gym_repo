@@ -644,6 +644,35 @@ devuelven al cliente (`cobros.servicio.js → describirConfig`), solo si estan p
 publica. La misma regla que `tenant.config.whatsapp.credenciales`: `Tenant.toJSON` borra
 `config.wompi` entero.
 
+### Bandeja de WhatsApp: recibir el comprobante y responder
+
+Un numero conectado a la Cloud API **no tiene app de WhatsApp detras**: si un miembro manda el
+comprobante de su transferencia, sin esta bandeja no lo ve nadie. `MensajeWhatsapp`
+(tenant-scoped) guarda las dos direcciones de la conversacion y `servicios/mensajes.servicio.js`
+la atiende. Lo no obvio:
+
+- **La firma es lo unico que autentica.** Meta manda los mensajes de TODOS los gimnasios a una
+  sola URL (`POST /api/webhooks/whatsapp`). El `phone_number_id` del payload es dato **no
+  confiable**: solo sirve para saber de que tenant es y **con que secreto verificar**. Lo que
+  autentica es el HMAC `x-hub-signature-256` contra `tenant.config.whatsapp.credenciales
+  .secretoApp`. Sin secreto configurado **no se acepta nada**: recibir sin verificar dejaria
+  inyectar comprobantes falsos. Es el mismo patron que `/webhooks/wompi-miembro`.
+- **La firma se calcula sobre los BYTES**, no sobre el JSON reserializado; por eso
+  `servidor.js` guarda el cuerpo crudo en `express.json({ verify })`.
+- **A Meta se le responde 200** aunque el evento se ignore (avisos de estado, numero
+  desconocido), o reintenta en bucle. La idempotencia la da el indice unico parcial
+  `{ tenant, idMensajeWhatsapp }`: un `create` que choque con 11000 no es un error.
+- **El comprobante se descarga** de Meta en dos pasos (metadatos → binario) a
+  `ALMACEN_ARCHIVOS/whatsapp/<tenantId>/`, y se sirve por `GET /api/mensajes/:id/archivo` con
+  la cookie de sesion y el `filtroSede`: la carpeta nunca se expone.
+- **Responder es texto libre**, que Meta solo acepta dentro de las **24 h** desde el ultimo
+  mensaje del cliente (fuera de esa ventana solo entran plantillas, y se cobran). Por eso
+  responder cuelga siempre de un mensaje del hilo, y el fallo se traduce a un 400 explicito.
+- El hilo se agrupa **por telefono**, no por miembro: quien escribe puede no ser miembro
+  todavia (`sede` y `miembro` quedan en `null` y solo el dueño lo ve).
+- Guardar la config **conserva los secretos** que ya estaban si el campo llega vacio: entrar a
+  poner el App Secret no puede borrar el token, que Meta solo muestra una vez.
+
 ---
 
 ## Convenciones de codigo

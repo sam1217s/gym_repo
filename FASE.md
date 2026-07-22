@@ -381,6 +381,45 @@ Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (
       Ademas, los mensajes iniciados por la empresa se cobran: la cuenta necesita saldo/metodo
       de pago activo o Meta acepta el envio pero no lo entrega.
 
+### Bandeja de WhatsApp: recibir comprobantes y responder · HECHO
+Nace de un cambio de plan del cliente: en vez de cobrar por Wompi, comparte cuenta/QR y el
+miembro manda el **comprobante por WhatsApp**. Un numero conectado a la Cloud API no tiene app
+detras, asi que sin esto el comprobante no lo ve nadie.
+- [x] `modelos/MensajeWhatsapp.js` tenant-scoped: `sede`, `miembro` (ambos opcionales: quien
+      escribe puede no ser miembro aun), `telefono`, `direccion` (entrante/saliente), `tipo`,
+      `texto`, `archivo`, `mimeType`, `leido`, `enviadoPor`. Indice unico parcial
+      `{ tenant, idMensajeWhatsapp }` = idempotencia frente a los reintentos de Meta.
+- [x] Webhook publico `GET/POST /api/webhooks/whatsapp`. El GET es el handshake de Meta
+      (`WHATSAPP_TOKEN_VERIFICACION`). El POST: el `phone_number_id` -dato NO confiable- solo
+      elige **de que gimnasio** es y con que secreto verificar; lo que autentica es la firma
+      HMAC (`x-hub-signature-256`) contra el `secretoApp` de ESE tenant. **Sin secreto
+      configurado no se acepta nada**: aceptar sin verificar permitiria inyectar comprobantes
+      falsos. Mismo patron que el webhook de Wompi de miembros.
+- [x] `servidor.js` guarda el cuerpo CRUDO (`express.json({ verify })`): la firma se calcula
+      sobre los bytes, no sobre el JSON reserializado.
+- [x] Las imagenes se descargan de Meta (2 pasos: metadatos → binario) a
+      `ALMACEN_ARCHIVOS/whatsapp/<tenantId>/`. Si la descarga falla, el mensaje se guarda igual
+      (mejor un comprobante sin imagen que perderlo). A Meta se le responde 200 siempre que la
+      firma sea valida, o reintenta en bucle.
+- [x] `mensajes.servicio.js` + rutas `/api/mensajes` (personal del gimnasio, con `limitarASede`):
+      listar, contar pendientes, marcar leidos, **responder** (texto libre) y servir el archivo.
+      El comprobante se streamea por la API con la cookie de sesion: el almacen nunca se expone.
+- [x] Responder usa texto LIBRE, que Meta solo acepta dentro de las 24 h desde el ultimo mensaje
+      del cliente; si lo rechaza se dice claro, no un 500 mudo. Responder marca leido el hilo.
+- [x] Config del canal: `secretoApp` (opcional para enviar, **obligatorio para recibir**). Los
+      secretos ya guardados se **conservan** si el campo llega vacio: entrar a poner el secreto
+      no puede borrar el token, que Meta solo muestra una vez.
+- [x] Frontend: `PaginaMensajes.vue` (hilos por telefono, comprobante ampliable, caja de
+      respuesta y boton **Registrar pago** que abre `FormularioPago` con ese miembro) + badge de
+      pendientes en el menu. En `PanelPlataforma.vue`, el dialogo de WhatsApp muestra la URL del
+      webhook y el token de verificacion para pegarlos en Meta.
+- [x] La auditoria anota "Respondio por WhatsApp" (marcar leido no es un movimiento).
+- [x] 8 pruebas (`mensajes.prueba.js`): handshake ok/ko, firma invalida rechazada (y NO guarda),
+      idempotencia por `wamid`, numero desconocido ignorado, y aislamiento por sede de la
+      bandeja. Suite: 243 en verde.
+- [ ] **Pendiente (accion en Meta)**: registrar la URL del webhook y suscribir el campo
+      `messages` en la app del gimnasio, y pegar el App Secret en el panel.
+
 ### Pendiente (etapa 3): enganchar el botón de WhatsApp
 - [ ] La plantilla de Meta hoy es solo texto, sin botón. Para el flujo completo hay que: (a) editar
       la plantilla en Meta y añadir un **botón URL dinámico** con base `ORIGEN_PUBLICO/api/pagar/`;

@@ -64,6 +64,12 @@ function describirMovimiento(peticion) {
     return { recurso: 'deudas', accion: 'Abono a una deuda' };
   }
 
+  // De la bandeja solo interesa responderle a alguien; marcar leido no es un
+  // movimiento, es haber mirado.
+  if (recurso === 'mensajes' && partes[1] === 'responder') {
+    return { recurso: 'mensajes', accion: 'Respondio por WhatsApp' };
+  }
+
   const accion = MOVIMIENTOS[recurso]?.[peticion.method];
   return accion ? { recurso, accion } : null;
 }

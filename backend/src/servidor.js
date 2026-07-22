@@ -28,7 +28,19 @@ export function crearServidor() {
    */
   app.use(cors({ origin: entorno.ORIGEN_FRONTEND, credentials: true }));
 
-  app.use(express.json({ limit: LIMITE_CUERPO_JSON }));
+  /**
+   * Se guarda el cuerpo CRUDO ademas del parseado: la firma HMAC del webhook de
+   * WhatsApp se calcula sobre los bytes exactos que mando Meta, y `JSON.parse`
+   * + `JSON.stringify` no los reproduce (orden de claves, espacios, escapes).
+   */
+  app.use(
+    express.json({
+      limit: LIMITE_CUERPO_JSON,
+      verify: (peticion, _respuesta, cuerpo) => {
+        peticion.cuerpoCrudo = cuerpo;
+      },
+    }),
+  );
   app.use(cookieParser());
 
   app.use('/api', rutas);
