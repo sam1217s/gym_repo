@@ -372,6 +372,14 @@ Objetivo: que el miembro pague su mensualidad EN LINEA al Wompi **del dueño** (
 - [x] `scripts/enviarAvisosAhora.js`: dispara la MISMA corrida del cron a mano, para probar el
       envio sin esperar a las 9:00.
 - [x] 5 pruebas (`whatsapp.prueba.js`). Suite: 235 en verde.
+- [x] **VERIFICADO EN PRODUCCION (21-22 jul 2026)**: plantilla `aviso_vencimiento` aprobada en
+      Meta, canal configurado en el gimnasio de demo y aviso ENTREGADO a un WhatsApp real. La
+      corrida reporto `enviados: 1, fallidos: 0` y el mensaje llego al telefono.
+- [ ] **Pendiente del lado de Meta (no del codigo)**: la app del gimnasio sigue *sin publicar*,
+      asi que Meta solo entrega a numeros dados de alta como destinatarios de prueba. Para
+      avisar a miembros reales hay que publicar la app y completar la verificacion del negocio.
+      Ademas, los mensajes iniciados por la empresa se cobran: la cuenta necesita saldo/metodo
+      de pago activo o Meta acepta el envio pero no lo entrega.
 
 ### Pendiente (etapa 3): enganchar el botón de WhatsApp
 - [ ] La plantilla de Meta hoy es solo texto, sin botón. Para el flujo completo hay que: (a) editar
