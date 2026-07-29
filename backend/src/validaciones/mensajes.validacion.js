@@ -6,6 +6,8 @@ import { idMongo } from './comunes.validacion.js';
 export const esquemaListarMensajes = {
   query: z.object({
     miembro: idMongo.optional(),
+    // Filtrar por sede (solo lo usa el dueño; a un sede_admin ya lo acota su rol).
+    sede: idMongo.optional(),
     // "true" para ver solo lo que falta por atender.
     pendientes: z.enum(['true', 'false']).optional(),
   }),

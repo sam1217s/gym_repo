@@ -8,16 +8,33 @@
           Lo que te escriben por WhatsApp: comprobantes de pago y preguntas
         </div>
       </div>
-      <q-btn
-        flat
-        dense
-        no-caps
-        icon="refresh"
-        label="Actualizar"
-        color="primary"
-        :loading="cargando"
-        @click="cargar"
-      />
+      <div class="row items-center q-gutter-sm">
+        <!-- Cada sede cobra una mensualidad distinta: el dueño filtra por sede
+             para ver solo los comprobantes de una. Un sede_admin no lo ve: su
+             rol ya lo deja en una sola sede. -->
+        <q-select
+          v-if="esDueno"
+          v-model="sedeFiltro"
+          :options="opcionesSede"
+          emit-value
+          map-options
+          dense
+          outlined
+          options-dense
+          label="Sede"
+          style="min-width: 170px"
+        />
+        <q-btn
+          flat
+          dense
+          no-caps
+          icon="refresh"
+          label="Actualizar"
+          color="primary"
+          :loading="cargando"
+          @click="cargar"
+        />
+      </div>
     </div>
 
     <div v-if="conversaciones.length === 0 && !cargando" class="estado-vacio">
@@ -47,7 +64,17 @@
               </q-avatar>
             </q-item-section>
             <q-item-section>
-              <q-item-label class="text-weight-medium">{{ titulo(conversacion) }}</q-item-label>
+              <q-item-label class="text-weight-medium">
+                {{ titulo(conversacion) }}
+                <q-badge
+                  v-if="nombreSede(conversacion)"
+                  outline
+                  color="secondary"
+                  class="q-ml-xs badge-sede"
+                >
+                  {{ nombreSede(conversacion) }}
+                </q-badge>
+              </q-item-label>
               <q-item-label caption lines="1">{{ resumen(conversacion.ultimo) }}</q-item-label>
             </q-item-section>
             <q-item-section side top>
@@ -74,7 +101,17 @@
               @click="telefonoAbierto = null"
             />
             <div class="col">
-              <div class="text-weight-medium">{{ titulo(hilo) }}</div>
+              <div class="text-weight-medium">
+                {{ titulo(hilo) }}
+                <q-badge
+                  v-if="nombreSede(hilo)"
+                  outline
+                  color="secondary"
+                  class="q-ml-xs badge-sede"
+                >
+                  {{ nombreSede(hilo) }}
+                </q-badge>
+              </div>
               <div class="text-caption text-grey-7">
                 +{{ hilo.telefono }}
                 <span v-if="!hilo.miembro"> · sin miembro asociado</span>
@@ -179,11 +216,11 @@
 
 <script setup>
 import { useQuasar } from 'quasar';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import FormularioPago from 'components/FormularioPago.vue';
 import { urlArchivoMensaje } from 'src/servicios/gimnasio.servicio.js';
-import { useAutenticacionStore } from 'src/stores/autenticacion.js';
+import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 /**
@@ -205,6 +242,16 @@ const telefonoAbierto = ref(null);
 const respuesta = ref('');
 const ampliado = ref(null);
 const pagoAbierto = ref(false);
+const sedeFiltro = ref(null);
+
+// El dueño ve todas las sedes y por eso filtra; a un sede_admin su rol ya lo
+// acota a una sola, asi que el filtro no le aporta.
+const esDueno = computed(() => autenticacion.usuario?.rol === ROLES.TENANT_OWNER);
+
+const opcionesSede = computed(() => [
+  { label: 'Todas las sedes', value: null },
+  ...gimnasio.sedes.map((sede) => ({ label: sede.nombre, value: sede._id })),
+]);
 // Mensaje entrante del hilo contra el que se confirma el pago (de ahi salen el
 // telefono y la sede al responder). Se captura al abrir el formulario porque
 // recargar la bandeja despues puede rehacer el hilo.
@@ -232,12 +279,14 @@ const conversaciones = computed(() => {
     const hilo = porTelefono.get(mensaje.telefono) ?? {
       telefono: mensaje.telefono,
       miembro: null,
+      sede: null,
       mensajes: [],
       pendientes: 0,
       ultimo: mensaje,
     };
     hilo.mensajes.unshift(mensaje);
     hilo.miembro = hilo.miembro ?? mensaje.miembro;
+    hilo.sede = hilo.sede ?? mensaje.sede;
     if (mensaje.direccion === 'entrante' && !mensaje.leido) hilo.pendientes += 1;
     porTelefono.set(mensaje.telefono, hilo);
   }
@@ -274,6 +323,10 @@ function resumen(mensaje) {
 
 function esImagen(mensaje) {
   return Boolean(mensaje.archivo) && (mensaje.mimeType ?? '').startsWith('image/');
+}
+
+function nombreSede(conversacion) {
+  return conversacion.sede?.nombre ?? null;
 }
 
 const urlArchivo = urlArchivoMensaje;
@@ -372,7 +425,7 @@ async function alRegistrarPago(pago) {
 async function cargar() {
   cargando.value = true;
   try {
-    await gimnasio.cargarMensajes();
+    await gimnasio.cargarMensajes(sedeFiltro.value ? { sede: sedeFiltro.value } : {});
   } catch {
     quasar.notify({ type: 'negative', message: 'No se pudieron cargar los mensajes' });
   } finally {
@@ -380,7 +433,17 @@ async function cargar() {
   }
 }
 
-onMounted(cargar);
+// Al cambiar de sede se recarga y se cierra el hilo abierto (ya no está en la lista).
+watch(sedeFiltro, () => {
+  telefonoAbierto.value = null;
+  cargar();
+});
+
+onMounted(() => {
+  cargar();
+  // Las sedes alimentan el filtro; solo el dueño las necesita.
+  if (esDueno.value) gimnasio.cargarSedes().catch(() => {});
+});
 </script>
 
 <style scoped>
@@ -403,6 +466,11 @@ onMounted(cargar);
 .hilo-activo {
   background: rgba(206, 17, 38, 0.08);
   color: var(--q-primary);
+}
+
+.badge-sede {
+  font-size: 0.62rem;
+  vertical-align: middle;
 }
 
 .tarjeta-hilo {

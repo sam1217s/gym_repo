@@ -165,11 +165,14 @@ export async function procesarEventoEntrante({ cuerpo, cuerpoCrudo, firma }) {
 
 // --- Bandeja -----------------------------------------------------------------
 
-export function listarMensajes(filtroSede = {}, { miembro, pendientes } = {}) {
+export function listarMensajes(filtroSede = {}, { miembro, pendientes, sede } = {}) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
 
   const filtro = { ...filtroSede };
   if (miembro) filtro.miembro = miembro;
+  // El filtro del rol gana sobre el de la query: el `?sede=` solo aplica cuando
+  // el rol no acota ya la sede (el dueño), nunca para saltarse el de un sede_admin.
+  if (sede && !filtroSede.sede) filtro.sede = sede;
   if (pendientes === 'true') {
     filtro.direccion = 'entrante';
     filtro.leido = false;
@@ -178,7 +181,8 @@ export function listarMensajes(filtroSede = {}, { miembro, pendientes } = {}) {
   return Mensaje.find(filtro)
     .sort({ createdAt: -1 })
     .limit(300)
-    .populate('miembro', 'nombres apellidos documento sede');
+    .populate('miembro', 'nombres apellidos documento sede')
+    .populate('sede', 'nombre'); // para pintar de que sede es cada hilo
 }
 
 export async function contarPendientes(filtroSede = {}) {

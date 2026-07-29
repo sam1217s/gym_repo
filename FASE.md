@@ -420,6 +420,44 @@ detras, asi que sin esto el comprobante no lo ve nadie.
 - [ ] **Pendiente (accion en Meta)**: registrar la URL del webhook y suscribir el campo
       `messages` en la app del gimnasio, y pegar el App Secret en el panel.
 
+### Pendientes acumulados (para no olvidar) · anotados 29 jul 2026
+
+**WhatsApp — overhaul de la plantilla `aviso_vencimiento` (todo en UNA edicion + re-review):**
+- [ ] Cuentas de pago como TEXTO FIJO en el cuerpo (llave Bre-B, Nequi, Bancolombia
+      Ahorros, titular). Van en Meta, NO en el codigo (el codigo solo manda variables).
+      Faltan los 4 datos del dueño para armar el texto final.
+- [ ] Boton de respuesta rapida "Enviar comprobante" (quick reply estatico: no toca el
+      codigo de envio).
+- [ ] 4ª variable `{{4}}` = VALOR de la mensualidad, resuelto FRESCO al enviar desde el
+      precio ACTUAL del plan del ultimo pago (si cambia el precio, cambia el aviso). Esto
+      SI toca codigo:
+        - `notificaciones.servicio.js → construirVariables` añade el monto formateado.
+        - Se lee `plan.precio` del `ultimoPago.planMembresia` (NO `ultimoPago.monto`, que es
+          lo que pagó la vez pasada, no el precio de hoy). Cargar los planes del tenant una
+          vez y cruzar en memoria (sin `$lookup`).
+        - `cloudApi.proveedor.js` ya manda tantos parametros como variables tenga el array.
+      **COORDINACION CRITICA:** el codigo de 4 variables NO se despliega hasta que la
+      plantilla con `{{4}}` este APROBADA en Meta, o Meta rechaza el envio por descuadre de
+      parametros. Plantilla primero, deploy despues.
+
+**WhatsApp — nombre del numero:**
+- [ ] Confirmar que el nombre visible cambió GlowUp → "Gym Barichara". Al 29 jul seguia
+      como GlowUp y sin cambio pendiente en Meta; reintentar la consulta.
+
+**Correo transaccional (recibo de pago al miembro):**
+- [ ] El VPS (Clouding.io) BLOQUEA el SMTP saliente (25/465/587) — verificado con prueba de
+      conexion. nodemailer/SMTP NO sirve; el firewall local esta abierto, el bloqueo es del
+      proveedor. El 443 SI esta abierto: usar una API HTTP (Resend/Brevo).
+- [ ] Montar proveedor de correo por HTTP + enviar recibo al registrar un pago (email del
+      miembro es OPCIONAL: solo a quien lo tenga). Falta: cuenta + API key + verificar
+      dominio (DKIM/SPF en deSEC para gymbarichara.dedyn.io).
+
+**Seguridad (rotar secretos que se pegaron en el chat):**
+- [ ] Contraseña root del VPS `Sam*@2023@` (reusada en Atlas). Ya hay llave SSH instalada
+      (`claude-deploy-gym`), asi que se puede rotar y desactivar el login por contraseña sin
+      quedar fuera.
+- [ ] App Secret de Meta (si no se regeneró tras pegarlo) y los tokens permanentes de Meta.
+
 ### Pendiente (etapa 3): enganchar el botón de WhatsApp
 - [ ] La plantilla de Meta hoy es solo texto, sin botón. Para el flujo completo hay que: (a) editar
       la plantilla en Meta y añadir un **botón URL dinámico** con base `ORIGEN_PUBLICO/api/pagar/`;

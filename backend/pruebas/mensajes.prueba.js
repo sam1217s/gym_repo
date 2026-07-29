@@ -202,6 +202,25 @@ describe('Bandeja de mensajes', () => {
     expect(suyos.body.data.mensajes[0].telefono).toBe('573002220002');
   });
 
+  it('el dueño puede filtrar por sede y ve el nombre de la sede de cada hilo', async () => {
+    const { sedes } = await montar();
+    await enviarWebhook(evento()).expect(200); // Ana, sede norte
+    await enviarWebhook(evento({ telefono: '573002220002', wamid: 'wamid.BBB' })).expect(200); // Beto, sur
+
+    const dueno = await entrarComo('owner@gymmsg.co');
+
+    // Sin filtro ve los dos, y cada mensaje trae el nombre de su sede.
+    const todos = await dueno.get('/api/mensajes').expect(200);
+    expect(todos.body.data.mensajes).toHaveLength(2);
+    const deAna = todos.body.data.mensajes.find((m) => m.telefono === TEL_ANA);
+    expect(deAna.sede.nombre).toBe('Norte');
+
+    // Filtrando por la sede Sur solo queda el hilo de Beto.
+    const soloSur = await dueno.get('/api/mensajes').query({ sede: String(sedes.sur._id) }).expect(200);
+    expect(soloSur.body.data.mensajes).toHaveLength(1);
+    expect(soloSur.body.data.mensajes[0].telefono).toBe('573002220002');
+  });
+
   it('marcar leidos baja el contador de pendientes', async () => {
     await montar();
     await enviarWebhook(evento()).expect(200);
