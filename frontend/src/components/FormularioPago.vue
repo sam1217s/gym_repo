@@ -248,7 +248,7 @@ watch(
 async function enviar() {
   enviando.value = true;
   try {
-    await gimnasio.registrarPago({
+    const pago = await gimnasio.registrarPago({
       miembro: propiedades.miembro._id,
       planMembresia: formulario.planMembresia,
       metodoPago: formulario.metodoPago,
@@ -263,7 +263,9 @@ async function enviar() {
       caption: `Cubre hasta el ${periodoFinLegible.value}`,
     });
 
-    emitir('creado');
+    // Se emite el pago creado (con su periodoFin) por si el padre lo necesita,
+    // p.ej. la bandeja, que le confirma al miembro por WhatsApp.
+    emitir('creado', pago);
     emitir('update:modelValue', false);
   } catch (error) {
     quasar.notify({

@@ -173,7 +173,7 @@
       </q-card>
     </q-dialog>
 
-    <FormularioPago v-model="pagoAbierto" :miembro="miembroDelHilo" @creado="cargar" />
+    <FormularioPago v-model="pagoAbierto" :miembro="miembroDelHilo" @creado="alRegistrarPago" />
   </q-page>
 </template>
 
@@ -183,6 +183,7 @@ import { computed, onMounted, ref } from 'vue';
 
 import FormularioPago from 'components/FormularioPago.vue';
 import { urlArchivoMensaje } from 'src/servicios/gimnasio.servicio.js';
+import { useAutenticacionStore } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 /**
@@ -195,6 +196,7 @@ import { useGimnasioStore } from 'src/stores/gimnasio.js';
  */
 
 const gimnasio = useGimnasioStore();
+const autenticacion = useAutenticacionStore();
 const quasar = useQuasar();
 
 const cargando = ref(false);
@@ -203,6 +205,10 @@ const telefonoAbierto = ref(null);
 const respuesta = ref('');
 const ampliado = ref(null);
 const pagoAbierto = ref(false);
+// Mensaje entrante del hilo contra el que se confirma el pago (de ahi salen el
+// telefono y la sede al responder). Se captura al abrir el formulario porque
+// recargar la bandeja despues puede rehacer el hilo.
+const mensajeParaConfirmar = ref(null);
 
 const FORMATO_HORA = new Intl.DateTimeFormat('es-CO', {
   day: '2-digit',
@@ -312,7 +318,55 @@ async function responder() {
 
 /** El motivo de la bandeja: llega el comprobante y se registra el pago sin salir. */
 function registrarPago() {
+  // Se guarda el ultimo entrante del hilo AHORA: tras registrar se recarga la
+  // bandeja y `hilo` puede cambiar. Con este mensaje se le confirma al miembro.
+  mensajeParaConfirmar.value = hilo.value
+    ? [...hilo.value.mensajes].reverse().find((m) => m.direccion === 'entrante')
+    : null;
   pagoAbierto.value = true;
+}
+
+const FORMATO_FECHA_LARGA = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+});
+
+/**
+ * Tras registrar el pago desde el chat, se le confirma al miembro por WhatsApp
+ * que quedo al dia y hasta cuando. Es texto libre, asi que solo entra dentro de
+ * la ventana de 24h; como el miembro acaba de escribir, casi siempre lo esta.
+ * Si Meta lo rechaza, el pago YA quedo registrado: solo se avisa que no se pudo
+ * confirmar, no se deshace nada.
+ */
+async function alRegistrarPago(pago) {
+  const original = mensajeParaConfirmar.value;
+  mensajeParaConfirmar.value = null;
+
+  if (!original || !pago?.periodoFin) {
+    await cargar();
+    return;
+  }
+
+  const nombre = original.miembro?.nombres ?? '';
+  const gimnasioNombre = autenticacion.usuario?.tenantNombre ?? 'tu gimnasio';
+  const hasta = FORMATO_FECHA_LARGA.format(new Date(pago.periodoFin));
+  const texto =
+    `¡Hola ${nombre}! ✅ Registramos tu pago. Tu mensualidad en ${gimnasioNombre} ` +
+    `queda al día hasta el ${hasta}. ¡Gracias! 💪`;
+
+  try {
+    // responderMensaje ya recarga la bandeja y marca el hilo leido.
+    await gimnasio.responderMensaje({ mensaje: original._id, texto });
+    quasar.notify({ type: 'positive', message: 'Pago registrado y confirmado al miembro' });
+  } catch {
+    // El pago quedo bien; solo fallo el aviso (probable: fuera de las 24h).
+    await cargar();
+    quasar.notify({
+      type: 'warning',
+      message: 'Pago registrado. No se pudo enviar la confirmación por WhatsApp (quizá pasaron 24h).',
+    });
+  }
 }
 
 async function cargar() {
