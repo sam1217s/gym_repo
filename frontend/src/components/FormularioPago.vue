@@ -2,7 +2,7 @@
   <q-dialog :model-value="modelValue" @update:model-value="cerrar">
     <q-card class="tarjeta-pago">
       <q-card-section class="q-pb-sm">
-        <div class="text-h6 titulo-display">Registrar pago</div>
+        <div class="text-h6 titulo-display">{{ modoAprobacion ? 'Aprobar pago' : 'Registrar pago' }}</div>
         <div v-if="miembro" class="text-caption text-grey-7">
           {{ miembro.nombres }} {{ miembro.apellidos }} · doc. {{ miembro.documento }}
         </div>
@@ -24,7 +24,9 @@
             :hint="opcionesPlan.length === 0 ? 'Esta sede aun no tiene planes. Crealos en Planes.' : ''"
           />
 
-          <div class="row q-col-gutter-md">
+          <!-- En aprobacion la fecha (hoy) y el monto (precio del plan) se dan
+               por sentados: ya se verifico el comprobante, no hay que teclearlos. -->
+          <div v-if="!modoAprobacion" class="row q-col-gutter-md">
             <q-input
               v-model="formulario.periodoInicio"
               class="col-6"
@@ -51,11 +53,14 @@
                periodoInicio + duracionMeses del plan. Verlo ANTES de cobrar
                evita registrar un periodo equivocado. -->
           <q-banner v-if="periodoFin" dense class="banner-vencimiento">
+            <div v-if="modoAprobacion" class="text-weight-medium q-mb-xs">
+              Valor: ${{ Number(formulario.monto || 0).toLocaleString('es-CO') }} · Transferencia
+            </div>
             Cubre hasta el <strong>{{ periodoFinLegible }}</strong>
             ({{ describirDuracion(planElegido) }} de {{ planElegido.nombre }})
           </q-banner>
 
-          <div>
+          <div v-if="!modoAprobacion">
             <div class="text-caption text-grey-7 q-mb-xs">Metodo de pago</div>
             <q-option-group
               v-model="formulario.metodoPago"
@@ -65,7 +70,7 @@
           </div>
 
           <q-input
-            v-if="esTransferencia"
+            v-if="esTransferencia && !modoAprobacion"
             v-model="formulario.referencia"
             label="Referencia de la transferencia"
             hint="Numero de comprobante"
@@ -84,7 +89,7 @@
             color="primary"
             unelevated
             no-caps
-            label="Registrar pago"
+            :label="modoAprobacion ? 'Aprobar pago' : 'Registrar pago'"
             :loading="enviando"
           />
         </q-card-actions>
@@ -108,6 +113,10 @@ import { useGimnasioStore } from 'src/stores/gimnasio.js';
 const propiedades = defineProps({
   modelValue: { type: Boolean, required: true },
   miembro: { type: Object, default: null },
+  // Modo "aprobar comprobante" (desde la bandeja): ya se verifico el pago, asi
+  // que se fija transferencia, se ocultan fecha/monto/referencia y se
+  // preselecciona el plan. Un clic aprueba.
+  modoAprobacion: { type: Boolean, default: false },
 });
 
 const emitir = defineEmits(['update:modelValue', 'creado']);
@@ -231,7 +240,8 @@ watch(
       planMembresia: null,
       periodoInicio: hoyISO(),
       monto: null,
-      metodoPago: METODOS.EFECTIVO,
+      // En aprobacion el metodo es SIEMPRE transferencia (el miembro pago por ahi).
+      metodoPago: propiedades.modoAprobacion ? METODOS.TRANSFERENCIA : METODOS.EFECTIVO,
       referencia: '',
     });
 
@@ -241,6 +251,12 @@ watch(
       } catch {
         quasar.notify({ type: 'negative', message: 'No se pudieron cargar los planes' });
       }
+    }
+
+    // Al aprobar, si la sede del miembro tiene un solo plan activo, se elige solo:
+    // el caso comun (una "mensualidad") queda a un clic. Con varios, se elige.
+    if (propiedades.modoAprobacion && opcionesPlan.value.length === 1) {
+      formulario.planMembresia = opcionesPlan.value[0].value;
     }
   },
 );

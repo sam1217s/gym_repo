@@ -123,8 +123,8 @@
               no-caps
               dense
               color="primary"
-              icon="payments"
-              label="Registrar pago"
+              icon="check_circle"
+              label="Aprobar pago"
               @click="registrarPago"
             />
           </q-card-section>
@@ -210,7 +210,12 @@
       </q-card>
     </q-dialog>
 
-    <FormularioPago v-model="pagoAbierto" :miembro="miembroDelHilo" @creado="alRegistrarPago" />
+    <FormularioPago
+      v-model="pagoAbierto"
+      :miembro="miembroDelHilo"
+      modo-aprobacion
+      @creado="alRegistrarPago"
+    />
   </q-page>
 </template>
 
