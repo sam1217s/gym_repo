@@ -49,7 +49,8 @@ export async function listarVencimientos(filtroSede = {}) {
   const Miembro = obtenerModelo('Miembro');
 
   const [miembros, ultimosPagos] = await Promise.all([
-    Miembro.find({ ...filtroSede, activo: true }).sort({ nombres: 1, apellidos: 1 }),
+    // Del mas reciente al mas viejo: un miembro recien creado sale arriba del todo.
+    Miembro.find({ ...filtroSede, activo: true }).sort({ createdAt: -1 }),
     obtenerUltimoPagoPorMiembro(filtroSede),
   ]);
 

@@ -172,6 +172,50 @@
               />
             </div>
 
+            <!-- Primera mensualidad (solo al crear): define desde cuando cuenta su
+                 pago. Si se elige plan, se registra el primer pago junto con el alta. -->
+            <template v-if="!editando">
+              <q-separator class="q-my-xs" />
+              <div class="text-caption text-weight-medium text-grey-8">
+                Primera mensualidad <span class="text-grey-6">(opcional)</span>
+              </div>
+              <q-select
+                v-model="primeraMensualidad.plan"
+                label="Plan"
+                outlined
+                dense
+                clearable
+                emit-value
+                map-options
+                :options="opcionesPlanPrimera"
+                :hint="
+                  formulario.sede || !sedesVisibles
+                    ? 'Si eliges un plan, se registra su primer pago'
+                    : 'Elige primero la sede'
+                "
+              />
+              <div v-if="primeraMensualidad.plan" class="row q-col-gutter-md items-center">
+                <q-input
+                  v-model="primeraMensualidad.fecha"
+                  class="col-12 col-sm-6"
+                  type="date"
+                  label="Fecha de pago"
+                  stack-label
+                  outlined
+                  dense
+                  :rules="[reglaObligatorio]"
+                />
+                <div class="col-12 col-sm-6">
+                  <div class="text-caption text-grey-7 q-mb-xs">Metodo</div>
+                  <q-option-group
+                    v-model="primeraMensualidad.metodo"
+                    inline
+                    :options="OPCIONES_METODO_PRIMERA"
+                  />
+                </div>
+              </div>
+            </template>
+
             <q-toggle v-if="editando" v-model="formulario.activo" label="Miembro activo" />
           </q-card-section>
 
@@ -323,6 +367,33 @@ const formulario = reactive({
   activo: true,
 });
 
+const OPCIONES_METODO_PRIMERA = [
+  { label: 'Efectivo', value: 'efectivo' },
+  { label: 'Transferencia', value: 'transferencia' },
+];
+
+// Primera mensualidad opcional al dar de alta: define desde cuando cuenta el pago.
+const primeraMensualidad = reactive({ plan: null, fecha: hoyLocal(), metodo: 'efectivo' });
+
+function hoyLocal() {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
+// Planes de la sede elegida. Un sede_admin (sin selector de sede) ya recibe solo
+// los de la suya, asi que sin sede se muestran todos los que tiene cargados.
+const opcionesPlanPrimera = computed(() => {
+  const sedeElegida = formulario.sede;
+  return gimnasio.planesMembresia
+    .filter((plan) => plan.activo && (!sedeElegida || plan.sede === sedeElegida))
+    .map((plan) => ({
+      label: `${plan.nombre} — $${plan.precio.toLocaleString('es-CO')}`,
+      value: plan._id,
+    }));
+});
+
 function abrirCreacion() {
   editando.value = false;
   miembroActivo.value = null;
@@ -335,6 +406,9 @@ function abrirCreacion() {
     sede: null,
     activo: true,
   });
+  Object.assign(primeraMensualidad, { plan: null, fecha: hoyLocal(), metodo: 'efectivo' });
+  // Los planes alimentan el selector de la primera mensualidad.
+  if (gimnasio.planesMembresia.length === 0) gimnasio.cargarPlanesMembresia().catch(() => {});
   dialogoMiembro.value = true;
 }
 
@@ -378,8 +452,25 @@ async function guardarMiembro() {
       });
       quasar.notify({ type: 'positive', message: 'Miembro actualizado' });
     } else {
-      await gimnasio.crearMiembro(datos);
-      quasar.notify({ type: 'positive', message: 'Miembro registrado' });
+      const nuevo = await gimnasio.crearMiembro(datos);
+
+      // Si se eligio plan, se registra su primera mensualidad con la fecha dada:
+      // el miembro nace con vencimiento, no "sin pagos".
+      if (primeraMensualidad.plan) {
+        const plan = gimnasio.planesMembresia.find((p) => p._id === primeraMensualidad.plan);
+        await gimnasio.registrarPago({
+          miembro: nuevo._id,
+          planMembresia: primeraMensualidad.plan,
+          metodoPago: primeraMensualidad.metodo,
+          monto: plan?.precio,
+          periodoInicio: primeraMensualidad.fecha,
+        });
+      }
+
+      quasar.notify({
+        type: 'positive',
+        message: primeraMensualidad.plan ? 'Miembro registrado con su primera mensualidad' : 'Miembro registrado',
+      });
     }
 
     dialogoMiembro.value = false;
