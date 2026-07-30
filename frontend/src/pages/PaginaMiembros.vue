@@ -302,6 +302,7 @@ const COLUMNAS = [
     name: 'telefono',
     label: 'Telefono',
     field: (fila) => fila.miembro.telefono,
+    format: (valor) => mostrarTelefono(valor),
     align: 'left',
     classes: 'cifra-tabular',
   },
@@ -348,6 +349,25 @@ const filasFiltradas = computed(() => {
 
 function nombreSede(sedeId) {
   return gimnasio.sedes.find((sede) => sede._id === sedeId)?.nombre ?? '—';
+}
+
+// Indicativos que sabe quitar para mostrar; el mas largo que encaje gana.
+const INDICATIVOS = ['57', '52', '54', '51', '58', '34', '1'];
+
+/**
+ * El telefono se guarda con indicativo ("573001695629"); en la tabla se muestra
+ * SOLO el numero local y agrupado ("300 169 5629"), sin el "+57".
+ */
+function mostrarTelefono(numero) {
+  const digitos = String(numero ?? '').replace(/\D/g, '');
+  if (!digitos) return '—';
+
+  const indicativo = [...INDICATIVOS]
+    .sort((a, b) => b.length - a.length)
+    .find((ind) => digitos.startsWith(ind) && digitos.length - ind.length >= 7);
+
+  const local = indicativo ? digitos.slice(indicativo.length) : digitos;
+  return local.replace(/(\d{3})(\d{3})(\d{2,})/, '$1 $2 $3');
 }
 
 // --- Alta y edicion -----------------------------------------------------------
