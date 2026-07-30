@@ -68,6 +68,9 @@
 
       <template #body-cell-acciones="props">
         <q-td :props="props" class="text-right">
+          <q-btn round flat dense color="secondary" icon="edit" @click="abrirEdicion(props.row)">
+            <q-tooltip>Editar datos del gimnasio</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="props.row.estado !== ESTADOS_GIMNASIO.CANCELADO"
             round
@@ -345,6 +348,58 @@
         </q-form>
       </q-card>
     </q-dialog>
+
+    <!-- Editar datos basicos del gimnasio (no el estado ni los secretos) -->
+    <q-dialog v-model="dialogoEdicion">
+      <q-card class="tarjeta-cobros">
+        <q-card-section class="q-pb-sm">
+          <div class="text-h6 titulo-display">Editar gimnasio</div>
+          <div class="text-caption text-grey-7">
+            Nombre, NIT, identificador y plan. El estado se cambia con los otros botones.
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-form @submit.prevent="guardarEdicion">
+          <q-card-section class="q-gutter-y-md">
+            <q-input
+              v-model="edicion.nombre"
+              label="Nombre del gimnasio"
+              outlined
+              dense
+              :rules="[reglaObligatorio]"
+            />
+            <q-input v-model="edicion.nit" label="NIT" outlined dense :rules="[reglaObligatorio]" />
+            <q-input
+              v-model="edicion.slug"
+              label="Identificador (slug)"
+              hint="Con el que sus usuarios eligen gimnasio al entrar. Solo minusculas, numeros y guiones."
+              outlined
+              dense
+              :rules="[reglaObligatorio, reglaSlug]"
+            />
+            <q-select
+              v-model="edicion.planPlataforma"
+              label="Plan de plataforma"
+              outlined
+              dense
+              emit-value
+              map-options
+              :options="opcionesPlanEdicion"
+              :rules="[reglaObligatorio]"
+            />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat no-caps label="Cerrar" :disable="edicion.guardando" @click="dialogoEdicion = false" />
+            <q-btn type="submit" color="primary" unelevated no-caps label="Guardar cambios" :loading="edicion.guardando" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -476,10 +531,64 @@ async function ejecutar(accion, mensajeExito) {
   }
 }
 
+const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
+const reglaSlug = (valor) =>
+  /^[a-z0-9-]+$/.test(String(valor ?? '')) || 'Solo minusculas, numeros y guiones';
+
+// --- Editar datos del gimnasio ----------------------------------------------
+
+const dialogoEdicion = ref(false);
+const edicion = reactive({
+  id: null,
+  nombre: '',
+  nit: '',
+  slug: '',
+  planPlataforma: null,
+  guardando: false,
+});
+
+// Todos los planes (incluidos archivados) para no perder el que ya tiene el gym.
+const opcionesPlanEdicion = computed(() =>
+  plataforma.planes.map((plan) => ({
+    label: `${plan.nombre}${plan.activo ? '' : ' (archivado)'}`,
+    value: plan._id,
+  })),
+);
+
+function abrirEdicion(gimnasio) {
+  edicion.id = gimnasio._id;
+  edicion.nombre = gimnasio.nombre;
+  edicion.nit = gimnasio.nit;
+  edicion.slug = gimnasio.slug;
+  edicion.planPlataforma = gimnasio.planPlataforma?._id ?? gimnasio.planPlataforma ?? null;
+  dialogoEdicion.value = true;
+  if (plataforma.planes.length === 0) plataforma.cargarPlanes().catch(() => {});
+}
+
+async function guardarEdicion() {
+  edicion.guardando = true;
+  try {
+    await plataforma.actualizarGimnasio(edicion.id, {
+      nombre: edicion.nombre,
+      nit: edicion.nit,
+      slug: edicion.slug,
+      planPlataforma: edicion.planPlataforma,
+    });
+    quasar.notify({ type: 'positive', message: 'Gimnasio actualizado' });
+    dialogoEdicion.value = false;
+  } catch (error) {
+    quasar.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo actualizar el gimnasio',
+    });
+  } finally {
+    edicion.guardando = false;
+  }
+}
+
 // --- Cobro en linea del gimnasio (llaves Wompi) -----------------------------
 
 const dialogoCobros = ref(false);
-const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 
 const cobros = reactive({
   gimnasio: null,

@@ -48,6 +48,10 @@ export const crearGimnasio = manejadorAsync(async (peticion, respuesta) =>
   responderCreado(respuesta, await servicioOnboarding.crearGimnasio(peticion.body)),
 );
 
+export const actualizarTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioTenants.actualizarTenant(peticion.params.id, peticion.body)),
+);
+
 export const suspenderTenant = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioTenants.suspenderTenant(peticion.params.id)),
 );

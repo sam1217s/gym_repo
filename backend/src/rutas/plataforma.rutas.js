@@ -11,6 +11,7 @@ import { esquemaGuardarCobros } from '../validaciones/cobros.validacion.js';
 import { esquemaGuardarWhatsapp } from '../validaciones/whatsapp.validacion.js';
 import {
   esquemaActualizarPlan,
+  esquemaActualizarTenant,
   esquemaCrearGimnasio,
   esquemaCrearPlan,
   esquemaIdParam,
@@ -36,6 +37,7 @@ rutas.delete('/planes/:id', validar(esquemaIdParam), controlador.archivarPlan);
 rutas.get('/tenants', validar(esquemaListarTenants), controlador.listarTenants);
 rutas.post('/tenants', validar(esquemaCrearGimnasio), controlador.crearGimnasio);
 rutas.get('/tenants/:id', validar(esquemaIdParam), controlador.obtenerTenant);
+rutas.patch('/tenants/:id', validar(esquemaActualizarTenant), controlador.actualizarTenant);
 rutas.patch('/tenants/:id/suspender', validar(esquemaIdParam), controlador.suspenderTenant);
 rutas.patch('/tenants/:id/reactivar', validar(esquemaIdParam), controlador.reactivarTenant);
 rutas.patch('/tenants/:id/cancelar', validar(esquemaIdParam), controlador.cancelarTenant);

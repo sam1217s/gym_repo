@@ -360,6 +360,36 @@ describe('ciclo de vida del tenant', () => {
     expect(fila.config?.whatsapp?.credenciales).toBeUndefined();
   });
 
+  it('edita los datos basicos de un gimnasio (nombre, nit, slug, plan)', async () => {
+    await crearSuperAdmin();
+    const plan = await crearPlanPlataforma({ nombre: 'Basico' });
+    const otroPlan = await crearPlanPlataforma({ nombre: 'Pro' });
+    const { tenant } = await crearGimnasioConDuena(plan);
+    const agente = await entrarComo('root@gymsaas.co');
+
+    const respuesta = await agente
+      .patch(`/api/plataforma/tenants/${tenant._id}`)
+      .send({ nombre: 'Gimnasio Renombrado', slug: 'gym-nuevo-slug', planPlataforma: String(otroPlan._id) })
+      .expect(200);
+
+    expect(respuesta.body.data.nombre).toBe('Gimnasio Renombrado');
+    expect(respuesta.body.data.slug).toBe('gym-nuevo-slug');
+    expect(respuesta.body.data.planPlataforma.nombre).toBe('Pro');
+  });
+
+  it('rechaza editar un gimnasio con un slug ya ocupado (409)', async () => {
+    await crearSuperAdmin();
+    const plan = await crearPlanPlataforma();
+    const { tenant: a } = await crearGimnasioConDuena(plan, { slug: 'gym-a' });
+    await crearGimnasioConDuena(plan, { slug: 'gym-b' });
+    const agente = await entrarComo('root@gymsaas.co');
+
+    await agente
+      .patch(`/api/plataforma/tenants/${a._id}`)
+      .send({ slug: 'gym-b' })
+      .expect(409);
+  });
+
   it('filtra por estado', async () => {
     await crearSuperAdmin();
     const plan = await crearPlanPlataforma();

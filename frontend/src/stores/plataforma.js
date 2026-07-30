@@ -57,6 +57,13 @@ export const usePlataformaStore = defineStore('plataforma', () => {
     return creado;
   }
 
+  async function actualizarGimnasio(id, datos) {
+    const actualizado = await servicioPlataforma.actualizarGimnasio(id, datos);
+    // Se recarga: el backend enriquece la fila (dueno, sedes, plan poblado).
+    await cargarGimnasios();
+    return actualizado;
+  }
+
   async function suspenderGimnasio(id) {
     aplicarEstado(id, (await servicioPlataforma.suspenderGimnasio(id)).estado);
   }
@@ -87,6 +94,7 @@ export const usePlataformaStore = defineStore('plataforma', () => {
     cargarGimnasios,
     cargarPlanes,
     crearGimnasio,
+    actualizarGimnasio,
     suspenderGimnasio,
     reactivarGimnasio,
     cancelarGimnasio,

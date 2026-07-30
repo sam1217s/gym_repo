@@ -58,6 +58,22 @@ export const esquemaListarTenants = {
   }),
 };
 
+/** Edicion de los datos basicos de un gimnasio (no el estado ni los secretos). */
+export const esquemaActualizarTenant = {
+  params: z.object({ id: idMongo }),
+  body: z
+    .object({
+      nombre: z.string().trim().min(1),
+      nit: z.string().trim().min(1),
+      slug: slugValido,
+      planPlataforma: idMongo,
+    })
+    .partial()
+    .refine((datos) => Object.keys(datos).length > 0, {
+      message: 'No hay nada que actualizar',
+    }),
+};
+
 /**
  * Onboarding: las tres piezas que nacen juntas. El orden de las claves refleja
  * el orden real de creacion (tenant -> dueno -> primera sede).

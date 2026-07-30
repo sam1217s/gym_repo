@@ -50,6 +50,38 @@ export async function obtenerTenant(id) {
   };
 }
 
+/**
+ * Edita los datos basicos de un gimnasio (nombre, nit, slug, plan). El ESTADO no
+ * se toca aqui: para eso estan suspender/reactivar/cancelar, que validan las
+ * transiciones. Los secretos (Wompi, WhatsApp) tampoco: tienen su propio endpoint.
+ */
+export async function actualizarTenant(id, datos) {
+  const Tenant = obtenerModelo('Tenant');
+  const tenant = await Tenant.findById(id);
+  if (!tenant) throw ErrorApi.noEncontrado('El gimnasio no existe');
+
+  // Si se cambia el plan, tiene que existir (no hay FK en Mongo que lo garantice).
+  if (datos.planPlataforma) {
+    const plan = await obtenerModelo('PlanPlataforma').findById(datos.planPlataforma);
+    if (!plan) throw ErrorApi.solicitudInvalida('El plan de plataforma no existe');
+  }
+
+  // `datos` ya viene filtrado por Zod: solo nombre/nit/slug/planPlataforma.
+  Object.assign(tenant, datos);
+
+  try {
+    await tenant.save();
+  } catch (error) {
+    // El slug es unico global: si choca con otro gimnasio, es un 11000.
+    if (error.code === 11000) {
+      throw ErrorApi.conflicto('Ya existe un gimnasio con ese identificador (slug)');
+    }
+    throw error;
+  }
+
+  return obtenerTenant(id);
+}
+
 export function suspenderTenant(id) {
   return cambiarEstado(id, ESTADOS_TENANT.SUSPENDIDO, [
     ESTADOS_TENANT.TRIAL,

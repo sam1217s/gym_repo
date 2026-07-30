@@ -16,6 +16,11 @@ export async function crearGimnasio(datos) {
   return respuesta.data;
 }
 
+export async function actualizarGimnasio(id, datos) {
+  const { data: respuesta } = await api.patch(`/plataforma/tenants/${id}`, datos);
+  return respuesta.data;
+}
+
 export async function suspenderGimnasio(id) {
   const { data: respuesta } = await api.patch(`/plataforma/tenants/${id}/suspender`);
   return respuesta.data;
