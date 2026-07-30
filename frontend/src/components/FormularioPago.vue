@@ -52,10 +52,24 @@
           <!-- El vencimiento se calcula aqui igual que en el backend:
                periodoInicio + duracionMeses del plan. Verlo ANTES de cobrar
                evita registrar un periodo equivocado. -->
-          <q-banner v-if="periodoFin" dense class="banner-vencimiento">
-            <div v-if="modoAprobacion" class="text-weight-medium q-mb-xs">
-              Valor: ${{ Number(formulario.monto || 0).toLocaleString('es-CO') }} · Transferencia
+          <!-- En aprobacion: se muestra el plan del miembro y el valor esperado
+               BIEN visible, para cotejarlo con el monto del comprobante. -->
+          <q-banner v-if="modoAprobacion && planElegido" dense class="banner-aprobacion">
+            <div class="row items-baseline justify-between">
+              <div class="text-weight-medium">{{ planElegido.nombre }}</div>
+              <div class="valor-aprobacion cifra-tabular">
+                ${{ Number(formulario.monto || 0).toLocaleString('es-CO') }}
+              </div>
             </div>
+            <div class="text-caption text-grey-8 q-mt-xs">
+              Transferencia · cubre hasta el {{ periodoFinLegible }}
+            </div>
+            <div class="text-caption text-orange-9 q-mt-xs">
+              Verifica que este valor coincida con el del comprobante.
+            </div>
+          </q-banner>
+
+          <q-banner v-else-if="periodoFin" dense class="banner-vencimiento">
             Cubre hasta el <strong>{{ periodoFinLegible }}</strong>
             ({{ describirDuracion(planElegido) }} de {{ planElegido.nombre }})
           </q-banner>
@@ -102,6 +116,7 @@
 import { useQuasar } from 'quasar';
 import { computed, reactive, ref, watch } from 'vue';
 
+import { listarPagosDeMiembro } from 'src/servicios/gimnasio.servicio.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 /**
@@ -253,10 +268,25 @@ watch(
       }
     }
 
-    // Al aprobar, si la sede del miembro tiene un solo plan activo, se elige solo:
-    // el caso comun (una "mensualidad") queda a un clic. Con varios, se elige.
-    if (propiedades.modoAprobacion && opcionesPlan.value.length === 1) {
-      formulario.planMembresia = opcionesPlan.value[0].value;
+    // Al aprobar se preselecciona el plan que el miembro YA tiene (el de su
+    // ultimo pago): asi el monto que se muestra es el que deberia haber pagado y
+    // se puede cotejar contra el comprobante. Si no tiene pagos previos, cae al
+    // plan unico de la sede.
+    if (propiedades.modoAprobacion) {
+      let elegido = null;
+      try {
+        const pagos = await listarPagosDeMiembro(propiedades.miembro._id);
+        elegido = pagos?.[0]?.planMembresia?._id ?? null; // vienen del mas reciente al mas viejo
+      } catch {
+        elegido = null;
+      }
+
+      const enOpciones = elegido && opcionesPlan.value.some((opcion) => opcion.value === elegido);
+      if (enOpciones) {
+        formulario.planMembresia = elegido;
+      } else if (opcionesPlan.value.length === 1) {
+        formulario.planMembresia = opcionesPlan.value[0].value;
+      }
     }
   },
 );
@@ -310,5 +340,17 @@ function cerrar(valor) {
   background: rgba(31, 122, 70, 0.08);
   border-left: 4px solid var(--q-positive);
   border-radius: 3px;
+}
+
+.banner-aprobacion {
+  background: rgba(206, 17, 38, 0.06);
+  border-left: 4px solid var(--q-primary);
+  border-radius: 3px;
+}
+
+.valor-aprobacion {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--q-secondary);
 }
 </style>

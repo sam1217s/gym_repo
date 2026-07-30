@@ -246,6 +246,12 @@ export async function registrarPago(datos) {
   return respuesta.data;
 }
 
+/** Pagos de un miembro, del mas reciente al mas viejo, con su plan poblado. */
+export async function listarPagosDeMiembro(miembroId) {
+  const { data: respuesta } = await api.get('/pagos', { params: { miembro: miembroId } });
+  return respuesta.data;
+}
+
 /** Cada fila es `{ miembro, ultimoPago, estado }`; el estado lo deriva el backend. */
 export async function listarVencimientos() {
   const { data: respuesta } = await api.get('/vencimientos');
