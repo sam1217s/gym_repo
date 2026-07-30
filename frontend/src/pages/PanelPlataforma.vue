@@ -389,6 +389,38 @@
               :options="opcionesPlanEdicion"
               :rules="[reglaObligatorio]"
             />
+
+            <template v-if="edicion.tieneDueno">
+              <q-separator class="q-my-xs" />
+              <div class="text-caption text-weight-medium text-grey-8">Dueño del gimnasio</div>
+              <div class="row q-col-gutter-md">
+                <q-input
+                  v-model="edicion.duenoNombres"
+                  class="col-12 col-sm-6"
+                  label="Nombres"
+                  outlined
+                  dense
+                  :rules="[reglaObligatorio]"
+                />
+                <q-input
+                  v-model="edicion.duenoApellidos"
+                  class="col-12 col-sm-6"
+                  label="Apellidos"
+                  outlined
+                  dense
+                  :rules="[reglaObligatorio]"
+                />
+              </div>
+              <q-input
+                v-model="edicion.duenoEmail"
+                type="email"
+                label="Correo del dueño"
+                hint="Con este correo inicia sesión"
+                outlined
+                dense
+                :rules="[reglaObligatorio, reglaEmail]"
+              />
+            </template>
           </q-card-section>
 
           <q-separator />
@@ -534,6 +566,7 @@ async function ejecutar(accion, mensajeExito) {
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaSlug = (valor) =>
   /^[a-z0-9-]+$/.test(String(valor ?? '')) || 'Solo minusculas, numeros y guiones';
+const reglaEmail = (valor) => /.+@.+\..+/.test(String(valor ?? '')) || 'Correo invalido';
 
 // --- Editar datos del gimnasio ----------------------------------------------
 
@@ -544,6 +577,11 @@ const edicion = reactive({
   nit: '',
   slug: '',
   planPlataforma: null,
+  // Dueno del gimnasio (si tiene).
+  tieneDueno: false,
+  duenoNombres: '',
+  duenoApellidos: '',
+  duenoEmail: '',
   guardando: false,
 });
 
@@ -561,6 +599,12 @@ function abrirEdicion(gimnasio) {
   edicion.nit = gimnasio.nit;
   edicion.slug = gimnasio.slug;
   edicion.planPlataforma = gimnasio.planPlataforma?._id ?? gimnasio.planPlataforma ?? null;
+
+  edicion.tieneDueno = Boolean(gimnasio.dueno);
+  edicion.duenoNombres = gimnasio.dueno?.nombres ?? '';
+  edicion.duenoApellidos = gimnasio.dueno?.apellidos ?? '';
+  edicion.duenoEmail = gimnasio.dueno?.email ?? '';
+
   dialogoEdicion.value = true;
   if (plataforma.planes.length === 0) plataforma.cargarPlanes().catch(() => {});
 }
@@ -573,6 +617,15 @@ async function guardarEdicion() {
       nit: edicion.nit,
       slug: edicion.slug,
       planPlataforma: edicion.planPlataforma,
+      ...(edicion.tieneDueno
+        ? {
+            dueno: {
+              nombres: edicion.duenoNombres,
+              apellidos: edicion.duenoApellidos,
+              email: edicion.duenoEmail,
+            },
+          }
+        : {}),
     });
     quasar.notify({ type: 'positive', message: 'Gimnasio actualizado' });
     dialogoEdicion.value = false;

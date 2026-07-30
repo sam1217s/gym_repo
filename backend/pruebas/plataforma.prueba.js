@@ -369,12 +369,22 @@ describe('ciclo de vida del tenant', () => {
 
     const respuesta = await agente
       .patch(`/api/plataforma/tenants/${tenant._id}`)
-      .send({ nombre: 'Gimnasio Renombrado', slug: 'gym-nuevo-slug', planPlataforma: String(otroPlan._id) })
+      .send({
+        nombre: 'Gimnasio Renombrado',
+        slug: 'gym-nuevo-slug',
+        planPlataforma: String(otroPlan._id),
+        dueno: { nombres: 'Laura Nueva', email: 'nueva@correo.co' },
+      })
       .expect(200);
 
     expect(respuesta.body.data.nombre).toBe('Gimnasio Renombrado');
     expect(respuesta.body.data.slug).toBe('gym-nuevo-slug');
     expect(respuesta.body.data.planPlataforma.nombre).toBe('Pro');
+    expect(respuesta.body.data.dueno.nombres).toBe('Laura Nueva');
+    expect(respuesta.body.data.dueno.email).toBe('nueva@correo.co');
+
+    // El dueno ahora entra con el correo nuevo.
+    await entrarComo('nueva@correo.co');
   });
 
   it('rechaza editar un gimnasio con un slug ya ocupado (409)', async () => {

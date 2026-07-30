@@ -55,31 +55,55 @@ export async function obtenerTenant(id) {
  * se toca aqui: para eso estan suspender/reactivar/cancelar, que validan las
  * transiciones. Los secretos (Wompi, WhatsApp) tampoco: tienen su propio endpoint.
  */
-export async function actualizarTenant(id, datos) {
+export async function actualizarTenant(id, { dueno, ...datosTenant }) {
   const Tenant = obtenerModelo('Tenant');
   const tenant = await Tenant.findById(id);
   if (!tenant) throw ErrorApi.noEncontrado('El gimnasio no existe');
 
   // Si se cambia el plan, tiene que existir (no hay FK en Mongo que lo garantice).
-  if (datos.planPlataforma) {
-    const plan = await obtenerModelo('PlanPlataforma').findById(datos.planPlataforma);
+  if (datosTenant.planPlataforma) {
+    const plan = await obtenerModelo('PlanPlataforma').findById(datosTenant.planPlataforma);
     if (!plan) throw ErrorApi.solicitudInvalida('El plan de plataforma no existe');
   }
 
-  // `datos` ya viene filtrado por Zod: solo nombre/nit/slug/planPlataforma.
-  Object.assign(tenant, datos);
-
-  try {
-    await tenant.save();
-  } catch (error) {
-    // El slug es unico global: si choca con otro gimnasio, es un 11000.
-    if (error.code === 11000) {
-      throw ErrorApi.conflicto('Ya existe un gimnasio con ese identificador (slug)');
+  // `datosTenant` ya viene filtrado por Zod: solo nombre/nit/slug/planPlataforma.
+  if (Object.keys(datosTenant).length > 0) {
+    Object.assign(tenant, datosTenant);
+    try {
+      await tenant.save();
+    } catch (error) {
+      // El slug es unico global: si choca con otro gimnasio, es un 11000.
+      if (error.code === 11000) {
+        throw ErrorApi.conflicto('Ya existe un gimnasio con ese identificador (slug)');
+      }
+      throw error;
     }
-    throw error;
+  }
+
+  if (dueno && Object.keys(dueno).length > 0) {
+    await actualizarDueno(id, dueno);
   }
 
   return obtenerTenant(id);
+}
+
+/** Edita al dueno (tenant_owner) del gimnasio: nombres, apellidos y correo. */
+async function actualizarDueno(tenantId, datos) {
+  const Usuario = obtenerModelo('Usuario');
+  const dueno = await Usuario.findOne({ tenant: tenantId, rol: ROLES.TENANT_OWNER });
+  if (!dueno) throw ErrorApi.noEncontrado('El gimnasio no tiene dueno');
+
+  Object.assign(dueno, datos); // Zod ya acoto a nombres/apellidos/email.
+
+  try {
+    await dueno.save();
+  } catch (error) {
+    // El correo es unico por gimnasio: si choca con otro usuario del mismo, 11000.
+    if (error.code === 11000) {
+      throw ErrorApi.conflicto('Ya existe un usuario con ese correo en este gimnasio');
+    }
+    throw error;
+  }
 }
 
 export function suspenderTenant(id) {
@@ -135,6 +159,8 @@ async function buscarDuenos(tenantIds) {
       String(dueno.tenant),
       {
         id: dueno._id,
+        nombres: dueno.nombres,
+        apellidos: dueno.apellidos,
         nombreCompleto: dueno.nombreCompleto,
         email: dueno.email,
         activo: dueno.activo,

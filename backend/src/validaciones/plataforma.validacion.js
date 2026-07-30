@@ -58,7 +58,16 @@ export const esquemaListarTenants = {
   }),
 };
 
-/** Edicion de los datos basicos de un gimnasio (no el estado ni los secretos). */
+/** Datos editables del dueno del gimnasio. */
+const duenoEditable = z
+  .object({
+    nombres: z.string().trim().min(1),
+    apellidos: z.string().trim().min(1),
+    email: z.string().email('Email invalido').toLowerCase().trim(),
+  })
+  .partial();
+
+/** Edicion de los datos basicos de un gimnasio y su dueno (no el estado ni los secretos). */
 export const esquemaActualizarTenant = {
   params: z.object({ id: idMongo }),
   body: z
@@ -67,6 +76,7 @@ export const esquemaActualizarTenant = {
       nit: z.string().trim().min(1),
       slug: slugValido,
       planPlataforma: idMongo,
+      dueno: duenoEditable,
     })
     .partial()
     .refine((datos) => Object.keys(datos).length > 0, {
