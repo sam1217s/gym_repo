@@ -25,6 +25,8 @@ import { ErrorApi } from '../utilidades/ErrorApi.js';
 
 const VERSION_GRAFO = 'v21.0';
 const TIEMPO_LIMITE_MS = 15_000;
+/** Tope del comprobante que se baja de Meta: evita que un archivo enorme llene el disco. */
+const MAX_TAMANO_MEDIA = 20 * 1024 * 1024; // 20 MB
 
 /** Tipos de Meta que sabemos guardar; el resto entra como "otro". */
 const TIPOS = { text: 'texto', image: 'imagen', document: 'documento' };
@@ -65,12 +67,21 @@ async function descargarArchivo({ mediaId, token, tenantId }) {
   });
   if (!binario.ok) throw new Error(`Meta respondio ${binario.status} al descargar`);
 
+  // Tope de tamano: un comprobante enorme no debe poder llenar el disco.
+  const tamano = Number(binario.headers.get('content-length'));
+  if (tamano > MAX_TAMANO_MEDIA) {
+    throw new Error(`El archivo pesa ${tamano} bytes, supera el limite`);
+  }
+
+  const datos = Buffer.from(await binario.arrayBuffer());
+  if (datos.length > MAX_TAMANO_MEDIA) throw new Error('El archivo supera el limite de tamano');
+
   const extension = (mimeType?.split('/')[1] ?? 'bin').split(';')[0];
   const relativa = path.join(String(tenantId), `${mediaId}.${extension}`);
   const absoluta = path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', relativa);
 
   await mkdir(path.dirname(absoluta), { recursive: true });
-  await writeFile(absoluta, Buffer.from(await binario.arrayBuffer()));
+  await writeFile(absoluta, datos);
 
   return { archivo: relativa, mimeType };
 }

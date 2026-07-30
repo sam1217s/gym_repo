@@ -18,6 +18,10 @@ export function crearServidor() {
   const app = express();
 
   app.disable('x-powered-by');
+  // Detras de nginx: confia en UN proxy para leer la IP real del cliente
+  // (X-Forwarded-For). Sin esto, el rate limiting contaria todas las peticiones
+  // como si vinieran de la misma IP (la del proxy).
+  app.set('trust proxy', 1);
   app.use(helmet());
 
   /**

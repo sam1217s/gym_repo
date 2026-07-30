@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as controlador from '../controladores/auth.controlador.js';
 import { autenticar } from '../middlewares/autenticacion.js';
+import { limitadorLogin, limitadorRegistro } from '../middlewares/limitadorPeticiones.js';
 import { validar } from '../middlewares/validar.js';
 import {
   esquemaCambiarContrasena,
@@ -12,11 +13,17 @@ import {
 const rutas = Router();
 
 // --- Publicas -------------------------------------------------------------
-rutas.post('/iniciar-sesion', validar(esquemaIniciarSesion), controlador.iniciarSesion);
-rutas.post('/refrescar', controlador.refrescar);
+// Con limitador: sin el, se pueden probar contrasenas sin tope (fuerza bruta).
+rutas.post('/iniciar-sesion', limitadorLogin, validar(esquemaIniciarSesion), controlador.iniciarSesion);
+rutas.post('/refrescar', limitadorLogin, controlador.refrescar);
 
 // Registro abierto: cualquiera da de alta su gimnasio. No abre sesion.
-rutas.post('/registrar-gimnasio', validar(esquemaRegistrarGimnasio), controlador.registrarGimnasio);
+rutas.post(
+  '/registrar-gimnasio',
+  limitadorRegistro,
+  validar(esquemaRegistrarGimnasio),
+  controlador.registrarGimnasio,
+);
 rutas.get('/verificar-email', validar(esquemaVerificarEmail), controlador.verificarEmail);
 
 // --- Protegidas -----------------------------------------------------------

@@ -25,16 +25,17 @@ import { entorno, esProduccion } from '../config/entorno.js';
  * origen (`localhost:9000`), asi que `sameSite: 'lax'` basta y no hace falta
  * `secure`.
  *
- * En produccion se asume que el frontend vive en un dominio distinto al de la
- * API, lo que obliga a `sameSite: 'none'` + `secure: true` (el navegador
- * rechaza `none` sin HTTPS). Si despliegas ambos bajo el mismo dominio, baja
- * esto a `'lax'`: es mas seguro.
+ * El despliegue actual sirve frontend y API bajo el MISMO dominio, asi que se
+ * usa `sameSite: 'lax'`: bloquea que otro sitio dispare peticiones autenticadas
+ * (defensa CSRF) y evita `'none'`, que exige HTTPS y abre esa superficie. En
+ * produccion se anade `secure`. Si algun dia frontend y API viven en dominios
+ * distintos, habria que volver a `'none'` + `secure`.
  */
 function opcionesCookie(duracionMs, ruta = '/') {
   return {
     httpOnly: true,
     secure: esProduccion,
-    sameSite: esProduccion ? 'none' : 'lax',
+    sameSite: 'lax',
     maxAge: duracionMs,
     path: ruta,
   };

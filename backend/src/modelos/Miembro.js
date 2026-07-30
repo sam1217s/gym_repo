@@ -42,7 +42,9 @@ esquemaMiembro.plugin(aislamientoTenant);
 // puede entrenar en varias sedes con la misma cedula.
 esquemaMiembro.index({ tenant: 1, documento: 1 }, { unique: true });
 esquemaMiembro.index({ tenant: 1, sede: 1 });
-esquemaMiembro.index({ tenant: 1, activo: 1 });
+// Cubre el listado del panel: filtra por activo y ordena por mas reciente,
+// sin ordenar en memoria.
+esquemaMiembro.index({ tenant: 1, activo: 1, createdAt: -1 });
 
 esquemaMiembro.virtual('nombreCompleto').get(function () {
   return `${this.nombres} ${this.apellidos}`.trim();

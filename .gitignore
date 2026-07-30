@@ -6,6 +6,10 @@ node_modules/
 .env.*
 !.env.example
 
+# Comprobantes de pago que mandan los miembros por WhatsApp: datos personales,
+# viven solo en el servidor, nunca en el repo.
+almacen/
+
 # Logs
 *.log
 npm-debug.log*
