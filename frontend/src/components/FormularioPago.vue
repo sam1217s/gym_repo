@@ -272,26 +272,23 @@ watch(
       const tareas = [];
       if (gimnasio.planesMembresia.length === 0) tareas.push(gimnasio.cargarPlanesMembresia());
 
-      const pagosPromesa =
-        propiedades.modoAprobacion && propiedades.miembro
-          ? listarPagosDeMiembro(propiedades.miembro._id).catch(() => [])
-          : null;
+      // Se trae el ultimo pago para preseleccionar SU plan, tanto al aprobar como
+      // al registrar normal: el plan del miembro se autocompleta y no hay que
+      // elegirlo (se puede cambiar igual). Va en paralelo con la carga de planes.
+      const pagosPromesa = propiedades.miembro
+        ? listarPagosDeMiembro(propiedades.miembro._id).catch(() => [])
+        : null;
 
       await Promise.all(tareas);
 
-      // Al aprobar se preselecciona el plan que el miembro YA tiene (el de su
-      // ultimo pago): asi el monto mostrado es el que deberia haber pagado y se
-      // coteja contra el comprobante. Sin pagos previos, cae al plan unico.
-      if (propiedades.modoAprobacion) {
-        const pagos = pagosPromesa ? await pagosPromesa : [];
-        const elegido = pagos?.[0]?.planMembresia?._id ?? null;
+      const pagos = pagosPromesa ? await pagosPromesa : [];
+      const elegido = pagos?.[0]?.planMembresia?._id ?? null; // del mas reciente al mas viejo
 
-        const enOpciones = elegido && opcionesPlan.value.some((opcion) => opcion.value === elegido);
-        if (enOpciones) {
-          formulario.planMembresia = elegido;
-        } else if (opcionesPlan.value.length === 1) {
-          formulario.planMembresia = opcionesPlan.value[0].value;
-        }
+      const enOpciones = elegido && opcionesPlan.value.some((opcion) => opcion.value === elegido);
+      if (enOpciones) {
+        formulario.planMembresia = elegido;
+      } else if (opcionesPlan.value.length === 1) {
+        formulario.planMembresia = opcionesPlan.value[0].value;
       }
     } catch {
       quasar.notify({ type: 'negative', message: 'No se pudieron cargar los planes' });
