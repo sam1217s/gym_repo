@@ -80,6 +80,18 @@ export const PLANTILLA_VENCIMIENTO = Object.freeze({
   idioma: 'es_CO',
 });
 
+/**
+ * Plantilla de BIENVENIDA: se envia al registrar un miembro para darle contexto
+ * de que por WhatsApp se manejan los avisos y comprobantes de la mensualidad.
+ * Misma convencion que la de vencimiento (cada gimnasio la registra en SU WABA).
+ * El cuerpo espera 2 variables, en este orden:
+ *   {{1}} = nombre del miembro · {{2}} = gimnasio.
+ */
+export const PLANTILLA_BIENVENIDA = Object.freeze({
+  nombre: 'bienvenida',
+  idioma: 'es_CO',
+});
+
 export const TIPOS_NOTIFICACION = Object.freeze({
   PROXIMO_VENCIMIENTO: 'proximo_vencimiento',
 });

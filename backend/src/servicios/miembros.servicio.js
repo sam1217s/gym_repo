@@ -1,5 +1,7 @@
+import { obtenerContexto } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
+import { darBienvenida } from './bienvenida.servicio.js';
 import { exigirSede } from './sedes.servicio.js';
 
 /**
@@ -33,14 +35,23 @@ export async function crearMiembro(datos, { filtroSede = {}, sedePorDefecto = nu
 
   await exigirSede(sede);
 
+  let miembro;
   try {
-    return await Miembro.create({ ...datos, sede });
+    miembro = await Miembro.create({ ...datos, sede });
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {
       throw ErrorApi.conflicto('Ya existe un miembro con ese documento en este gimnasio');
     }
     throw error;
   }
+
+  // Bienvenida por WhatsApp: fire-and-forget. Se captura el tenant AHORA (dentro
+  // del contexto) porque el envio corre despues, ya fuera de la peticion. Nunca
+  // bloquea ni rompe el alta.
+  const { tenantId } = obtenerContexto();
+  darBienvenida(miembro, tenantId).catch(() => {});
+
+  return miembro;
 }
 
 export async function actualizarMiembro(id, datos, filtroSede = {}) {

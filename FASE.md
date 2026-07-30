@@ -440,6 +440,13 @@ detras, asi que sin esto el comprobante no lo ve nadie.
       plantilla con `{{4}}` este APROBADA en Meta, o Meta rechaza el envio por descuadre de
       parametros. Plantilla primero, deploy despues.
 
+**WhatsApp — plantilla de BIENVENIDA (codigo YA desplegado, best-effort):**
+- [ ] Crear y aprobar en Meta la plantilla `bienvenida` (`es_CO`, 2 variables:
+      `{{1}}`=nombre, `{{2}}`=gimnasio) + boton opcional. El codigo ya la envia al
+      registrar un miembro (`crearMiembro → darBienvenida`, fire-and-forget). Como es
+      best-effort y plantilla NUEVA, mientras no este aprobada el envio falla en silencio
+      y el alta sigue igual: NO hay riesgo de coordinacion (a diferencia del `{{4}}`).
+
 **WhatsApp — nombre del numero:**
 - [ ] Confirmar que el nombre visible cambió GlowUp → "Gym Barichara". Al 29 jul seguia
       como GlowUp y sin cambio pendiente en Meta; reintentar la consulta.

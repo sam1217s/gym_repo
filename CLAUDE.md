@@ -644,6 +644,24 @@ devuelven al cliente (`cobros.servicio.js → describirConfig`), solo si estan p
 publica. La misma regla que `tenant.config.whatsapp.credenciales`: `Tenant.toJSON` borra
 `config.wompi` entero.
 
+### Bienvenida por WhatsApp al registrar un miembro
+
+`servicios/bienvenida.servicio.js → darBienvenida` le manda al miembro recien creado un
+mensaje de contexto (por WhatsApp se manejan avisos y comprobantes de la mensualidad). Reglas
+no obvias:
+
+- Se dispara desde `crearMiembro` **fire-and-forget** (`darBienvenida(...).catch(() => {})`) y
+  es **best-effort**: nunca lanza, asi que un fallo del canal jamas frena ni rompe el alta.
+- El `tenantId` se captura **dentro** del contexto (con `obtenerContexto()`) y se pasa
+  explicito, porque el envio corre despues de responder, ya fuera del `AsyncLocalStorage`.
+  `Tenant` es coleccion de plataforma (sin plugin): se lee por id sin contexto.
+- Usa una plantilla **propia** (`PLANTILLA_BIENVENIDA` = `bienvenida`/`es_CO`, **2 variables**:
+  nombre y gimnasio), distinta de la de vencimiento. Se pasa a `crearProveedor(config,
+  { plantilla })`, que ahora acepta la plantilla como opcion (cloud_api la usa; n8n/baileys la
+  ignoran y mandan el texto).
+- Al ser plantilla NUEVA y best-effort, **no hay coordinacion**: mientras el gimnasio no la
+  tenga aprobada en su WABA, el envio falla en silencio y el alta sigue igual.
+
 ### Bandeja de WhatsApp: recibir el comprobante y responder
 
 Un numero conectado a la Cloud API **no tiene app de WhatsApp detras**: si un miembro manda el
