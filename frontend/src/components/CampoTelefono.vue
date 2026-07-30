@@ -32,10 +32,11 @@
     <q-input
       v-model="local"
       :label="label"
-      :hint="hint"
+      :hint="hintEfectivo"
       outlined
       dense
       inputmode="numeric"
+      :maxlength="maxLocal"
       class="col numero"
       :rules="[reglaLocal]"
       @update:model-value="alEscribir"
@@ -44,7 +45,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 /**
  * Campo de telefono con selector de pais. El usuario escribe SOLO el numero
@@ -66,6 +67,8 @@ const PAISES = [
   {
     label: 'Colombia',
     indicativo: '57',
+    // Los celulares en Colombia tienen 10 digitos (empiezan por 3).
+    digitos: 10,
     bandera:
       '<svg viewBox="0 0 3 2"><rect width="3" height="2" fill="#FCD116"/><rect y="1" width="3" height="0.5" fill="#003893"/><rect y="1.5" width="3" height="0.5" fill="#CE1126"/></svg>',
   },
@@ -139,9 +142,25 @@ function alEscribir(valor) {
   emitir();
 }
 
+// Tope de digitos al escribir: para paises con largo fijo (Colombia: 10) no deja
+// pasarse; el resto se acota al maximo internacional razonable.
+const maxLocal = computed(() => pais.value.digitos ?? 14);
+
+// Sugerencia bajo el campo si el padre no puso una: "10 digitos" para Colombia.
+const hintEfectivo = computed(() => {
+  if (props.hint) return props.hint;
+  return pais.value.digitos ? `${pais.value.digitos} digitos` : '';
+});
+
 const reglaLocal = (valor) => {
   const digitos = String(valor ?? '').replace(/\D/g, '');
   if (!digitos) return 'El telefono es obligatorio';
+
+  // Paises con largo fijo (Colombia: 10 digitos): se exige exacto.
+  if (pais.value.digitos && digitos.length !== pais.value.digitos) {
+    return `El numero en ${pais.value.label} debe tener ${pais.value.digitos} digitos`;
+  }
+
   const completo = `${pais.value.indicativo}${digitos}`;
   return (completo.length >= 10 && completo.length <= 15) || 'Numero de telefono invalido';
 };
