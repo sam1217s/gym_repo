@@ -88,11 +88,10 @@
           <q-input
             v-if="esTransferencia && !modoAprobacion"
             v-model="formulario.referencia"
-            label="Referencia de la transferencia"
-            hint="Numero de comprobante"
+            label="Referencia de la transferencia (opcional)"
+            hint="Numero de comprobante, si lo tienes a la mano"
             outlined
             dense
-            :rules="[reglaObligatorio]"
           />
         </q-card-section>
 

@@ -272,7 +272,7 @@ describe('POST /api/pagos', () => {
     expect(periodoFin.getDate()).toBe(29);
   });
 
-  it('rechaza una transferencia sin referencia; el efectivo no la necesita', async () => {
+  it('la referencia es opcional: una transferencia sin referencia se acepta', async () => {
     const { planMensual, miembros } = await montarGimnasio();
     const dueno = await entrarComo('owner@gimnasio-pagos.co');
 
@@ -281,14 +281,13 @@ describe('POST /api/pagos', () => {
       planMembresia: String(planMensual._id),
     };
 
-    const invalida = await dueno
+    // Sin referencia (cobro presencial / aprobacion desde la bandeja): se acepta.
+    await dueno
       .post('/api/pagos')
       .send({ ...base, metodoPago: METODOS_PAGO.TRANSFERENCIA })
-      .expect(400);
-    expect(invalida.body.error.detalles).toEqual(
-      expect.arrayContaining([expect.objectContaining({ campo: 'referencia' })]),
-    );
+      .expect(201);
 
+    // Con referencia: se guarda igual.
     await dueno
       .post('/api/pagos')
       .send({ ...base, metodoPago: METODOS_PAGO.TRANSFERENCIA, referencia: 'TRF-001' })
