@@ -1,7 +1,8 @@
 import {
+  DIAS_AVISO_POR_VENCER,
+  DIAS_AVISO_VENCIDO,
   ESTADOS_NOTIFICACION,
   ESTADOS_VENCIMIENTO,
-  ESTADOS_VENCIMIENTO_AVISABLES,
   MILISEGUNDOS_POR_DIA,
   ZONA_HORARIA_POR_DEFECTO,
 } from '../config/constantes.js';
@@ -15,14 +16,16 @@ import { listarVencimientos } from './vencimientos.servicio.js';
  * A QUIEN se avisa: `listarVencimientos()`, la MISMA consulta que pinta el
  * panel de miembros. Es deliberado y no es un detalle.
  *
- * Un `Pago.find({ periodoFin: { $lte: umbral }, notificado: false })` —la forma
- * obvia— avisaria de mas: un miembro que ya renovo conserva su pago viejo, con
- * `periodoFin` pasado y `notificado: false`, y recibiria un aviso de que su
- * mensualidad vencio cuando en realidad esta al dia. El vencimiento se DERIVA
- * del ULTIMO pago, aqui igual que en el panel; el resto de pagos son historia.
+ * Un `Pago.find({ periodoFin: { $lte: umbral } })` —la forma obvia— avisaria de
+ * mas: un miembro que ya renovo conserva su pago viejo con `periodoFin` pasado y
+ * recibiria un aviso de que su mensualidad vencio cuando en realidad esta al dia.
+ * El vencimiento se DERIVA del ULTIMO pago, aqui igual que en el panel; el resto
+ * de pagos son historia.
  *
- * `notificado` se marca sobre ese ultimo pago, asi que cada periodo se avisa
- * una sola vez. Si el envio falla, NO se marca: mañana se reintenta.
+ * Son DOS avisos por ciclo, cada uno una sola vez (ver `decidirEtapaAviso`):
+ * uno faltando pocos dias y otro al llevar varios vencido. Cada etapa tiene su
+ * marca en el pago (`avisadoPorVencer` / `avisadoVencido`) y se pone SOLO tras
+ * confirmar el envio: si falla, no se marca y mañana se reintenta.
  */
 
 const SIN_TELEFONO = 'El miembro no tiene telefono';
@@ -123,10 +126,12 @@ export async function notificarVencimientosDelTenant(
     return { omitido: 'proveedor_ninguno', enviados: 0, fallidos: 0 };
   }
 
+  const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
+
   const filas = await listarVencimientos();
-  const porAvisar = filas.filter(
-    (fila) => ESTADOS_VENCIMIENTO_AVISABLES.includes(fila.estado) && !fila.ultimoPago.notificado,
-  );
+  const porAvisar = filas
+    .map((fila) => ({ ...fila, etapa: decidirEtapaAviso(fila.ultimoPago, ahora, zonaHoraria) }))
+    .filter((fila) => fila.etapa);
 
   let enviados = 0;
   let fallidos = 0;
@@ -140,10 +145,32 @@ export async function notificarVencimientosDelTenant(
   return { proveedor: proveedor.nombre, enviados, fallidos, candidatos: porAvisar.length };
 }
 
-async function avisarAMiembro({ miembro, ultimoPago, estado }, { tenant, proveedor, ahora }) {
+/**
+ * Que aviso corresponde HOY para el ultimo pago, o `null` si ninguno. Son dos
+ * por ciclo y cada uno una sola vez (lo garantizan las dos marcas del pago):
+ *  - `por_vencer`: faltan `DIAS_AVISO_POR_VENCER` dias o menos (aun no vence).
+ *  - `vencido`: lleva `DIAS_AVISO_VENCIDO` dias o mas vencido.
+ */
+function decidirEtapaAviso(ultimoPago, ahora, zonaHoraria) {
+  if (!ultimoPago) return null;
+
+  const dias = diasCalendarioHasta(ultimoPago.periodoFin, ahora, zonaHoraria);
+
+  if (dias > 0 && dias <= DIAS_AVISO_POR_VENCER && !ultimoPago.avisadoPorVencer) {
+    return 'por_vencer';
+  }
+  if (dias <= -DIAS_AVISO_VENCIDO && !ultimoPago.avisadoVencido) {
+    return 'vencido';
+  }
+  return null;
+}
+
+async function avisarAMiembro({ miembro, ultimoPago, etapa }, { tenant, proveedor, ahora }) {
   const Notificacion = obtenerModelo('Notificacion');
   const Pago = obtenerModelo('Pago');
 
+  const estado =
+    etapa === 'vencido' ? ESTADOS_VENCIMIENTO.VENCIDO : ESTADOS_VENCIMIENTO.POR_VENCER;
   const mensaje = construirMensaje({ miembro, ultimoPago, estado, tenant, ahora });
   const variables = construirVariables({ miembro, ultimoPago, tenant });
 
@@ -158,8 +185,10 @@ async function avisarAMiembro({ miembro, ultimoPago, estado }, { tenant, proveed
       mensaje,
     });
 
-    // Solo tras un envio confirmado: si se marcara antes, un fallo perderia el aviso.
-    await Pago.updateOne({ _id: ultimoPago._id }, { notificado: true });
+    // Se marca SOLO la etapa enviada, y solo tras confirmar: asi el otro aviso
+    // del ciclo aun puede salir, y un fallo no pierde este.
+    const campo = etapa === 'vencido' ? 'avisadoVencido' : 'avisadoPorVencer';
+    await Pago.updateOne({ _id: ultimoPago._id }, { [campo]: true });
 
     return ESTADOS_NOTIFICACION.ENVIADO;
   } catch (error) {

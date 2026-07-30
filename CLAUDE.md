@@ -460,18 +460,24 @@ ejecutarConTenant(tenant._id, async () => {
         |  si proveedor === 'ninguno'  -> omitido
         |
         |  listarVencimientos()   <-- LA MISMA consulta que pinta el panel de miembros
-        |     filtra estado ∈ {por_vencer, vencido} y !ultimoPago.notificado
+        |     decidirEtapaAviso(ultimoPago): 'por_vencer' | 'vencido' | null
         v
    NotificacionProvider  <-- interfaz; la implementacion sale de tenant.config.whatsapp.proveedor
         |                    (cloud_api | n8n | ninguno; baileys aun no implementado)
         v
-   exito -> Notificacion.create({ estado: 'enviado' }) + Pago.updateOne({ notificado: true })
-   fallo -> Notificacion.create({ estado: 'fallido' })   (el pago NO se marca: se reintenta)
+   exito -> Notificacion.create({ estado: 'enviado' }) + Pago.updateOne({ [etapa]: true })
+   fallo -> Notificacion.create({ estado: 'fallido' })   (la etapa NO se marca: se reintenta)
 })
 ```
 
-`DIAS_AVISO_VENCIMIENTO = 3` vive en `config/constantes.js`. El cron **debe** envolver cada
-tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto por el.
+**DOS avisos por ciclo, cada uno una sola vez.** No hay un booleano `notificado`, sino DOS
+marcas en el pago: `avisadoPorVencer` y `avisadoVencido`. `decidirEtapaAviso()` mira los dias de
+calendario del `periodoFin` del ULTIMO pago: manda "por vencer" cuando faltan
+`DIAS_AVISO_POR_VENCER` dias o menos (aun no vence), y "vencido" cuando lleva `DIAS_AVISO_VENCIDO`
+dias o mas vencido (ambos `= 2`). Cada etapa se marca por separado y SOLO tras confirmar el
+envio, asi que el segundo aviso aun puede salir y un fallo no pierde el aviso. `DIAS_AVISO_VENCIMIENTO
+= 3` es OTRA cosa: solo el umbral con que el PANEL pinta el chip "por vencer". El cron **debe**
+envolver cada tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto por el.
 
 **Texto libre vs. plantilla.** El servicio construye SIEMPRE dos cosas: el `mensaje` de texto
 (rico, varia segun el estado) y las `variables` de la plantilla (`[nombre, gimnasio, fecha]`,
@@ -483,12 +489,10 @@ idioma de la plantilla son una **convencion** (`PLANTILLA_VENCIMIENTO` = `aviso_
 ese nombre y esas 3 variables. El `mensaje` de texto se sigue guardando en `Notificacion` como
 registro, aunque cloud_api no lo mande.
 
-**La trampa del aviso.** Lo obvio seria
-`Pago.find({ periodoFin: { $lte: umbral }, notificado: false })`. Esta mal: un miembro que ya
-renovo conserva su pago viejo, con `periodoFin` pasado y `notificado: false`, y recibiria un
-aviso de que su mensualidad vencio estando al dia. El aviso sale del **ultimo pago**, igual
-que el panel. `notificado` se marca sobre ese ultimo pago, y solo **despues** de que el
-proveedor confirme el envio: marcarlo antes perderia el aviso cuando el canal falle.
+**La trampa del aviso.** Lo obvio seria `Pago.find({ periodoFin: { $lte: umbral } })`. Esta mal:
+un miembro que ya renovo conserva su pago viejo con `periodoFin` pasado, y recibiria un aviso de
+que su mensualidad vencio estando al dia. El aviso sale del **ultimo pago**, igual que el panel;
+las marcas de etapa viven en ese ultimo pago.
 
 Solo una instancia debe programar el cron (`HABILITAR_CRON`), o cada miembro recibe el aviso
 tantas veces como procesos haya corriendo.

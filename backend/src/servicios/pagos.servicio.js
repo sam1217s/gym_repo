@@ -61,7 +61,6 @@ export async function registrarPago(datos, filtroSede = {}) {
     periodoInicio,
     periodoFin,
     registradoPor: obtenerContexto().usuarioId,
-    notificado: false,
   });
 
   // Recibo por WhatsApp: fire-and-forget, best-effort, nunca frena el pago. Se

@@ -115,8 +115,19 @@ export const ESTADOS_NOTIFICACION = Object.freeze({
   FALLIDO: 'fallido',
 });
 
-/** Dias de antelacion con que se avisa a un miembro que su mensualidad vence. */
+/**
+ * Umbral (en dias) con que el PANEL pinta a un miembro como "por vencer". Es
+ * solo presentacion; el aviso por WhatsApp usa sus propios umbrales de abajo.
+ */
 export const DIAS_AVISO_VENCIMIENTO = 3;
+
+/**
+ * Avisos por WhatsApp: DOS por ciclo de pago, cada uno una sola vez.
+ *  - `POR_VENCER`: faltando este numero de dias (o menos) para vencer.
+ *  - `VENCIDO`: cuando lleva este numero de dias (o mas) vencido.
+ */
+export const DIAS_AVISO_POR_VENCER = 2;
+export const DIAS_AVISO_VENCIDO = 2;
 
 /** Todo gimnasio nuevo estrena 2 meses gratis antes de su primera factura. */
 export const MESES_TRIAL_GRATIS = 2;

@@ -187,7 +187,6 @@ async function registrarPagoAprobado(transaccion, ref) {
       periodoInicio,
       periodoFin,
       registradoPor: null, // lo pago el propio miembro, no el staff
-      notificado: false,
     });
     return { resultado: 'pagado', pago: pago._id };
   } catch (error) {

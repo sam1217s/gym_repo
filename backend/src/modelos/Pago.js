@@ -39,8 +39,12 @@ const esquemaPago = new mongoose.Schema(
      */
     registradoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
 
-    /** `true` cuando el cron ya aviso del vencimiento de este periodo. */
-    notificado: { type: Boolean, default: false },
+    /**
+     * Avisos ya enviados de este periodo. Son DOS por ciclo (uno "por vencer",
+     * otro "vencido"), cada uno una sola vez: por eso hay dos marcas y no una.
+     */
+    avisadoPorVencer: { type: Boolean, default: false },
+    avisadoVencido: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
@@ -49,7 +53,6 @@ esquemaPago.plugin(aislamientoTenant);
 
 // Consulta del cron de vencimientos y del panel "proximos a vencer".
 esquemaPago.index({ tenant: 1, periodoFin: 1 });
-esquemaPago.index({ tenant: 1, periodoFin: 1, notificado: 1 });
 
 // Ultimo pago de un miembro (ordenado descendente por fin de periodo).
 esquemaPago.index({ tenant: 1, miembro: 1, periodoFin: -1 });
