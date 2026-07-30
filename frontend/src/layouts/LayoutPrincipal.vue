@@ -153,12 +153,7 @@ const ENLACES = [
     icono: 'account_balance_wallet',
     roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
   },
-  {
-    nombre: 'mensajes',
-    titulo: 'Mensajes',
-    icono: 'chat',
-    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
-  },
+  { nombre: 'mensajes', titulo: 'Mensajes', icono: 'chat', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'auditoria', titulo: 'Auditoria', icono: 'fact_check', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
@@ -227,11 +222,10 @@ function pendientesDe(nombre) {
 
 // Los badges se cuentan al montar el panel; cada pagina los baja a 0 al abrirse.
 // Reportes es solo del dueño; la bandeja la atiende tambien el encargado de sede.
+// Reportes y bandeja de mensajes son SOLO del dueño.
 onMounted(() => {
   if (usuario.value?.rol === ROLES.TENANT_OWNER) {
     gimnasio.contarReportesNoLeidos().catch(() => {});
-  }
-  if ([ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN].includes(usuario.value?.rol)) {
     gimnasio.contarMensajesPendientes().catch(() => {});
   }
 });

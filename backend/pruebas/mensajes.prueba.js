@@ -186,20 +186,20 @@ describe('Webhook de WhatsApp', () => {
 });
 
 describe('Bandeja de mensajes', () => {
-  it('un sede_admin solo ve la conversacion de SUS miembros', async () => {
+  it('la bandeja es SOLO del dueño: un sede_admin recibe 403', async () => {
     await montar();
     await enviarWebhook(evento()).expect(200); // Ana, sede norte
     await enviarWebhook(evento({ telefono: '573002220002', wamid: 'wamid.BBB' })).expect(200); // Beto, sur
 
+    // El dueño ve TODA la bandeja (todas las sedes).
     const dueno = await entrarComo('owner@gymmsg.co');
     const todos = await dueno.get('/api/mensajes').expect(200);
     expect(todos.body.data.mensajes).toHaveLength(2);
     expect(todos.body.data.pendientes).toBe(2);
 
+    // Un sede_admin no la puede abrir.
     const sur = await entrarComo('sur@gymmsg.co');
-    const suyos = await sur.get('/api/mensajes').expect(200);
-    expect(suyos.body.data.mensajes).toHaveLength(1);
-    expect(suyos.body.data.mensajes[0].telefono).toBe('573002220002');
+    await sur.get('/api/mensajes').expect(403);
   });
 
   it('el dueño puede filtrar por sede y ve el nombre de la sede de cada hilo', async () => {

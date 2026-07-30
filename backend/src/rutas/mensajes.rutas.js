@@ -5,7 +5,7 @@ import {
   bloquearSiDebeCambiarContrasena,
   bloquearSiGimnasioSuspendido,
   limitarASede,
-  requierePersonalGimnasio,
+  requiereDuenoGimnasio,
 } from '../middlewares/autorizacion.js';
 import { abrirContextoTenant } from '../middlewares/contextoTenant.js';
 import { validar } from '../middlewares/validar.js';
@@ -18,14 +18,14 @@ import {
 
 const rutas = Router();
 
-// La bandeja la atiende cualquier staff; `limitarASede` hace que un sede_admin
-// solo vea la conversacion de los miembros de SU sede.
+// La bandeja es SOLO del dueño: es quien revisa los comprobantes y aprueba los
+// pagos. `limitarASede` deja su `filtroSede` en `{}` (ve todas las sedes).
 rutas.use(
   autenticar,
   abrirContextoTenant,
   bloquearSiDebeCambiarContrasena,
   bloquearSiGimnasioSuspendido,
-  requierePersonalGimnasio,
+  requiereDuenoGimnasio,
   limitarASede,
 );
 

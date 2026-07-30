@@ -84,7 +84,7 @@ const rutas = [
         path: 'mensajes',
         name: 'mensajes',
         component: () => import('pages/PaginaMensajes.vue'),
-        meta: { roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN] },
+        meta: { roles: [ROLES.TENANT_OWNER] },
       },
       {
         path: 'reportes',
