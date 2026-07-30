@@ -387,6 +387,33 @@ describe('ciclo de vida del tenant', () => {
     await entrarComo('nueva@correo.co');
   });
 
+  it('el super_admin gestiona las sedes de un gimnasio (crear, editar, listar)', async () => {
+    await crearSuperAdmin();
+    const plan = await crearPlanPlataforma();
+    const { tenant } = await crearGimnasioConDuena(plan);
+    const agente = await entrarComo('root@gymsaas.co');
+
+    const creada = await agente
+      .post(`/api/plataforma/tenants/${tenant._id}/sedes`)
+      .send({ nombre: 'Sede Centro', direccion: 'Calle 1' })
+      .expect(201);
+    const sedeId = creada.body.data._id;
+
+    const editada = await agente
+      .patch(`/api/plataforma/tenants/${tenant._id}/sedes/${sedeId}`)
+      .send({ nombre: 'Sede Centro Renombrada', telefono: '6011234567' })
+      .expect(200);
+    expect(editada.body.data.nombre).toBe('Sede Centro Renombrada');
+
+    const lista = await agente.get(`/api/plataforma/tenants/${tenant._id}/sedes`).expect(200);
+    expect(lista.body.data).toHaveLength(1);
+    expect(lista.body.data[0].nombre).toBe('Sede Centro Renombrada');
+
+    // La sede quedo DENTRO del tenant (aislamiento).
+    const enBase = await ejecutarConTenant(tenant._id, () => obtenerModelo('Sede').find());
+    expect(enBase).toHaveLength(1);
+  });
+
   it('rechaza editar un gimnasio con un slug ya ocupado (409)', async () => {
     await crearSuperAdmin();
     const plan = await crearPlanPlataforma();

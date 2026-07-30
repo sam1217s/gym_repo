@@ -2,6 +2,7 @@ import { ESTADOS_TENANT, ROLES } from '../config/constantes.js';
 import { ejecutarConTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
+import * as servicioSedes from './sedes.servicio.js';
 
 /**
  * Administracion de tenants desde la plataforma: listar, ver y cambiar de
@@ -87,23 +88,50 @@ export async function actualizarTenant(id, { dueno, ...datosTenant }) {
   return obtenerTenant(id);
 }
 
-/** Edita al dueno (tenant_owner) del gimnasio: nombres, apellidos y correo. */
+/** Edita al dueno (tenant_owner) del gimnasio: nombres, apellidos, correo y cedula. */
 async function actualizarDueno(tenantId, datos) {
   const Usuario = obtenerModelo('Usuario');
   const dueno = await Usuario.findOne({ tenant: tenantId, rol: ROLES.TENANT_OWNER });
   if (!dueno) throw ErrorApi.noEncontrado('El gimnasio no tiene dueno');
 
-  Object.assign(dueno, datos); // Zod ya acoto a nombres/apellidos/email.
+  Object.assign(dueno, datos); // Zod ya acoto a nombres/apellidos/email/cedula.
+
+  // Cedula vacia = SIN definir (no cadena vacia): asi el indice parcial no la cuenta.
+  if ('cedula' in datos && !datos.cedula) dueno.cedula = undefined;
 
   try {
     await dueno.save();
   } catch (error) {
-    // El correo es unico por gimnasio: si choca con otro usuario del mismo, 11000.
+    // Correo y cedula son unicos por gimnasio: si chocan con otro usuario, 11000.
     if (error.code === 11000) {
-      throw ErrorApi.conflicto('Ya existe un usuario con ese correo en este gimnasio');
+      throw ErrorApi.conflicto('Ya existe un usuario con ese correo o cedula en este gimnasio');
     }
     throw error;
   }
+}
+
+// --- Sedes de un gimnasio (gestionadas por el super_admin) -------------------
+// Corren DENTRO del contexto del tenant (`ejecutarConTenant`) para reutilizar el
+// CRUD de sedes tal cual, con su plugin de aislamiento haciendo el trabajo.
+
+async function exigirTenantExiste(id) {
+  const existe = await obtenerModelo('Tenant').exists({ _id: id });
+  if (!existe) throw ErrorApi.noEncontrado('El gimnasio no existe');
+}
+
+export async function listarSedesDeTenant(tenantId) {
+  await exigirTenantExiste(tenantId);
+  return ejecutarConTenant(tenantId, () => servicioSedes.listarSedes());
+}
+
+export async function crearSedeDeTenant(tenantId, datos) {
+  await exigirTenantExiste(tenantId);
+  return ejecutarConTenant(tenantId, () => servicioSedes.crearSede(datos));
+}
+
+export async function actualizarSedeDeTenant(tenantId, sedeId, datos) {
+  await exigirTenantExiste(tenantId);
+  return ejecutarConTenant(tenantId, () => servicioSedes.actualizarSede(sedeId, datos));
 }
 
 export function suspenderTenant(id) {

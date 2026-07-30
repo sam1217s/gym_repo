@@ -71,6 +71,9 @@
           <q-btn round flat dense color="secondary" icon="edit" @click="abrirEdicion(props.row)">
             <q-tooltip>Editar datos del gimnasio</q-tooltip>
           </q-btn>
+          <q-btn round flat dense color="secondary" icon="store" @click="abrirSedes(props.row)">
+            <q-tooltip>Sedes del gimnasio</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="props.row.estado !== ESTADOS_GIMNASIO.CANCELADO"
             round
@@ -420,6 +423,14 @@
                 dense
                 :rules="[reglaObligatorio, reglaEmail]"
               />
+              <q-input
+                v-model="edicion.duenoCedula"
+                label="Cédula del dueño (opcional)"
+                hint="También sirve para iniciar sesión. El NIT del gimnasio NO."
+                outlined
+                dense
+                :rules="[reglaCedulaOpcional]"
+              />
             </template>
           </q-card-section>
 
@@ -430,6 +441,81 @@
             <q-btn type="submit" color="primary" unelevated no-caps label="Guardar cambios" :loading="edicion.guardando" />
           </q-card-actions>
         </q-form>
+      </q-card>
+    </q-dialog>
+
+    <!-- Sedes del gimnasio (gestionadas por el super_admin) -->
+    <q-dialog v-model="dialogoSedes">
+      <q-card class="tarjeta-cobros">
+        <q-card-section class="q-pb-sm">
+          <div class="text-h6 titulo-display">Sedes — {{ sedes.gimnasio?.nombre }}</div>
+          <div class="text-caption text-grey-7">Edita las sedes o agrega una nueva.</div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="q-gutter-y-md">
+          <q-inner-loading :showing="sedes.cargando" />
+
+          <div v-if="!sedes.cargando && sedes.lista.length === 0" class="text-caption text-grey-7">
+            Este gimnasio aún no tiene sedes.
+          </div>
+
+          <q-card v-for="sede in sedes.lista" :key="sede._id" flat bordered class="q-pa-sm">
+            <div class="row q-col-gutter-sm">
+              <q-input v-model="sede.nombre" class="col-12 col-sm-4" label="Nombre" outlined dense />
+              <q-input v-model="sede.direccion" class="col-12 col-sm-5" label="Dirección" outlined dense />
+              <q-input v-model="sede.telefono" class="col-8 col-sm-2" label="Teléfono" outlined dense />
+              <div class="col-4 col-sm-1 flex items-center justify-end">
+                <q-btn
+                  round
+                  dense
+                  unelevated
+                  color="primary"
+                  icon="save"
+                  :loading="sedes.guardandoId === sede._id"
+                  @click="guardarSede(sede)"
+                >
+                  <q-tooltip>Guardar</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+          </q-card>
+
+          <q-separator />
+
+          <div class="text-caption text-weight-medium text-grey-8">Nueva sede</div>
+          <q-form class="row q-col-gutter-sm" @submit.prevent="agregarSede">
+            <q-input
+              v-model="sedes.nueva.nombre"
+              class="col-12 col-sm-4"
+              label="Nombre"
+              outlined
+              dense
+              :rules="[reglaObligatorio]"
+            />
+            <q-input
+              v-model="sedes.nueva.direccion"
+              class="col-12 col-sm-5"
+              label="Dirección"
+              outlined
+              dense
+              :rules="[reglaObligatorio]"
+            />
+            <q-input v-model="sedes.nueva.telefono" class="col-8 col-sm-2" label="Teléfono" outlined dense />
+            <div class="col-4 col-sm-1 flex items-center justify-end">
+              <q-btn round dense unelevated color="positive" icon="add" type="submit" :loading="sedes.agregando">
+                <q-tooltip>Agregar sede</q-tooltip>
+              </q-btn>
+            </div>
+          </q-form>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cerrar" @click="dialogoSedes = false" />
+        </q-card-actions>
       </q-card>
     </q-dialog>
   </q-page>
@@ -567,6 +653,10 @@ const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este
 const reglaSlug = (valor) =>
   /^[a-z0-9-]+$/.test(String(valor ?? '')) || 'Solo minusculas, numeros y guiones';
 const reglaEmail = (valor) => /.+@.+\..+/.test(String(valor ?? '')) || 'Correo invalido';
+const reglaCedulaOpcional = (valor) => {
+  const v = String(valor ?? '').trim();
+  return !v || /^\d{4,15}$/.test(v) || 'La cédula debe ser numérica (4 a 15 dígitos)';
+};
 
 // --- Editar datos del gimnasio ----------------------------------------------
 
@@ -582,6 +672,7 @@ const edicion = reactive({
   duenoNombres: '',
   duenoApellidos: '',
   duenoEmail: '',
+  duenoCedula: '',
   guardando: false,
 });
 
@@ -604,6 +695,7 @@ function abrirEdicion(gimnasio) {
   edicion.duenoNombres = gimnasio.dueno?.nombres ?? '';
   edicion.duenoApellidos = gimnasio.dueno?.apellidos ?? '';
   edicion.duenoEmail = gimnasio.dueno?.email ?? '';
+  edicion.duenoCedula = gimnasio.dueno?.cedula ?? '';
 
   dialogoEdicion.value = true;
   if (plataforma.planes.length === 0) plataforma.cargarPlanes().catch(() => {});
@@ -623,6 +715,7 @@ async function guardarEdicion() {
               nombres: edicion.duenoNombres,
               apellidos: edicion.duenoApellidos,
               email: edicion.duenoEmail,
+              cedula: edicion.duenoCedula.trim(),
             },
           }
         : {}),
@@ -636,6 +729,85 @@ async function guardarEdicion() {
     });
   } finally {
     edicion.guardando = false;
+  }
+}
+
+// --- Sedes del gimnasio -----------------------------------------------------
+
+const dialogoSedes = ref(false);
+const sedes = reactive({
+  gimnasio: null,
+  lista: [],
+  nueva: { nombre: '', direccion: '', telefono: '' },
+  cargando: false,
+  guardandoId: null,
+  agregando: false,
+});
+
+async function abrirSedes(gimnasio) {
+  sedes.gimnasio = gimnasio;
+  sedes.lista = [];
+  sedes.nueva = { nombre: '', direccion: '', telefono: '' };
+  dialogoSedes.value = true;
+  sedes.cargando = true;
+  try {
+    const lista = await servicioPlataforma.listarSedesGimnasio(gimnasio._id);
+    // Copia editable de cada sede (nombre/direccion/telefono).
+    sedes.lista = lista.map((s) => ({
+      _id: s._id,
+      nombre: s.nombre,
+      direccion: s.direccion,
+      telefono: s.telefono ?? '',
+    }));
+  } catch {
+    quasar.notify({ type: 'negative', message: 'No se pudieron cargar las sedes' });
+  } finally {
+    sedes.cargando = false;
+  }
+}
+
+async function guardarSede(sede) {
+  sedes.guardandoId = sede._id;
+  try {
+    await servicioPlataforma.actualizarSedeGimnasio(sedes.gimnasio._id, sede._id, {
+      nombre: sede.nombre,
+      direccion: sede.direccion,
+      telefono: sede.telefono,
+    });
+    quasar.notify({ type: 'positive', message: 'Sede actualizada' });
+  } catch (error) {
+    quasar.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo actualizar la sede',
+    });
+  } finally {
+    sedes.guardandoId = null;
+  }
+}
+
+async function agregarSede() {
+  sedes.agregando = true;
+  try {
+    const creada = await servicioPlataforma.crearSedeGimnasio(sedes.gimnasio._id, {
+      nombre: sedes.nueva.nombre,
+      direccion: sedes.nueva.direccion,
+      telefono: sedes.nueva.telefono,
+    });
+    sedes.lista.push({
+      _id: creada._id,
+      nombre: creada.nombre,
+      direccion: creada.direccion,
+      telefono: creada.telefono ?? '',
+    });
+    sedes.nueva = { nombre: '', direccion: '', telefono: '' };
+    quasar.notify({ type: 'positive', message: 'Sede agregada' });
+  } catch (error) {
+    quasar.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo agregar la sede',
+    });
+  } finally {
+    sedes.agregando = false;
   }
 }
 

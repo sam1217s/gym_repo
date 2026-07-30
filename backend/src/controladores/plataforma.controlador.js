@@ -64,6 +64,27 @@ export const cancelarTenant = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioTenants.cancelarTenant(peticion.params.id)),
 );
 
+// --- Sedes de un gimnasio (gestionadas por el super_admin) ------------------
+
+export const listarSedesTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioTenants.listarSedesDeTenant(peticion.params.id)),
+);
+
+export const crearSedeTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderCreado(respuesta, await servicioTenants.crearSedeDeTenant(peticion.params.id, peticion.body)),
+);
+
+export const actualizarSedeTenant = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(
+    respuesta,
+    await servicioTenants.actualizarSedeDeTenant(
+      peticion.params.id,
+      peticion.params.sedeId,
+      peticion.body,
+    ),
+  ),
+);
+
 /** Historico de facturacion de un gimnasio, visto desde la plataforma. */
 export const facturasDeTenant = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioFacturacion.listarFacturasDeTenant(peticion.params.id)),

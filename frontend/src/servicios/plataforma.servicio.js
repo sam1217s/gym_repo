@@ -21,6 +21,23 @@ export async function actualizarGimnasio(id, datos) {
   return respuesta.data;
 }
 
+// --- Sedes de un gimnasio (super_admin) -------------------------------------
+
+export async function listarSedesGimnasio(id) {
+  const { data: respuesta } = await api.get(`/plataforma/tenants/${id}/sedes`);
+  return respuesta.data;
+}
+
+export async function crearSedeGimnasio(id, datos) {
+  const { data: respuesta } = await api.post(`/plataforma/tenants/${id}/sedes`, datos);
+  return respuesta.data;
+}
+
+export async function actualizarSedeGimnasio(id, sedeId, datos) {
+  const { data: respuesta } = await api.patch(`/plataforma/tenants/${id}/sedes/${sedeId}`, datos);
+  return respuesta.data;
+}
+
 export async function suspenderGimnasio(id) {
   const { data: respuesta } = await api.patch(`/plataforma/tenants/${id}/suspender`);
   return respuesta.data;

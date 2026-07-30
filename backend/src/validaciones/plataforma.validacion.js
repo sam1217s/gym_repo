@@ -64,8 +64,31 @@ const duenoEditable = z
     nombres: z.string().trim().min(1),
     apellidos: z.string().trim().min(1),
     email: z.string().email('Email invalido').toLowerCase().trim(),
+    // Cedula opcional: vacio la deja SIN definir (para el login por cedula).
+    cedula: cedulaOpcional,
   })
   .partial();
+
+// --- Sedes de un gimnasio (gestionadas por el super_admin) -------------------
+
+const cuerpoSedeTenant = z.object({
+  nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
+  direccion: z.string().trim().min(1, 'La direccion es obligatoria'),
+  telefono: z.string().trim().optional(),
+});
+
+export const esquemaCrearSedeTenant = {
+  params: z.object({ id: idMongo }),
+  body: cuerpoSedeTenant,
+};
+
+export const esquemaActualizarSedeTenant = {
+  params: z.object({ id: idMongo, sedeId: idMongo }),
+  body: cuerpoSedeTenant
+    .extend({ activa: z.boolean() })
+    .partial()
+    .refine((datos) => Object.keys(datos).length > 0, { message: 'No hay nada que actualizar' }),
+};
 
 /** Edicion de los datos basicos de un gimnasio y su dueno (no el estado ni los secretos). */
 export const esquemaActualizarTenant = {

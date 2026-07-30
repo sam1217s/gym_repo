@@ -11,9 +11,11 @@ import { esquemaGuardarCobros } from '../validaciones/cobros.validacion.js';
 import { esquemaGuardarWhatsapp } from '../validaciones/whatsapp.validacion.js';
 import {
   esquemaActualizarPlan,
+  esquemaActualizarSedeTenant,
   esquemaActualizarTenant,
   esquemaCrearGimnasio,
   esquemaCrearPlan,
+  esquemaCrearSedeTenant,
   esquemaIdParam,
   esquemaListarTenants,
 } from '../validaciones/plataforma.validacion.js';
@@ -42,6 +44,15 @@ rutas.patch('/tenants/:id/suspender', validar(esquemaIdParam), controlador.suspe
 rutas.patch('/tenants/:id/reactivar', validar(esquemaIdParam), controlador.reactivarTenant);
 rutas.patch('/tenants/:id/cancelar', validar(esquemaIdParam), controlador.cancelarTenant);
 rutas.get('/tenants/:id/facturas', validar(esquemaIdParam), controlador.facturasDeTenant);
+
+// Sedes del gimnasio: el super_admin las gestiona (corren en el contexto del tenant).
+rutas.get('/tenants/:id/sedes', validar(esquemaIdParam), controlador.listarSedesTenant);
+rutas.post('/tenants/:id/sedes', validar(esquemaCrearSedeTenant), controlador.crearSedeTenant);
+rutas.patch(
+  '/tenants/:id/sedes/:sedeId',
+  validar(esquemaActualizarSedeTenant),
+  controlador.actualizarSedeTenant,
+);
 
 // Cobro en linea del gimnasio: llaves Wompi del dueno, que el super_admin
 // configura por gimnasio (los secretos no se devuelven en el GET).
