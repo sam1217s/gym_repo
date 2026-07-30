@@ -272,6 +272,30 @@ en memoria. `derivarEstado()` es la unica funcion que traduce un pago a
 `Pago.periodoFin` se calcula una vez, al registrar el pago
 (`periodoInicio + planMembresia.duracionMeses`), y despues es historia: no se muta.
 
+### El servidor DEBE correr en `America/Bogota`
+
+Toda la aritmetica de "dia civil" (`diaCivil`, `sumarMeses`) usa la hora LOCAL del
+proceso. Si el proceso corre en otra zona (el VPS venia en CEST, +02:00), una fecha
+escrita como dia (`"2026-07-30"` = medianoche local) se guarda como un instante que, visto
+en Bogota, cae el **dia anterior**: la vista previa dice "cubre hasta el 30" y lo guardado se
+lee "29". Se arregla lanzando el proceso con `TZ=America/Bogota` (en el VPS:
+`TZ=America/Bogota pm2 restart gym-api --update-env && pm2 save`). **Node fija su zona al
+arrancar**: ponerla via `.env`/dotenv NO sirve (ya es tarde); tiene que estar en el entorno del
+proceso. El cron de avisos (node-cron) tambien pasa a las 9:00 de Bogota, que es lo correcto.
+
+En el frontend, la misma regla: para el `<input type="date">` se usan los componentes de fecha
+LOCALES (`aFechaInput`/`hoyISO` en `FormularioPago.vue`), nunca `toISOString()` (UTC), que
+correria el dia cerca de medianoche.
+
+### Al renovar, el nuevo periodo empieza en el VENCIMIENTO, no hoy
+
+`FormularioPago` propone `periodoInicio` = el `periodoFin` del ULTIMO pago del miembro (su
+vencimiento), no la fecha de hoy: la mensualidad continua donde termino y no se "pierde" por
+pagar tarde. Si el miembro nunca ha pagado, arranca hoy. En el formulario completo la fecha
+es editable (para el caso raro de alguien con meses vencido, cuyo periodo quedaria en el
+pasado); en la aprobacion desde la bandeja va implicita. El plan tambien se preselecciona con
+el del ultimo pago (mismo `GET /pagos?miembro=`).
+
 ### La mensualidad dura un MES, no 30 dias (pero un plan puede medirse en dias)
 
 Un `PlanMembresia` mide su vigencia en `duracionMeses` **O** en `duracionDias`, exactamente

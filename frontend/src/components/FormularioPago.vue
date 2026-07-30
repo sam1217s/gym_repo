@@ -182,13 +182,29 @@ function interpretarDiaCivil(texto) {
   const [anio, mes, dia] = texto.split('-').map(Number);
   return new Date(anio, mes - 1, dia);
 }
+
+/**
+ * Fecha (o ISO) -> "YYYY-MM-DD" del dia LOCAL, para el `<input type="date">`.
+ * Se usan los componentes locales (no `toISOString`, que es UTC y correria el
+ * dia) para que coincida con como se muestra el vencimiento en la tabla.
+ */
+function aFechaInput(valor) {
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
 const OPCIONES_METODO = [
   { label: 'Efectivo', value: METODOS.EFECTIVO },
   { label: 'Transferencia', value: METODOS.TRANSFERENCIA },
 ];
 
+// "Hoy" en dia LOCAL, no UTC: cerca de medianoche `toISOString` daria el dia
+// equivocado.
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return aFechaInput(new Date());
 }
 
 const formulario = reactive({
@@ -281,8 +297,17 @@ watch(
       await Promise.all(tareas);
 
       const pagos = pagosPromesa ? await pagosPromesa : [];
-      const elegido = pagos?.[0]?.planMembresia?._id ?? null; // del mas reciente al mas viejo
+      const ultimo = pagos?.[0] ?? null; // vienen del mas reciente al mas viejo
 
+      // Inicio = VENCIMIENTO del ultimo pago: el nuevo mes continua donde termino
+      // el anterior (no se "pierde" la mensualidad por pagar tarde). Si nunca ha
+      // pagado, arranca hoy. En el form completo la fecha es editable para el
+      // caso raro de alguien con MESES vencido (quedaria en el pasado).
+      if (ultimo?.periodoFin) {
+        formulario.periodoInicio = aFechaInput(ultimo.periodoFin);
+      }
+
+      const elegido = ultimo?.planMembresia?._id ?? null;
       const enOpciones = elegido && opcionesPlan.value.some((opcion) => opcion.value === elegido);
       if (enOpciones) {
         formulario.planMembresia = elegido;
