@@ -332,6 +332,9 @@ async function enviar() {
       monto: formulario.monto,
       periodoInicio: formulario.periodoInicio,
       ...(esTransferencia.value ? { referencia: formulario.referencia } : {}),
+      // Desde la bandeja NO se manda el recibo de plantilla: alli se confirma con
+      // texto libre gratis (dentro de las 24h). Fuera de la bandeja si se envia.
+      ...(propiedades.modoAprobacion ? { omitirRecibo: true } : {}),
     });
 
     quasar.notify({

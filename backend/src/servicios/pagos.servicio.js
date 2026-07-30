@@ -2,6 +2,7 @@ import { obtenerContexto } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { sumarDuracion } from '../utilidades/fechas.js';
+import { enviarReciboPago } from './recibo.servicio.js';
 
 /**
  * Registro y consulta de pagos de mensualidad.
@@ -62,6 +63,14 @@ export async function registrarPago(datos, filtroSede = {}) {
     registradoPor: obtenerContexto().usuarioId,
     notificado: false,
   });
+
+  // Recibo por WhatsApp: fire-and-forget, best-effort, nunca frena el pago. Se
+  // omite cuando la aprobacion viene de la bandeja (`omitirRecibo`): alli ya se
+  // responde texto libre gratis dentro de la ventana de 24h.
+  if (!datos.omitirRecibo) {
+    const { tenantId } = obtenerContexto();
+    enviarReciboPago(pago, miembro, tenantId).catch(() => {});
+  }
 
   return pago.populate('planMembresia', 'nombre duracionMeses duracionDias');
 }

@@ -88,8 +88,22 @@ export const PLANTILLA_VENCIMIENTO = Object.freeze({
  *   {{1}} = nombre del miembro · {{2}} = gimnasio.
  */
 export const PLANTILLA_BIENVENIDA = Object.freeze({
-  nombre: 'bienvenida',
+  // El nombre debe COINCIDIR con el registrado en Meta (asi la nombro el dueño).
+  nombre: 'msg_bienvenida',
   idioma: 'es_CO',
+});
+
+/**
+ * Recibo de pago: se envia al registrar un pago (efectivo o transferencia) desde
+ * el panel, para confirmarle al miembro. Es una plantilla (mensaje iniciado por
+ * el negocio). El cuerpo espera 4 variables, en este orden:
+ *   {{1}} = nombre · {{2}} = gimnasio · {{3}} = valor pagado · {{4}} = vence el.
+ * Idioma `es_CR` porque asi se registro en Meta (el texto que ve el miembro es
+ * identico; el codigo de idioma solo debe COINCIDIR con el de la plantilla).
+ */
+export const PLANTILLA_RECIBO = Object.freeze({
+  nombre: 'recibo_pago',
+  idioma: 'es_CR',
 });
 
 export const TIPOS_NOTIFICACION = Object.freeze({

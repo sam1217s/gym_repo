@@ -25,5 +25,9 @@ export const esquemaRegistrarPago = {
     // Permite registrar pagos retroactivos. Por defecto: hoy.
     // `diaCivil` y no `z.coerce.date()`: "2026-07-09" es un dia, no un instante UTC.
     periodoInicio: diaCivil.optional(),
+
+    // La bandeja lo manda en true: alli ya se responde texto libre gratis, asi
+    // que no se envia tambien el recibo de plantilla (evita duplicar y cobrar).
+    omitirRecibo: z.boolean().optional(),
   }),
 };
