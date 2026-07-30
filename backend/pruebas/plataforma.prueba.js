@@ -387,6 +387,29 @@ describe('ciclo de vida del tenant', () => {
     await entrarComo('nueva@correo.co');
   });
 
+  it('el super_admin le fija cedula y contrasena al dueno, y este entra con ellas', async () => {
+    await crearSuperAdmin();
+    const plan = await crearPlanPlataforma();
+    const { tenant } = await crearGimnasioConDuena(plan);
+    const agente = await entrarComo('root@gymsaas.co');
+
+    const respuesta = await agente
+      .patch(`/api/plataforma/tenants/${tenant._id}`)
+      .send({ dueno: { cedula: '1234567', contrasena: 'ClaveNueva9' } })
+      .expect(200);
+
+    // La cedula vuelve (para poder mostrarla al editar); la contrasena NUNCA.
+    expect(respuesta.body.data.dueno.cedula).toBe('1234567');
+
+    // Entra por CEDULA con la nueva contrasena, y queda obligado a cambiarla.
+    const duena = peticion.agent(app);
+    const login = await duena
+      .post('/api/auth/iniciar-sesion')
+      .send({ identificador: '1234567', contrasena: 'ClaveNueva9' })
+      .expect(200);
+    expect(login.body.data.debeCambiarContrasena).toBe(true);
+  });
+
   it('el super_admin gestiona las sedes de un gimnasio (crear, editar, listar)', async () => {
     await crearSuperAdmin();
     const plan = await crearPlanPlataforma();

@@ -431,6 +431,23 @@
                 dense
                 :rules="[reglaCedulaOpcional]"
               />
+              <q-input
+                v-model="edicion.duenoContrasena"
+                :type="edicion.verContrasena ? 'text' : 'password'"
+                label="Nueva contraseña del dueño (opcional)"
+                hint="Déjala vacía para no cambiarla. Si la pones, el dueño deberá cambiarla al entrar."
+                outlined
+                dense
+                :rules="[reglaContrasenaOpcional]"
+              >
+                <template #append>
+                  <q-icon
+                    :name="edicion.verContrasena ? 'visibility_off' : 'visibility'"
+                    class="cursor-pointer"
+                    @click="edicion.verContrasena = !edicion.verContrasena"
+                  />
+                </template>
+              </q-input>
             </template>
           </q-card-section>
 
@@ -657,6 +674,15 @@ const reglaCedulaOpcional = (valor) => {
   const v = String(valor ?? '').trim();
   return !v || /^\d{4,15}$/.test(v) || 'La cédula debe ser numérica (4 a 15 dígitos)';
 };
+// Contrasena opcional: vacia = no se cambia; si va, debe ser segura.
+const reglaContrasenaOpcional = (valor) => {
+  const v = String(valor ?? '');
+  if (!v) return true;
+  return (
+    (v.length >= 8 && /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v)) ||
+    'Mínimo 8 caracteres, con mayúscula, minúscula y número'
+  );
+};
 
 // --- Editar datos del gimnasio ----------------------------------------------
 
@@ -673,6 +699,8 @@ const edicion = reactive({
   duenoApellidos: '',
   duenoEmail: '',
   duenoCedula: '',
+  duenoContrasena: '',
+  verContrasena: false,
   guardando: false,
 });
 
@@ -696,6 +724,8 @@ function abrirEdicion(gimnasio) {
   edicion.duenoApellidos = gimnasio.dueno?.apellidos ?? '';
   edicion.duenoEmail = gimnasio.dueno?.email ?? '';
   edicion.duenoCedula = gimnasio.dueno?.cedula ?? '';
+  edicion.duenoContrasena = '';
+  edicion.verContrasena = false;
 
   dialogoEdicion.value = true;
   if (plataforma.planes.length === 0) plataforma.cargarPlanes().catch(() => {});
@@ -716,6 +746,8 @@ async function guardarEdicion() {
               apellidos: edicion.duenoApellidos,
               email: edicion.duenoEmail,
               cedula: edicion.duenoCedula.trim(),
+              // Solo se manda si se escribio: vacia = no cambiar la contrasena.
+              ...(edicion.duenoContrasena ? { contrasena: edicion.duenoContrasena } : {}),
             },
           }
         : {}),

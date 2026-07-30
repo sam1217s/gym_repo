@@ -66,6 +66,8 @@ const duenoEditable = z
     email: z.string().email('Email invalido').toLowerCase().trim(),
     // Cedula opcional: vacio la deja SIN definir (para el login por cedula).
     cedula: cedulaOpcional,
+    // Solo si el super_admin quiere resetearla; el frontend la omite si va vacia.
+    contrasena: contrasenaSegura.optional(),
   })
   .partial();
 

@@ -2,6 +2,7 @@ import { ESTADOS_TENANT, ROLES } from '../config/constantes.js';
 import { ejecutarConTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
+import { cifrarContrasena } from '../utilidades/contrasena.js';
 import * as servicioSedes from './sedes.servicio.js';
 
 /**
@@ -88,8 +89,8 @@ export async function actualizarTenant(id, { dueno, ...datosTenant }) {
   return obtenerTenant(id);
 }
 
-/** Edita al dueno (tenant_owner) del gimnasio: nombres, apellidos, correo y cedula. */
-async function actualizarDueno(tenantId, datos) {
+/** Edita al dueno (tenant_owner): nombres, apellidos, correo, cedula y contrasena. */
+async function actualizarDueno(tenantId, { contrasena, ...datos }) {
   const Usuario = obtenerModelo('Usuario');
   const dueno = await Usuario.findOne({ tenant: tenantId, rol: ROLES.TENANT_OWNER });
   if (!dueno) throw ErrorApi.noEncontrado('El gimnasio no tiene dueno');
@@ -98,6 +99,14 @@ async function actualizarDueno(tenantId, datos) {
 
   // Cedula vacia = SIN definir (no cadena vacia): asi el indice parcial no la cuenta.
   if ('cedula' in datos && !datos.cedula) dueno.cedula = undefined;
+
+  // Reset de contrasena por el super_admin: sube versionToken (mata las sesiones
+  // abiertas) y obliga a cambiarla al entrar (el operador no debe conocer la fija).
+  if (contrasena) {
+    dueno.contrasenaHash = await cifrarContrasena(contrasena);
+    dueno.versionToken += 1;
+    dueno.debeCambiarContrasena = true;
+  }
 
   try {
     await dueno.save();
@@ -180,7 +189,7 @@ async function buscarDuenos(tenantIds) {
   const duenos = await Usuario.find({
     tenant: { $in: tenantIds },
     rol: ROLES.TENANT_OWNER,
-  }).select('tenant nombres apellidos email activo');
+  }).select('tenant nombres apellidos email cedula activo');
 
   return new Map(
     duenos.map((dueno) => [
@@ -191,6 +200,7 @@ async function buscarDuenos(tenantIds) {
         apellidos: dueno.apellidos,
         nombreCompleto: dueno.nombreCompleto,
         email: dueno.email,
+        cedula: dueno.cedula ?? null,
         activo: dueno.activo,
       },
     ]),
