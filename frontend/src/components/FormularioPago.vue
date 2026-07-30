@@ -1,6 +1,8 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="cerrar">
     <q-card class="tarjeta-pago">
+      <q-inner-loading :showing="preparando" label="Cargando datos del pago…" />
+
       <q-card-section class="q-pb-sm">
         <div class="text-h6 titulo-display">{{ modoAprobacion ? 'Aprobar pago' : 'Registrar pago' }}</div>
         <div v-if="miembro" class="text-caption text-grey-7">
@@ -105,6 +107,7 @@
             no-caps
             :label="modoAprobacion ? 'Aprobar pago' : 'Registrar pago'"
             :loading="enviando"
+            :disable="preparando"
           />
         </q-card-actions>
       </q-form>
@@ -140,6 +143,8 @@ const gimnasio = useGimnasioStore();
 const quasar = useQuasar();
 
 const enviando = ref(false);
+// Se prepara la aprobacion (trae el plan del ultimo pago): muestra spinner.
+const preparando = ref(false);
 
 const METODOS = { EFECTIVO: 'efectivo', TRANSFERENCIA: 'transferencia' };
 
@@ -260,33 +265,38 @@ watch(
       referencia: '',
     });
 
-    if (gimnasio.planesMembresia.length === 0) {
-      try {
-        await gimnasio.cargarPlanesMembresia();
-      } catch {
-        quasar.notify({ type: 'negative', message: 'No se pudieron cargar los planes' });
-      }
-    }
+    // En aprobacion se espera a tener plan+monto para poder cotejar; se muestra un
+    // spinner en vez de un modal a medio llenar. Las dos consultas van EN PARALELO.
+    preparando.value = propiedades.modoAprobacion;
+    try {
+      const tareas = [];
+      if (gimnasio.planesMembresia.length === 0) tareas.push(gimnasio.cargarPlanesMembresia());
 
-    // Al aprobar se preselecciona el plan que el miembro YA tiene (el de su
-    // ultimo pago): asi el monto que se muestra es el que deberia haber pagado y
-    // se puede cotejar contra el comprobante. Si no tiene pagos previos, cae al
-    // plan unico de la sede.
-    if (propiedades.modoAprobacion) {
-      let elegido = null;
-      try {
-        const pagos = await listarPagosDeMiembro(propiedades.miembro._id);
-        elegido = pagos?.[0]?.planMembresia?._id ?? null; // vienen del mas reciente al mas viejo
-      } catch {
-        elegido = null;
-      }
+      const pagosPromesa =
+        propiedades.modoAprobacion && propiedades.miembro
+          ? listarPagosDeMiembro(propiedades.miembro._id).catch(() => [])
+          : null;
 
-      const enOpciones = elegido && opcionesPlan.value.some((opcion) => opcion.value === elegido);
-      if (enOpciones) {
-        formulario.planMembresia = elegido;
-      } else if (opcionesPlan.value.length === 1) {
-        formulario.planMembresia = opcionesPlan.value[0].value;
+      await Promise.all(tareas);
+
+      // Al aprobar se preselecciona el plan que el miembro YA tiene (el de su
+      // ultimo pago): asi el monto mostrado es el que deberia haber pagado y se
+      // coteja contra el comprobante. Sin pagos previos, cae al plan unico.
+      if (propiedades.modoAprobacion) {
+        const pagos = pagosPromesa ? await pagosPromesa : [];
+        const elegido = pagos?.[0]?.planMembresia?._id ?? null;
+
+        const enOpciones = elegido && opcionesPlan.value.some((opcion) => opcion.value === elegido);
+        if (enOpciones) {
+          formulario.planMembresia = elegido;
+        } else if (opcionesPlan.value.length === 1) {
+          formulario.planMembresia = opcionesPlan.value[0].value;
+        }
       }
+    } catch {
+      quasar.notify({ type: 'negative', message: 'No se pudieron cargar los planes' });
+    } finally {
+      preparando.value = false;
     }
   },
 );
