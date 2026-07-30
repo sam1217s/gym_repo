@@ -623,7 +623,7 @@ onMounted(async () => {
 <style scoped>
 /* Las clases del sistema (ceja, discos, chip-banda) viven en css/app.scss. */
 .pagina-plataforma {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 

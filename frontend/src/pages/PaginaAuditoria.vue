@@ -130,7 +130,7 @@ onMounted(cargar);
 
 <style scoped>
 .pagina-panel {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 </style>
