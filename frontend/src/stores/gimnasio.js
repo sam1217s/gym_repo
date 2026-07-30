@@ -70,6 +70,11 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     return actualizado;
   }
 
+  async function eliminarUsuario(id) {
+    await servicioGimnasio.eliminarUsuario(id);
+    usuarios.value = usuarios.value.filter((usuario) => usuario._id !== id);
+  }
+
   // --- Planes de membresia ----------------------------------------------------------
 
   async function cargarPlanesMembresia() {
@@ -356,6 +361,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     cargarUsuarios,
     crearUsuario,
     actualizarUsuario,
+    eliminarUsuario,
     cargarPlanesMembresia,
     crearPlanMembresia,
     actualizarPlanMembresia,

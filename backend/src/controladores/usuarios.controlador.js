@@ -16,3 +16,7 @@ export const actualizarUsuario = manejadorAsync(async (peticion, respuesta) =>
     await servicioUsuarios.actualizarUsuario(peticion.params.id, peticion.body),
   ),
 );
+
+export const eliminarUsuario = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(respuesta, await servicioUsuarios.eliminarUsuario(peticion.params.id)),
+);

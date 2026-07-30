@@ -242,6 +242,19 @@ describe('roles sobre sedes, usuarios y planes de membresia', () => {
       .expect(404);
   });
 
+  it('el dueno elimina a un sede_admin, pero NO a si mismo ni a otro dueno', async () => {
+    const { usuarios } = await crearGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-a.co');
+
+    // A si mismo: 404 (el CRUD del dueno solo alcanza sede_admin).
+    await dueno.delete(`/api/usuarios/${usuarios.dueno._id}`).expect(404);
+
+    // A un sede_admin: se borra y desaparece de la lista.
+    await dueno.delete(`/api/usuarios/${usuarios.adminNorte._id}`).expect(200);
+    const lista = await dueno.get('/api/usuarios').expect(200);
+    expect(lista.body.data.some((u) => u._id === String(usuarios.adminNorte._id))).toBe(false);
+  });
+
   it('un dueno no puede tocar usuarios de OTRO gimnasio (aislamiento manual de Usuario)', async () => {
     await crearGimnasio();
     const otro = await crearGimnasio({ slug: 'gimnasio-b', dominio: 'gimnasio-b.co' });

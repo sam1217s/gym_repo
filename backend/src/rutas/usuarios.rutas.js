@@ -9,6 +9,7 @@ import {
 import { abrirContextoTenant } from '../middlewares/contextoTenant.js';
 import { RECURSOS, exigirLimite } from '../middlewares/limitesPlan.js';
 import { validar } from '../middlewares/validar.js';
+import { esquemaIdParam } from '../validaciones/comunes.validacion.js';
 import {
   esquemaActualizarUsuario,
   esquemaCrearUsuario,
@@ -33,5 +34,6 @@ rutas.post(
   controlador.crearUsuario,
 );
 rutas.patch('/:id', validar(esquemaActualizarUsuario), controlador.actualizarUsuario);
+rutas.delete('/:id', validar(esquemaIdParam), controlador.eliminarUsuario);
 
 export default rutas;

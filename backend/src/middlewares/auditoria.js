@@ -36,7 +36,11 @@ const MOVIMIENTOS = {
     DELETE: 'Archivo una deuda',
   },
   sedes: { POST: 'Creo una sede', PATCH: 'Actualizo una sede' },
-  usuarios: { POST: 'Agrego un usuario al equipo', PATCH: 'Actualizo un usuario' },
+  usuarios: {
+    POST: 'Agrego un usuario al equipo',
+    PATCH: 'Actualizo un usuario',
+    DELETE: 'Elimino un usuario del equipo',
+  },
   'planes-membresia': {
     POST: 'Creo un plan de membresia',
     PATCH: 'Actualizo un plan de membresia',

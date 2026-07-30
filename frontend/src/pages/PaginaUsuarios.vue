@@ -71,6 +71,9 @@
             >
               <q-tooltip>{{ props.row.activo ? 'Desactivar' : 'Reactivar' }}</q-tooltip>
             </q-btn>
+            <q-btn round flat dense color="negative" icon="delete" @click="confirmarEliminacion(props.row)">
+              <q-tooltip>Eliminar del equipo</q-tooltip>
+            </q-btn>
           </template>
           <span v-else class="text-grey-6">—</span>
         </q-td>
@@ -335,6 +338,29 @@ function confirmarCambioActivo(usuario) {
         quasar.notify({
           type: 'negative',
           message: error.response?.data?.error?.mensaje ?? 'No se pudo completar la operacion',
+        });
+      }
+    });
+}
+
+function confirmarEliminacion(usuario) {
+  quasar
+    .dialog({
+      title: `Eliminar a ${usuario.nombres}`,
+      message:
+        'Se borra del equipo de forma permanente y pierde el acceso. Los movimientos que ' +
+        'ya registró se conservan. Esta acción no se puede deshacer.',
+      cancel: { flat: true, noCaps: true, label: 'Volver' },
+      ok: { color: 'negative', unelevated: true, noCaps: true, label: 'Eliminar' },
+    })
+    .onOk(async () => {
+      try {
+        await gimnasio.eliminarUsuario(usuario._id);
+        quasar.notify({ type: 'positive', message: `${usuario.nombres} eliminado del equipo` });
+      } catch (error) {
+        quasar.notify({
+          type: 'negative',
+          message: error.response?.data?.error?.mensaje ?? 'No se pudo eliminar',
         });
       }
     });

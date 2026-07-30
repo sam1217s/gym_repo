@@ -205,6 +205,11 @@ export async function actualizarUsuario(id, datos) {
   return respuesta.data;
 }
 
+export async function eliminarUsuario(id) {
+  const { data: respuesta } = await api.delete(`/usuarios/${id}`);
+  return respuesta.data;
+}
+
 // --- Planes de membresia -------------------------------------------------------
 
 export async function listarPlanesMembresia() {

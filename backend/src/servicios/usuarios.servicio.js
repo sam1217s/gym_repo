@@ -79,3 +79,24 @@ export async function actualizarUsuario(id, datos) {
 
   return usuario.save();
 }
+
+/**
+ * Elimina a un integrante del equipo. Mismo candado que editar: solo
+ * `sede_admin` de ESTE gimnasio (el dueno no puede borrarse a si mismo ni a
+ * otro dueno). Es un borrado real; el historial (pagos, auditoria) guarda el
+ * nombre como foto, asi que no se rompe al desaparecer el usuario.
+ */
+export async function eliminarUsuario(id) {
+  const Usuario = obtenerModelo('Usuario');
+
+  const usuario = await Usuario.findOne({
+    _id: id,
+    tenant: tenantActual(),
+    rol: ROLES.SEDE_ADMIN,
+  });
+
+  if (!usuario) throw ErrorApi.noEncontrado('El usuario no existe o no es administrable');
+
+  await usuario.deleteOne();
+  return { id };
+}
