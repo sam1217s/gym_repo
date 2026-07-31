@@ -90,15 +90,26 @@ export function construirMensaje({ miembro, ultimoPago, estado, tenant, ahora = 
   );
 }
 
+const FORMATO_MONEDA = new Intl.NumberFormat('es-CO');
+
 /**
  * Las variables de la PLANTILLA de WhatsApp, en el orden que espera el cuerpo
- * aprobado en Meta: nombre del miembro, gimnasio y fecha de vencimiento. El
- * proveedor Cloud API las mete como parametros de la plantilla; los proveedores
- * de texto (n8n) las ignoran y usan el `mensaje` completo.
+ * aprobado en Meta: nombre, gimnasio, fecha de vencimiento y VALOR de la
+ * mensualidad. El proveedor Cloud API las mete como parametros de la plantilla;
+ * los de texto (n8n) las ignoran y usan el `mensaje`.
+ *
+ * `precioPlan` se resuelve FRESCO desde el plan del ultimo pago (no del monto
+ * pagado): si el gimnasio sube el precio, el aviso ya lo refleja.
  */
-export function construirVariables({ miembro, ultimoPago, tenant }) {
+export function construirVariables({ miembro, ultimoPago, tenant, precioPlan }) {
   const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
-  return [miembro.nombres, tenant.nombre, formatearFecha(ultimoPago.periodoFin, zonaHoraria)];
+  const valor = precioPlan ?? ultimoPago.monto ?? 0;
+  return [
+    miembro.nombres,
+    tenant.nombre,
+    formatearFecha(ultimoPago.periodoFin, zonaHoraria),
+    `$${FORMATO_MONEDA.format(valor)}`,
+  ];
 }
 
 /** `true` si el plan de plataforma del gimnasio incluye el canal de WhatsApp. */
@@ -128,6 +139,11 @@ export async function notificarVencimientosDelTenant(
 
   const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
 
+  // Precio ACTUAL de cada plan, cruzado en memoria (sin $lookup): la 4ª variable
+  // del aviso sale de aqui, no del monto del pago viejo.
+  const planes = await obtenerModelo('PlanMembresia').find().select('precio');
+  const precioPorPlan = new Map(planes.map((plan) => [String(plan._id), plan.precio]));
+
   const filas = await listarVencimientos();
   const porAvisar = filas
     .map((fila) => ({ ...fila, etapa: decidirEtapaAviso(fila.ultimoPago, ahora, zonaHoraria) }))
@@ -137,7 +153,7 @@ export async function notificarVencimientosDelTenant(
   let fallidos = 0;
 
   for (const fila of porAvisar) {
-    const resultado = await avisarAMiembro(fila, { tenant, proveedor, ahora });
+    const resultado = await avisarAMiembro(fila, { tenant, proveedor, ahora, precioPorPlan });
     if (resultado === ESTADOS_NOTIFICACION.ENVIADO) enviados += 1;
     else fallidos += 1;
   }
@@ -165,14 +181,18 @@ function decidirEtapaAviso(ultimoPago, ahora, zonaHoraria) {
   return null;
 }
 
-async function avisarAMiembro({ miembro, ultimoPago, etapa }, { tenant, proveedor, ahora }) {
+async function avisarAMiembro(
+  { miembro, ultimoPago, etapa },
+  { tenant, proveedor, ahora, precioPorPlan },
+) {
   const Notificacion = obtenerModelo('Notificacion');
   const Pago = obtenerModelo('Pago');
 
   const estado =
     etapa === 'vencido' ? ESTADOS_VENCIMIENTO.VENCIDO : ESTADOS_VENCIMIENTO.POR_VENCER;
+  const precioPlan = precioPorPlan?.get(String(ultimoPago.planMembresia));
   const mensaje = construirMensaje({ miembro, ultimoPago, estado, tenant, ahora });
-  const variables = construirVariables({ miembro, ultimoPago, tenant });
+  const variables = construirVariables({ miembro, ultimoPago, tenant, precioPlan });
 
   try {
     if (!miembro.telefono) throw new Error(SIN_TELEFONO);

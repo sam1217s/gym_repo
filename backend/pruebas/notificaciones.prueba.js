@@ -159,11 +159,13 @@ describe('a quien se avisa', () => {
     expect(textos).toMatch(/vence en 2 dias/);
     expect(textos).toMatch(/vencio el/);
 
-    // Ademas del texto, cada aviso lleva las 3 variables de la plantilla
-    // (nombre, gimnasio, fecha) para el proveedor Cloud API.
+    // Ademas del texto, cada aviso lleva las 4 variables de la plantilla
+    // (nombre, gimnasio, fecha, VALOR) para el proveedor Cloud API.
     for (const aviso of falso.enviados) {
-      expect(aviso.variables).toHaveLength(3);
+      expect(aviso.variables).toHaveLength(4);
       expect(aviso.variables[1]).toBe('Gimnasio Avisos');
+      // El valor sale del precio ACTUAL del plan (60.000 en el gimnasio de prueba).
+      expect(aviso.variables[3]).toBe('$60.000');
     }
   });
 

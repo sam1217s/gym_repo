@@ -72,8 +72,8 @@ export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
  * vencimiento casi nunca cae ahi, asi que en produccion se envia una PLANTILLA
  * aprobada. Es una CONVENCION, igual que el plan 'Estandar': cada gimnasio
  * registra en SU WABA una plantilla con este mismo nombre e idioma. El cuerpo
- * aprobado espera 3 variables, en este orden:
- *   {{1}} = nombre del miembro · {{2}} = gimnasio · {{3}} = fecha de vencimiento.
+ * aprobado espera 4 variables, en este orden:
+ *   {{1}} = nombre · {{2}} = gimnasio · {{3}} = fecha de vencimiento · {{4}} = valor.
  */
 export const PLANTILLA_VENCIMIENTO = Object.freeze({
   nombre: 'aviso_vencimiento',
