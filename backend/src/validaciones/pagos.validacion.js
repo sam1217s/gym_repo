@@ -8,6 +8,25 @@ export const esquemaListarPagos = {
   }),
 };
 
+/**
+ * Correccion de un pago YA registrado (solo el dueño). Todo es opcional: se
+ * corrige lo que se equivoco. Si cambia `periodoInicio` (o el plan), el servicio
+ * RECALCULA el `periodoFin`, que es de donde sale el vencimiento del miembro.
+ */
+export const esquemaEditarPago = {
+  params: z.object({ id: idMongo }),
+  body: z
+    .object({
+      planMembresia: idMongo,
+      metodoPago: z.enum(Object.values(METODOS_PAGO)),
+      referencia: z.string().trim(),
+      monto: z.number().min(0),
+      periodoInicio: diaCivil,
+    })
+    .partial()
+    .refine((datos) => Object.keys(datos).length > 0, { message: 'No hay nada que actualizar' }),
+};
+
 export const esquemaRegistrarPago = {
   // La referencia es SIEMPRE opcional, tambien en transferencia: en un cobro
   // presencial el encargado ve el comprobante y valida a mano, y teclear la

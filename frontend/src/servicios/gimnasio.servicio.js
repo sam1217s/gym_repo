@@ -234,6 +234,12 @@ export async function archivarPlanMembresia(id) {
 
 // --- Miembros ------------------------------------------------------------------
 
+/** Lista de miembros. `{ activo: 'false' }` trae los archivados. */
+export async function listarMiembros(params = {}) {
+  const { data: respuesta } = await api.get('/miembros', { params });
+  return respuesta.data;
+}
+
 export async function crearMiembro(datos) {
   const { data: respuesta } = await api.post('/miembros', datos);
   return respuesta.data;
@@ -248,6 +254,12 @@ export async function actualizarMiembro(id, datos) {
 
 export async function registrarPago(datos) {
   const { data: respuesta } = await api.post('/pagos', datos);
+  return respuesta.data;
+}
+
+/** Corrige un pago ya registrado (solo el dueño). Recalcula el vencimiento. */
+export async function actualizarPago(id, datos) {
+  const { data: respuesta } = await api.patch(`/pagos/${id}`, datos);
   return respuesta.data;
 }
 

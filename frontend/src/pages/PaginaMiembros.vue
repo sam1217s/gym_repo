@@ -7,14 +7,25 @@
         <div class="text-caption text-grey-7">{{ vencimientos.length }} activos</div>
       </div>
 
-      <q-btn
-        color="primary"
-        unelevated
-        no-caps
-        icon="person_add"
-        label="Nuevo miembro"
-        @click="abrirCreacion"
-      />
+      <div class="row q-gutter-sm">
+        <q-btn
+          v-if="esDueno"
+          flat
+          no-caps
+          color="grey-8"
+          icon="archive"
+          label="Archivados"
+          @click="abrirArchivados"
+        />
+        <q-btn
+          color="primary"
+          unelevated
+          no-caps
+          icon="person_add"
+          label="Nuevo miembro"
+          @click="abrirCreacion"
+        />
+      </div>
     </div>
 
     <!-- El semaforo de la operacion diaria: quien esta al dia, quien esta por
@@ -96,6 +107,9 @@
               <q-btn round flat dense color="primary" icon="payments" @click="abrirPago(props.row.miembro)">
                 <q-tooltip>Registrar pago</q-tooltip>
               </q-btn>
+              <q-btn round flat dense color="grey-8" icon="history" @click="abrirHistorial(props.row.miembro)">
+                <q-tooltip>Historial de pagos</q-tooltip>
+              </q-btn>
               <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row.miembro)">
                 <q-tooltip>Editar</q-tooltip>
               </q-btn>
@@ -108,6 +122,62 @@
     </q-table>
 
     <FormularioPago v-model="dialogoPago" :miembro="miembroActivo" />
+
+    <DialogoHistorialPagos
+      v-model="dialogoHistorial"
+      :miembro="miembroActivo"
+      :puede-editar="esDueno"
+      @actualizado="cargar"
+    />
+
+    <!-- Miembros archivados: reactivar a quien se desactivo por error -->
+    <q-dialog v-model="dialogoArchivados">
+      <q-card class="tarjeta-archivados">
+        <q-card-section class="q-pb-sm">
+          <div class="text-h6 titulo-display">Miembros archivados</div>
+          <div class="text-caption text-grey-7">Reactiva a quien desactivaste por error.</div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="seccion-archivados">
+          <q-inner-loading :showing="cargandoArchivados" label="Cargando…" />
+
+          <div
+            v-if="!cargandoArchivados && archivados.length === 0"
+            class="text-grey-7 text-center q-pa-lg"
+          >
+            No hay miembros archivados.
+          </div>
+
+          <q-list v-else separator>
+            <q-item v-for="m in archivados" :key="m._id">
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ m.nombres }} {{ m.apellidos }}</q-item-label>
+                <q-item-label caption>doc. {{ m.documento }} · {{ nombreSede(m.sede) }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  flat
+                  no-caps
+                  color="primary"
+                  icon="restore"
+                  label="Reactivar"
+                  :loading="reactivandoId === m._id"
+                  @click="reactivar(m)"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cerrar" @click="dialogoArchivados = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- Alta y edicion de miembro -->
     <q-dialog v-model="dialogoMiembro">
@@ -245,6 +315,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
 
 import CampoTelefono from 'src/components/CampoTelefono.vue';
+import DialogoHistorialPagos from 'src/components/DialogoHistorialPagos.vue';
 import FormularioPago from 'src/components/FormularioPago.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import {
@@ -272,12 +343,19 @@ const filtroSede = ref(null);
 
 const dialogoPago = ref(false);
 const dialogoMiembro = ref(false);
+const dialogoHistorial = ref(false);
+const dialogoArchivados = ref(false);
+const cargandoArchivados = ref(false);
+const reactivandoId = ref(null);
 const miembroActivo = ref(null);
 const editando = ref(false);
 const guardando = ref(false);
 
-/** El selector de sede solo tiene sentido para quien ve mas de una. */
-const sedesVisibles = computed(() => usuario.value?.rol === ROLES.TENANT_OWNER);
+/** El selector de sede y las acciones de archivado son cosa del dueño. */
+const esDueno = computed(() => usuario.value?.rol === ROLES.TENANT_OWNER);
+const sedesVisibles = esDueno;
+
+const archivados = computed(() => gimnasio.miembrosArchivados);
 
 const opcionesSede = computed(() =>
   gimnasio.sedes.map((sede) => ({ label: sede.nombre, value: sede._id })),
@@ -452,6 +530,38 @@ function abrirPago(miembro) {
   dialogoPago.value = true;
 }
 
+function abrirHistorial(miembro) {
+  miembroActivo.value = miembro;
+  dialogoHistorial.value = true;
+}
+
+async function abrirArchivados() {
+  dialogoArchivados.value = true;
+  cargandoArchivados.value = true;
+  try {
+    await gimnasio.cargarArchivados();
+  } catch {
+    quasar.notify({ type: 'negative', message: 'No se pudieron cargar los archivados' });
+  } finally {
+    cargandoArchivados.value = false;
+  }
+}
+
+async function reactivar(miembro) {
+  reactivandoId.value = miembro._id;
+  try {
+    await gimnasio.reactivarMiembro(miembro._id);
+    quasar.notify({ type: 'positive', message: `${miembro.nombres} vuelve a estar activo` });
+  } catch (error) {
+    quasar.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo reactivar',
+    });
+  } finally {
+    reactivandoId.value = null;
+  }
+}
+
 async function guardarMiembro() {
   guardando.value = true;
   try {
@@ -523,6 +633,19 @@ onMounted(async () => {
   width: 100%;
   max-width: 520px;
   border-top: 4px solid var(--q-primary);
+}
+
+.tarjeta-archivados {
+  width: 100%;
+  max-width: 480px;
+  border-top: 4px solid var(--q-primary);
+}
+
+.seccion-archivados {
+  position: relative;
+  min-height: 120px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 /* Fondo suave por estado del miembro, para leer de un vistazo. Los colores son

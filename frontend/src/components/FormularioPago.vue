@@ -33,7 +33,7 @@
               v-model="formulario.periodoInicio"
               class="col-6"
               type="date"
-              label="Inicio del periodo"
+              label="Cubre desde"
               stack-label
               outlined
               dense
@@ -64,7 +64,7 @@
               </div>
             </div>
             <div class="text-caption text-grey-8 q-mt-xs">
-              Transferencia · cubre hasta el {{ periodoFinLegible }}
+              Transferencia · cubre del {{ periodoInicioLegible }} al {{ periodoFinLegible }}
             </div>
             <div class="text-caption text-orange-9 q-mt-xs">
               Verifica que este valor coincida con el del comprobante.
@@ -72,8 +72,11 @@
           </q-banner>
 
           <q-banner v-else-if="periodoFin" dense class="banner-vencimiento">
-            Cubre hasta el <strong>{{ periodoFinLegible }}</strong>
-            ({{ describirDuracion(planElegido) }} de {{ planElegido.nombre }})
+            Cubre del <strong>{{ periodoInicioLegible }}</strong> al
+            <strong>{{ periodoFinLegible }}</strong>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              {{ describirDuracion(planElegido) }} · {{ planElegido.nombre }}
+            </div>
           </q-banner>
 
           <div v-if="!modoAprobacion">
@@ -249,13 +252,23 @@ const periodoFin = computed(() => {
   return sumarMeses(inicio, plan.duracionMeses);
 });
 
+const FORMATO_FECHA = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+});
+
 const periodoFinLegible = computed(() =>
-  periodoFin.value
-    ? new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(
-        periodoFin.value,
-      )
-    : '',
+  periodoFin.value ? FORMATO_FECHA.format(periodoFin.value) : '',
 );
+
+// El inicio del periodo, legible, para mostrar la operacion COMPLETA
+// ("del 1 de agosto al 1 de septiembre") y que no haya duda de que cubre.
+const periodoInicioLegible = computed(() => {
+  if (!formulario.periodoInicio) return '';
+  const inicio = interpretarDiaCivil(formulario.periodoInicio);
+  return Number.isNaN(inicio.getTime()) ? '' : FORMATO_FECHA.format(inicio);
+});
 
 const reglaObligatorio = (valor) => Boolean(String(valor ?? '').trim()) || 'Este campo es obligatorio';
 const reglaMonto = (valor) => (typeof valor === 'number' && valor >= 0) || 'Monto invalido';
@@ -340,7 +353,7 @@ async function enviar() {
     quasar.notify({
       type: 'positive',
       message: 'Pago registrado',
-      caption: `Cubre hasta el ${periodoFinLegible.value}`,
+      caption: `Cubre del ${periodoInicioLegible.value} al ${periodoFinLegible.value}`,
     });
 
     // Se emite el pago creado (con su periodoFin) por si el padre lo necesita,

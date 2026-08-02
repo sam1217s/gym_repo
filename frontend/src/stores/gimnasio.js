@@ -29,6 +29,9 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   /** Filas `{ miembro, ultimoPago, estado }` que pinta la pantalla de miembros. */
   const vencimientos = ref([]);
 
+  /** Miembros desactivados, para poder reactivarlos (se cargan bajo demanda). */
+  const miembrosArchivados = ref([]);
+
   /** `{ ingresosPorSede, totalMes, miembros }` que pinta el dashboard. */
   const reportePanel = ref(null);
 
@@ -127,6 +130,25 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     const pago = await servicioGimnasio.registrarPago(datos);
     await cargarVencimientos();
     return pago;
+  }
+
+  async function actualizarPago(id, datos) {
+    const pago = await servicioGimnasio.actualizarPago(id, datos);
+    // El periodo pudo cambiar: el vencimiento de la tabla se deriva de ahi.
+    await cargarVencimientos();
+    return pago;
+  }
+
+  async function cargarArchivados() {
+    miembrosArchivados.value = await servicioGimnasio.listarMiembros({ activo: 'false' });
+  }
+
+  async function reactivarMiembro(id) {
+    const actualizado = await servicioGimnasio.actualizarMiembro(id, { activo: true });
+    // Sale de los archivados y vuelve a la tabla activa.
+    miembrosArchivados.value = miembrosArchivados.value.filter((miembro) => miembro._id !== id);
+    await cargarVencimientos();
+    return actualizado;
   }
 
   // --- Inventario (por sede) -------------------------------------------------
@@ -327,6 +349,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     deudas,
     resumenFinanzas,
     vencimientos,
+    miembrosArchivados,
     reportePanel,
     cargando,
     cargarInventario,
@@ -370,6 +393,9 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     crearMiembro,
     actualizarMiembro,
     registrarPago,
+    actualizarPago,
+    cargarArchivados,
+    reactivarMiembro,
     cargarReportePanel,
   };
 });

@@ -9,3 +9,10 @@ export const listarPagos = manejadorAsync(async (peticion, respuesta) =>
 export const registrarPago = manejadorAsync(async (peticion, respuesta) =>
   responderCreado(respuesta, await servicioPagos.registrarPago(peticion.body, peticion.filtroSede)),
 );
+
+export const actualizarPago = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(
+    respuesta,
+    await servicioPagos.actualizarPago(peticion.params.id, peticion.body, peticion.filtroSede),
+  ),
+);

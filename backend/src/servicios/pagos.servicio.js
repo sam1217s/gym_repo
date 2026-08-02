@@ -73,3 +73,52 @@ export async function registrarPago(datos, filtroSede = {}) {
 
   return pago.populate('planMembresia', 'nombre duracionMeses duracionDias');
 }
+
+/**
+ * Corrige un pago ya registrado. Es cosa del DUEÑO: para arreglar una fecha o un
+ * monto mal tecleados sin borrar el historial.
+ *
+ * Lo delicado es el PERIODO. Si cambia `periodoInicio` (o el plan, que define la
+ * duracion), se RECALCULA `periodoFin` con la misma regla que al registrar
+ * (`sumarDuracion`): el vencimiento del miembro se deriva de ahi, asi que no se
+ * puede tocar el inicio y dejar el fin viejo. Ademas se reinician las marcas de
+ * aviso (`avisadoPorVencer`/`avisadoVencido`): eran del periodo anterior, y el
+ * cron debe reevaluar el aviso sobre el periodo corregido.
+ */
+export async function actualizarPago(id, datos, filtroSede = {}) {
+  const Pago = obtenerModelo('Pago');
+  const PlanMembresia = obtenerModelo('PlanMembresia');
+
+  const pago = await Pago.findOne({ _id: id, ...filtroSede });
+  if (!pago) throw ErrorApi.noEncontrado('El pago no existe');
+
+  // Si cambia el plan, debe ser de la MISMA sede del pago (misma regla de cobro).
+  let planNuevo = null;
+  if (datos.planMembresia && String(datos.planMembresia) !== String(pago.planMembresia)) {
+    planNuevo = await PlanMembresia.findById(datos.planMembresia);
+    if (!planNuevo) throw ErrorApi.solicitudInvalida('El plan de membresia no existe');
+    if (String(planNuevo.sede) !== String(pago.sede)) {
+      throw ErrorApi.solicitudInvalida('Ese plan es de otra sede');
+    }
+    pago.planMembresia = planNuevo._id;
+  }
+
+  if (datos.metodoPago !== undefined) pago.metodoPago = datos.metodoPago;
+  if (datos.referencia !== undefined) pago.referencia = datos.referencia;
+  if (datos.monto !== undefined) pago.monto = datos.monto;
+
+  // El fin se recalcula si cambio el inicio O el plan (que fija la duracion).
+  if (datos.periodoInicio !== undefined || planNuevo) {
+    if (datos.periodoInicio !== undefined) pago.periodoInicio = datos.periodoInicio;
+
+    const planDuracion = planNuevo ?? (await PlanMembresia.findById(pago.planMembresia));
+    if (!planDuracion) throw ErrorApi.solicitudInvalida('El plan del pago ya no existe');
+
+    pago.periodoFin = sumarDuracion(pago.periodoInicio, planDuracion);
+    pago.avisadoPorVencer = false;
+    pago.avisadoVencido = false;
+  }
+
+  await pago.save();
+  return pago.populate('planMembresia', 'nombre duracionMeses duracionDias');
+}

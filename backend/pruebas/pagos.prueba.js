@@ -328,6 +328,119 @@ describe('POST /api/pagos', () => {
   });
 });
 
+describe('PATCH /api/pagos/:id (corregir un pago)', () => {
+  async function registrarPago(dueno, plan, miembro, periodoInicio) {
+    const respuesta = await dueno
+      .post('/api/pagos')
+      .send({
+        miembro: String(miembro._id),
+        planMembresia: String(plan._id),
+        metodoPago: METODOS_PAGO.EFECTIVO,
+        periodoInicio,
+      })
+      .expect(201);
+    return respuesta.body.data;
+  }
+
+  it('el dueño corrige el inicio y el vencimiento se RECALCULA', async () => {
+    const { planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+
+    // Se tecleo mal: julio en vez de agosto.
+    const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
+
+    const corregido = await dueno
+      .patch(`/api/pagos/${pago._id}`)
+      .send({ periodoInicio: '2026-08-01' })
+      .expect(200);
+
+    const inicio = new Date(corregido.body.data.periodoInicio);
+    const fin = new Date(corregido.body.data.periodoFin);
+    expect(inicio.getMonth()).toBe(7); // agosto
+    expect(inicio.getDate()).toBe(1);
+    // Un mes despues: 1 de septiembre. El fin NO se quedo en el viejo.
+    expect(fin.getMonth()).toBe(8); // septiembre
+    expect(fin.getDate()).toBe(1);
+  });
+
+  it('corregir el periodo reinicia las marcas de aviso ya enviadas', async () => {
+    const { tenant, planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+    const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
+
+    await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('Pago').updateOne(
+        { _id: pago._id },
+        { avisadoPorVencer: true, avisadoVencido: true },
+      ),
+    );
+
+    await dueno.patch(`/api/pagos/${pago._id}`).send({ periodoInicio: '2026-08-01' }).expect(200);
+
+    const enBase = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('Pago').findById(pago._id),
+    );
+    expect(enBase.avisadoPorVencer).toBe(false);
+    expect(enBase.avisadoVencido).toBe(false);
+  });
+
+  it('cambiar solo el monto NO toca el periodo ni sus avisos', async () => {
+    const { tenant, planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+    const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
+
+    await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('Pago').updateOne({ _id: pago._id }, { avisadoPorVencer: true }),
+    );
+
+    const corregido = await dueno
+      .patch(`/api/pagos/${pago._id}`)
+      .send({ monto: 50_000 })
+      .expect(200);
+
+    expect(corregido.body.data.monto).toBe(50_000);
+    expect(new Date(corregido.body.data.periodoFin).getDate()).toBe(1); // sin cambios
+    const enBase = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('Pago').findById(pago._id),
+    );
+    expect(enBase.avisadoPorVencer).toBe(true); // no se reinicio
+  });
+
+  it('un sede_admin NO puede corregir un pago (es cosa del dueño)', async () => {
+    const { planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+    const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
+
+    const norte = await entrarComo('norte@gimnasio-pagos.co');
+    await norte
+      .patch(`/api/pagos/${pago._id}`)
+      .send({ periodoInicio: '2026-08-01' })
+      .expect(403);
+  });
+
+  it('no deja mover el pago a un plan de OTRA sede', async () => {
+    const { tenant, sedes, planMensual, miembros } = await montarGimnasio();
+    const dueno = await entrarComo('owner@gimnasio-pagos.co');
+    const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
+
+    // Un plan de la sede sur; el pago es de la norte (la sede de Ana).
+    const planSur = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('PlanMembresia').create({
+        sede: sedes.sur._id,
+        nombre: 'Mensual',
+        precio: 45_000,
+        duracionMeses: 1,
+      }),
+    );
+
+    const respuesta = await dueno
+      .patch(`/api/pagos/${pago._id}`)
+      .send({ planMembresia: String(planSur._id) })
+      .expect(400);
+    expect(respuesta.body.error.mensaje).toMatch(/otra sede/i);
+  });
+});
+
 describe('derivarEstado (la regla, en unitario)', () => {
   const ahora = new Date();
 
