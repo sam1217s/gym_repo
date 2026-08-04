@@ -173,11 +173,15 @@ export async function marcarMensajesLeidos(ids) {
 }
 
 /**
- * URL del comprobante. Es una ruta de la API, no del almacen: la sirve el
- * backend con la cookie de sesion, asi que nadie ve el archivo de otro gimnasio.
+ * Descarga el comprobante como Blob. Va POR AXIOS a proposito, no como
+ * `<img src>` directo: asi la peticion lleva `withCredentials` y, sobre todo,
+ * pasa por el interceptor que refresca el token en un 401. Un `<img>`/`<a>`
+ * normal no se refresca, asi que al caducar el token de 15 min los comprobantes
+ * dejaban de verse aunque el resto del panel siguiera vivo.
  */
-export function urlArchivoMensaje(id) {
-  return `${api.defaults.baseURL}/mensajes/${id}/archivo`;
+export async function descargarArchivoMensaje(id) {
+  const { data } = await api.get(`/mensajes/${id}/archivo`, { responseType: 'blob' });
+  return data;
 }
 
 // --- Auditoria (bitacora del dueño) --------------------------------------------

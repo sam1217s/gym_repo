@@ -139,23 +139,33 @@
               :class="mensaje.direccion === 'saliente' ? 'justify-end' : 'justify-start'"
             >
               <div class="burbuja" :class="`burbuja-${mensaje.direccion}`">
-                <!-- El comprobante es el dato: se ve aqui, no detras de un enlace. -->
-                <q-img
-                  v-if="esImagen(mensaje)"
-                  :src="urlArchivo(mensaje._id)"
-                  class="comprobante cursor-pointer"
-                  fit="contain"
-                  @click="ampliado = urlArchivo(mensaje._id)"
-                />
+                <!-- El comprobante es el dato: se ve aqui, no detras de un enlace.
+                     El archivo se baja por Axios (auto-refresco del token) a un
+                     object-URL; mientras carga se muestra un spinner. -->
+                <template v-if="esImagen(mensaje)">
+                  <q-img
+                    v-if="urlsArchivo[mensaje._id]"
+                    :src="urlsArchivo[mensaje._id]"
+                    class="comprobante cursor-pointer"
+                    fit="contain"
+                    @click="ampliar(mensaje)"
+                  />
+                  <div v-else class="comprobante-estado">
+                    <q-spinner v-if="archivoCargando[mensaje._id]" color="primary" size="24px" />
+                    <span v-else class="text-caption text-grey-7">No se pudo cargar la imagen</span>
+                  </div>
+                </template>
                 <q-btn
                   v-else-if="mensaje.archivo"
                   flat
                   dense
                   no-caps
                   icon="description"
-                  label="Ver archivo"
+                  :label="urlsArchivo[mensaje._id] ? 'Ver archivo' : 'Cargando archivo…'"
+                  :disable="!urlsArchivo[mensaje._id]"
+                  :loading="archivoCargando[mensaje._id]"
                   type="a"
-                  :href="urlArchivo(mensaje._id)"
+                  :href="urlsArchivo[mensaje._id]"
                   target="_blank"
                 />
                 <div v-if="mensaje.texto" class="texto-burbuja">{{ mensaje.texto }}</div>
@@ -221,10 +231,10 @@
 
 <script setup>
 import { useQuasar } from 'quasar';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import FormularioPago from 'components/FormularioPago.vue';
-import { urlArchivoMensaje } from 'src/servicios/gimnasio.servicio.js';
+import { descargarArchivoMensaje } from 'src/servicios/gimnasio.servicio.js';
 import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
@@ -334,7 +344,39 @@ function nombreSede(conversacion) {
   return conversacion.sede?.nombre ?? null;
 }
 
-const urlArchivo = urlArchivoMensaje;
+// Comprobantes ya descargados (id del mensaje -> object-URL del blob) y cuales
+// se estan bajando. Se bajan por Axios para heredar el auto-refresco del token.
+const urlsArchivo = ref({});
+const archivoCargando = ref({});
+
+async function cargarArchivo(mensaje) {
+  if (!mensaje.archivo || urlsArchivo.value[mensaje._id] || archivoCargando.value[mensaje._id]) {
+    return;
+  }
+  archivoCargando.value[mensaje._id] = true;
+  try {
+    const blob = await descargarArchivoMensaje(mensaje._id);
+    urlsArchivo.value[mensaje._id] = URL.createObjectURL(blob);
+  } catch {
+    // Se queda sin URL: el template muestra el aviso de que no se pudo cargar.
+  } finally {
+    archivoCargando.value[mensaje._id] = false;
+  }
+}
+
+function ampliar(mensaje) {
+  ampliado.value = urlsArchivo.value[mensaje._id] ?? null;
+}
+
+// Al abrir (o refrescarse) un hilo, se bajan los archivos de sus mensajes.
+watch(hilo, (actual) => {
+  if (actual) actual.mensajes.forEach((mensaje) => cargarArchivo(mensaje));
+});
+
+// Los object-URL viven en memoria del navegador: se liberan al salir.
+onBeforeUnmount(() => {
+  Object.values(urlsArchivo.value).forEach((url) => URL.revokeObjectURL(url));
+});
 
 function abrir(conversacion) {
   telefonoAbierto.value = conversacion.telefono;
@@ -528,6 +570,19 @@ onMounted(() => {
   max-height: 320px;
   border-radius: 6px;
   margin-bottom: 6px;
+}
+
+/* Mientras el comprobante se baja (o si fallo): ocupa un hueco estable. */
+.comprobante-estado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 120px;
+  margin-bottom: 6px;
+  border: 1px dashed #c2c7d0;
+  border-radius: 6px;
+  background: #fafbfc;
 }
 
 .tarjeta-ampliada {
