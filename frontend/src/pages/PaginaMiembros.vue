@@ -72,8 +72,8 @@
       :rows="filasFiltradas"
       :columns="columnasResponsivas"
       :loading="cargando"
-      :pagination="{ rowsPerPage: 15 }"
-      :hide-bottom="filasFiltradas.length <= 15"
+      :pagination="{ rowsPerPage: 50 }"
+      :hide-bottom="filasFiltradas.length <= 50"
       no-data-label="Aun no hay miembros. Registra el primero."
     >
       <!-- Fila completa tintada con el color (suave) del estado del miembro, para
