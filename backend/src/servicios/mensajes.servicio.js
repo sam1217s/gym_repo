@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { PROVEEDORES_WHATSAPP } from '../config/constantes.js';
+import { MESES_RETENCION_COMPROBANTE, PROVEEDORES_WHATSAPP } from '../config/constantes.js';
 import { entorno } from '../config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
@@ -266,6 +266,54 @@ export async function responder({ mensaje: idMensaje, texto }, filtroSede = {}, 
     texto,
     leido: true,
     enviadoPor: usuarioId,
+  });
+}
+
+/**
+ * Borra del disco las IMAGENES de comprobantes mas viejas que `mesesRetencion`,
+ * y suelta la referencia en el mensaje (`archivo: null`). El registro del mensaje
+ * (quien escribio, cuando, el texto) se conserva: solo se va el archivo, que ya
+ * cumplio su funcion. Asi el disco del servidor no crece sin tope.
+ *
+ * Corre a nivel plataforma (`ejecutarSinTenant`): barre los comprobantes de
+ * TODOS los gimnasios de una pasada, igual que la cobranza. La llama el cron de
+ * `tareas/comprobantes.tarea.js`, y se exporta aparte para poder probarla.
+ */
+export async function purgarComprobantesAntiguos({
+  mesesRetencion = MESES_RETENCION_COMPROBANTE,
+  ahora = new Date(),
+} = {}) {
+  const Mensaje = obtenerModelo('MensajeWhatsapp');
+
+  const limite = new Date(ahora);
+  limite.setMonth(limite.getMonth() - mesesRetencion);
+
+  return ejecutarSinTenant(async () => {
+    const antiguos = await Mensaje.find({
+      archivo: { $ne: null },
+      createdAt: { $lt: limite },
+    }).select('_id archivo');
+
+    let borrados = 0;
+
+    for (const mensaje of antiguos) {
+      const absoluta = path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', mensaje.archivo);
+
+      try {
+        // `force`: si el archivo ya no esta, no es un error; igual limpiamos la ref.
+        await rm(absoluta, { force: true });
+      } catch (error) {
+        // Un fallo real (permisos) no debe frenar el barrido; se deja el registro
+        // como esta para reintentarlo mañana.
+        console.error('[comprobantes] no se pudo borrar el archivo:', error.message);
+        continue;
+      }
+
+      await Mensaje.updateOne({ _id: mensaje._id }, { $set: { archivo: null } });
+      borrados += 1;
+    }
+
+    return { borrados, limite };
   });
 }
 

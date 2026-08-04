@@ -206,6 +206,16 @@ export const EXPRESION_CRON_VENCIMIENTOS = '0 9 * * *';
 /** Facturacion de plataforma: de madrugada, lejos de la hora pico del gimnasio. */
 export const EXPRESION_CRON_FACTURACION = '0 3 * * *';
 
+/** Limpieza de comprobantes: a las 4, despues de la cobranza y antes del dia. */
+export const EXPRESION_CRON_PURGA_COMPROBANTES = '0 4 * * *';
+
+/**
+ * Cuanto se conserva la IMAGEN de un comprobante de WhatsApp antes de borrarla
+ * del disco. El registro del mensaje (quien, cuando, texto) se conserva; solo se
+ * suelta el archivo, que ya cumplio su funcion de verificar el pago.
+ */
+export const MESES_RETENCION_COMPROBANTE = 2;
+
 // --- Facturacion de plataforma (el gimnasio le paga a GymSaaS) ---------------
 
 export const ESTADOS_FACTURA = Object.freeze({

@@ -2,6 +2,7 @@ import { conectarBaseDatos, desconectarBaseDatos } from './config/baseDatos.js';
 import { entorno, esProduccion } from './config/entorno.js';
 import { registrarModelos, sincronizarIndices } from './modelos/indice.js';
 import { crearServidor } from './servidor.js';
+import { programarPurgaComprobantes } from './tareas/comprobantes.tarea.js';
 import { programarCobranza } from './tareas/facturacion.tarea.js';
 import { programarAvisosDeVencimiento } from './tareas/vencimientos.tarea.js';
 
@@ -24,7 +25,11 @@ async function arrancar() {
   const servidor = crearServidor().listen(entorno.PUERTO, () => {
     console.log(`GymSaaS API escuchando en http://localhost:${entorno.PUERTO} [${entorno.NODE_ENV}]`);
     if (entorno.HABILITAR_CRON) {
-      tareas.push(programarAvisosDeVencimiento(), programarCobranza());
+      tareas.push(
+        programarAvisosDeVencimiento(),
+        programarCobranza(),
+        programarPurgaComprobantes(),
+      );
     }
   });
 

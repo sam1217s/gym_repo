@@ -1,10 +1,15 @@
+import { existsSync } from 'node:fs';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import crypto from 'node:crypto';
+import path from 'node:path';
 import peticion from 'supertest';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ESTADOS_TENANT, PROVEEDORES_WHATSAPP, ROLES } from '../src/config/constantes.js';
+import { entorno } from '../src/config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
+import { purgarComprobantesAntiguos } from '../src/servicios/mensajes.servicio.js';
 import { crearServidor } from '../src/servidor.js';
 import { cifrarContrasena } from '../src/utilidades/contrasena.js';
 import { limpiarColecciones } from './configuracion.js';
@@ -230,5 +235,92 @@ describe('Bandeja de mensajes', () => {
 
     const pendientes = await dueno.get('/api/mensajes/pendientes').expect(200);
     expect(pendientes.body.data.pendientes).toBe(0);
+  });
+});
+
+describe('Purga de comprobantes antiguos', () => {
+  let carpetaComprobantes = null;
+
+  afterEach(async () => {
+    if (carpetaComprobantes) {
+      await rm(carpetaComprobantes, { recursive: true, force: true });
+      carpetaComprobantes = null;
+    }
+  });
+
+  /** Envejece el createdAt con el driver crudo: Mongoose lo marca inmutable. */
+  async function envejecer(Mensaje, id, meses) {
+    const fecha = new Date();
+    fecha.setMonth(fecha.getMonth() - meses);
+    await Mensaje.collection.updateOne({ _id: id }, { $set: { createdAt: fecha } });
+  }
+
+  it('borra la imagen vieja y suelta la referencia; conserva el mensaje y el reciente', async () => {
+    const { tenant } = await montar();
+
+    const raiz = path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp');
+    carpetaComprobantes = path.join(raiz, String(tenant._id));
+    await mkdir(carpetaComprobantes, { recursive: true });
+
+    const relVieja = `${tenant._id}/viejo.jpeg`;
+    const relNueva = `${tenant._id}/nuevo.jpeg`;
+    const absVieja = path.resolve(raiz, relVieja);
+    const absNueva = path.resolve(raiz, relNueva);
+    await writeFile(absVieja, 'imagen-vieja');
+    await writeFile(absNueva, 'imagen-nueva');
+
+    const ids = await ejecutarConTenant(tenant._id, async () => {
+      const Mensaje = obtenerModelo('MensajeWhatsapp');
+      const viejo = await Mensaje.create({
+        telefono: TEL_ANA, direccion: 'entrante', tipo: 'imagen',
+        archivo: relVieja, mimeType: 'image/jpeg', idMensajeWhatsapp: 'wamid.viejo',
+      });
+      const nuevo = await Mensaje.create({
+        telefono: TEL_ANA, direccion: 'entrante', tipo: 'imagen',
+        archivo: relNueva, mimeType: 'image/jpeg', idMensajeWhatsapp: 'wamid.nuevo',
+      });
+      await envejecer(Mensaje, viejo._id, 3); // 3 meses: mas que la retencion (2)
+      return { viejo: viejo._id, nuevo: nuevo._id };
+    });
+
+    const resultado = await purgarComprobantesAntiguos();
+    expect(resultado.borrados).toBe(1);
+
+    expect(existsSync(absVieja)).toBe(false); // el archivo viejo se borro
+    expect(existsSync(absNueva)).toBe(true); // el reciente sigue
+
+    const enBase = await ejecutarConTenant(tenant._id, async () => {
+      const Mensaje = obtenerModelo('MensajeWhatsapp');
+      return {
+        viejo: await Mensaje.findById(ids.viejo),
+        nuevo: await Mensaje.findById(ids.nuevo),
+      };
+    });
+    expect(enBase.viejo).not.toBeNull(); // el mensaje se conserva
+    expect(enBase.viejo.archivo).toBeNull(); // sin la referencia al archivo
+    expect(enBase.nuevo.archivo).toBe(relNueva); // el reciente, intacto
+  });
+
+  it('si el archivo ya no esta en disco, igual suelta la referencia sin romper', async () => {
+    const { tenant } = await montar();
+    const rel = `${tenant._id}/fantasma.jpeg`; // nunca se escribe en disco
+
+    const id = await ejecutarConTenant(tenant._id, async () => {
+      const Mensaje = obtenerModelo('MensajeWhatsapp');
+      const m = await Mensaje.create({
+        telefono: TEL_ANA, direccion: 'entrante', tipo: 'imagen',
+        archivo: rel, mimeType: 'image/jpeg', idMensajeWhatsapp: 'wamid.fantasma',
+      });
+      await envejecer(Mensaje, m._id, 3);
+      return m._id;
+    });
+
+    const resultado = await purgarComprobantesAntiguos();
+    expect(resultado.borrados).toBe(1);
+
+    const enBase = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('MensajeWhatsapp').findById(id),
+    );
+    expect(enBase.archivo).toBeNull();
   });
 });
