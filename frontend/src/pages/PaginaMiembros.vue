@@ -73,6 +73,7 @@
       :columns="columnasResponsivas"
       :loading="cargando"
       :pagination="{ rowsPerPage: 50 }"
+      :rows-per-page-options="[50, 100, 200, 0]"
       :hide-bottom="filasFiltradas.length <= 50"
       no-data-label="Aun no hay miembros. Registra el primero."
     >
