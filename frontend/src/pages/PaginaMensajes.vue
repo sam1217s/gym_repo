@@ -139,35 +139,55 @@
               :class="mensaje.direccion === 'saliente' ? 'justify-end' : 'justify-start'"
             >
               <div class="burbuja" :class="`burbuja-${mensaje.direccion}`">
-                <!-- El comprobante es el dato: se ve aqui, no detras de un enlace.
-                     El archivo se baja por Axios (auto-refresco del token) a un
-                     object-URL; mientras carga se muestra un spinner. -->
-                <template v-if="esImagen(mensaje)">
-                  <q-img
-                    v-if="urlsArchivo[mensaje._id]"
-                    :src="urlsArchivo[mensaje._id]"
-                    class="comprobante cursor-pointer"
-                    fit="contain"
-                    @click="ampliar(mensaje)"
-                  />
+                <!-- El archivo (imagen, video, audio o documento) se baja por
+                     Axios (auto-refresco del token) a un object-URL y se pinta
+                     segun su tipo; mientras carga se muestra un spinner. -->
+                <template v-if="mensaje.archivo">
+                  <template v-if="urlsArchivo[mensaje._id]">
+                    <q-img
+                      v-if="esImagen(mensaje)"
+                      :src="urlsArchivo[mensaje._id]"
+                      class="comprobante cursor-pointer"
+                      fit="contain"
+                      @click="ampliar(mensaje)"
+                    />
+                    <video
+                      v-else-if="esVideo(mensaje)"
+                      :src="urlsArchivo[mensaje._id]"
+                      class="comprobante"
+                      controls
+                    />
+                    <audio
+                      v-else-if="esAudio(mensaje)"
+                      :src="urlsArchivo[mensaje._id]"
+                      class="audio-mensaje"
+                      controls
+                    />
+                    <q-btn
+                      v-else
+                      flat
+                      dense
+                      no-caps
+                      icon="description"
+                      label="Ver archivo"
+                      type="a"
+                      :href="urlsArchivo[mensaje._id]"
+                      target="_blank"
+                    />
+                  </template>
                   <div v-else class="comprobante-estado">
                     <q-spinner v-if="archivoCargando[mensaje._id]" color="primary" size="24px" />
-                    <span v-else class="text-caption text-grey-7">No se pudo cargar la imagen</span>
+                    <span v-else class="text-caption text-grey-7">No se pudo cargar el archivo</span>
                   </div>
                 </template>
-                <q-btn
-                  v-else-if="mensaje.archivo"
-                  flat
-                  dense
-                  no-caps
-                  icon="description"
-                  :label="urlsArchivo[mensaje._id] ? 'Ver archivo' : 'Cargando archivo…'"
-                  :disable="!urlsArchivo[mensaje._id]"
-                  :loading="archivoCargando[mensaje._id]"
-                  type="a"
-                  :href="urlsArchivo[mensaje._id]"
-                  target="_blank"
-                />
+                <!-- Llego un archivo que no se pudo descargar (mensajes viejos o un
+                     tipo sin adjunto): se avisa en vez de dejar la burbuja vacia. -->
+                <div
+                  v-else-if="mensaje.tipo !== 'texto'"
+                  class="text-caption text-grey-7 aviso-sin-archivo"
+                >
+                  <q-icon name="attachment" size="16px" /> Envió un archivo que no se pudo mostrar
+                </div>
                 <div v-if="mensaje.texto" class="texto-burbuja">{{ mensaje.texto }}</div>
                 <div class="hora-burbuja">{{ formatearHora(mensaje.createdAt) }}</div>
               </div>
@@ -331,13 +351,31 @@ function inicial(conversacion) {
   return titulo(conversacion).replace('+', '').charAt(0).toUpperCase();
 }
 
+const RESUMEN_TIPO = {
+  imagen: 'Envió una imagen',
+  video: 'Envió un video',
+  audio: 'Envió una nota de voz',
+  documento: 'Envió un documento',
+};
+
 function resumen(mensaje) {
   if (mensaje.texto) return mensaje.texto;
-  return mensaje.tipo === 'imagen' ? 'Envio una imagen' : 'Envio un archivo';
+  return RESUMEN_TIPO[mensaje.tipo] ?? 'Envió un archivo';
 }
 
+// El tipo de media se decide por el mimeType real, no por el `tipo` guardado:
+// asi un sticker (image/webp) o una nota de voz (audio/ogg) se pintan solos.
+function esArchivoDe(mensaje, prefijo) {
+  return Boolean(mensaje.archivo) && (mensaje.mimeType ?? '').startsWith(prefijo);
+}
 function esImagen(mensaje) {
-  return Boolean(mensaje.archivo) && (mensaje.mimeType ?? '').startsWith('image/');
+  return esArchivoDe(mensaje, 'image/');
+}
+function esVideo(mensaje) {
+  return esArchivoDe(mensaje, 'video/');
+}
+function esAudio(mensaje) {
+  return esArchivoDe(mensaje, 'audio/');
 }
 
 function nombreSede(conversacion) {
@@ -570,6 +608,19 @@ onMounted(() => {
   max-height: 320px;
   border-radius: 6px;
   margin-bottom: 6px;
+}
+
+.audio-mensaje {
+  width: 240px;
+  max-width: 100%;
+  margin-bottom: 6px;
+}
+
+.aviso-sin-archivo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-style: italic;
 }
 
 /* Mientras el comprobante se baja (o si fallo): ocupa un hueco estable. */

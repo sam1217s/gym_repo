@@ -24,7 +24,11 @@ const esquemaMensajeWhatsapp = new mongoose.Schema(
     telefono: { type: String, required: true, trim: true },
 
     direccion: { type: String, enum: ['entrante', 'saliente'], required: true },
-    tipo: { type: String, enum: ['texto', 'imagen', 'documento', 'otro'], default: 'texto' },
+    tipo: {
+      type: String,
+      enum: ['texto', 'imagen', 'documento', 'audio', 'video', 'otro'],
+      default: 'texto',
+    },
 
     /** Cuerpo del mensaje o pie de foto. Puede ir vacio si solo mandaron imagen. */
     texto: { type: String, trim: true, default: '' },

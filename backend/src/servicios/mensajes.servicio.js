@@ -28,8 +28,26 @@ const TIEMPO_LIMITE_MS = 15_000;
 /** Tope del comprobante que se baja de Meta: evita que un archivo enorme llene el disco. */
 const MAX_TAMANO_MEDIA = 20 * 1024 * 1024; // 20 MB
 
-/** Tipos de Meta que sabemos guardar; el resto entra como "otro". */
-const TIPOS = { text: 'texto', image: 'imagen', document: 'documento' };
+/**
+ * Tipo de Meta -> tipo nuestro. Los stickers son webp (se pintan como imagen) y
+ * las notas de voz son audio. Lo que no reconocemos entra como "otro".
+ */
+const TIPOS = {
+  text: 'texto',
+  image: 'imagen',
+  sticker: 'imagen',
+  document: 'documento',
+  audio: 'audio',
+  voice: 'audio',
+  video: 'video',
+};
+
+/**
+ * Campos de Meta que traen un archivo descargable, en orden de preferencia. Todos
+ * tienen la misma forma `{ id, mime_type, ... }`. Antes solo se miraban `image` y
+ * `document`, asi que audios, videos, notas de voz y stickers llegaban vacios.
+ */
+const CAMPOS_MEDIA = ['image', 'document', 'audio', 'voice', 'video', 'sticker'];
 
 // --- Webhook -----------------------------------------------------------------
 
@@ -130,7 +148,7 @@ export async function procesarEventoEntrante({ cuerpo, cuerpoCrudo, firma }) {
       const miembro = await Miembro.findOne({ telefono });
 
       const tipo = TIPOS[mensaje.type] ?? 'otro';
-      const media = mensaje.image ?? mensaje.document ?? null;
+      const media = CAMPOS_MEDIA.map((campo) => mensaje[campo]).find(Boolean) ?? null;
 
       let archivo = null;
       let mimeType = media?.mime_type ?? null;
