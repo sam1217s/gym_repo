@@ -69,7 +69,7 @@ describe('Canal de WhatsApp del gimnasio (config del super_admin)', () => {
     expect(respuesta.body.data).toMatchObject({
       proveedor: PROVEEDORES_WHATSAPP.NINGUNO,
       configurado: false,
-      plantilla: { nombre: 'aviso_vencimiento', idioma: 'es_CO' },
+      plantilla: { nombre: 'avisa_vence2', idioma: 'es_CO' },
     });
   });
 

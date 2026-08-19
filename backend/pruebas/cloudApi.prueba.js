@@ -24,7 +24,7 @@ describe('construirCuerpo (forma del mensaje a Meta)', () => {
       to: '573001112233',
       type: 'template',
       template: {
-        name: 'aviso_vencimiento',
+        name: 'avisa_vence2',
         language: { code: 'es_CO' },
         components: [
           {
@@ -69,7 +69,7 @@ describe('crearProveedorCloudApi', () => {
 
     const cuerpo = JSON.parse(opciones.body);
     expect(cuerpo.type).toBe('template');
-    expect(cuerpo.template.name).toBe('aviso_vencimiento');
+    expect(cuerpo.template.name).toBe('avisa_vence2');
     expect(cuerpo.template.components[0].parameters.map((p) => p.text)).toEqual([
       'Ana',
       'GlowUp',

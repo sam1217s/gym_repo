@@ -76,7 +76,9 @@ export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
  *   {{1}} = nombre · {{2}} = gimnasio · {{3}} = fecha de vencimiento · {{4}} = valor.
  */
 export const PLANTILLA_VENCIMIENTO = Object.freeze({
-  nombre: 'aviso_vencimiento',
+  // Registrada en Meta como categoria UTILITY (la anterior, 'aviso_vencimiento',
+  // era Marketing). Mismo cuerpo y mismas 4 variables, sin emojis.
+  nombre: 'avisa_vence2',
   idioma: 'es_CO',
 });
 
