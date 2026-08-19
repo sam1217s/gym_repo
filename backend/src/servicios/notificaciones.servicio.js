@@ -100,6 +100,10 @@ const FORMATO_MONEDA = new Intl.NumberFormat('es-CO');
  *
  * `precioPlan` se resuelve FRESCO desde el plan del ultimo pago (no del monto
  * pagado): si el gimnasio sube el precio, el aviso ya lo refleja.
+ *
+ * El VALOR va SOLO como numero ("70.000"), sin el "$": en la plantilla el signo
+ * es texto fijo ("Valor a pagar: $ {{4}}"), asi que mandarlo con "$" duplicaria
+ * el simbolo ("$ $70.000").
  */
 export function construirVariables({ miembro, ultimoPago, tenant, precioPlan }) {
   const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
@@ -108,7 +112,7 @@ export function construirVariables({ miembro, ultimoPago, tenant, precioPlan }) 
     miembro.nombres,
     tenant.nombre,
     formatearFecha(ultimoPago.periodoFin, zonaHoraria),
-    `$${FORMATO_MONEDA.format(valor)}`,
+    FORMATO_MONEDA.format(valor),
   ];
 }
 

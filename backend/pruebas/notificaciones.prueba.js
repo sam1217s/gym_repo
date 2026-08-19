@@ -164,8 +164,9 @@ describe('a quien se avisa', () => {
     for (const aviso of falso.enviados) {
       expect(aviso.variables).toHaveLength(4);
       expect(aviso.variables[1]).toBe('Gimnasio Avisos');
-      // El valor sale del precio ACTUAL del plan (60.000 en el gimnasio de prueba).
-      expect(aviso.variables[3]).toBe('$60.000');
+      // El valor sale del precio ACTUAL del plan (60.000 en el gimnasio de prueba),
+      // SOLO el numero: el "$" es texto fijo en la plantilla.
+      expect(aviso.variables[3]).toBe('60.000');
     }
   });
 
