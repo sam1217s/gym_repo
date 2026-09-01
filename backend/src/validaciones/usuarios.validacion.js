@@ -25,9 +25,23 @@ export const esquemaActualizarUsuario = {
     .object({
       nombres: z.string().trim().min(1),
       apellidos: z.string().trim().min(1),
+      // La cedula se puede agregar o corregir despues del alta (es la que se usa
+      // por defecto al restablecer la contrasena).
+      cedula: cedulaOpcional,
       sede: idMongo,
       activo: z.boolean(),
     })
     .partial()
     .refine((datos) => Object.keys(datos).length > 0, { message: 'No hay nada que actualizar' }),
+};
+
+/**
+ * Restablecer la contrasena de un integrante. `contrasena` es OPCIONAL: si no
+ * viene, el servicio usa el numero de cedula del integrante como clave nueva.
+ */
+export const esquemaRestablecerContrasena = {
+  params: z.object({ id: idMongo }),
+  body: z.object({
+    contrasena: contrasenaSegura.optional(),
+  }),
 };

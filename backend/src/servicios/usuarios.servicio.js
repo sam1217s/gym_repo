@@ -77,7 +77,53 @@ export async function actualizarUsuario(id, datos) {
   // Desactivar a alguien tambien lo saca de la sesion que tenga abierta.
   if (datos.activo === false) usuario.versionToken += 1;
 
-  return usuario.save();
+  try {
+    return await usuario.save();
+  } catch (error) {
+    if (error.code === CODIGO_DUPLICADO_MONGO) {
+      const campo = error.keyPattern?.cedula ? 'la cedula' : 'el correo';
+      throw ErrorApi.conflicto(`Ya existe un usuario con ${campo} en este gimnasio`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * El dueno restablece la contrasena de un integrante del equipo. Por defecto la
+ * nueva clave es su NUMERO DE CEDULA registrado (un valor que el dueno conoce y
+ * le puede dictar); si el integrante no tiene cedula, el dueno debe dar una
+ * contrasena a mano. En ambos casos:
+ *   - se marca `debeCambiarContrasena`: al entrar se le exige cambiarla (la
+ *     cedula es un default conocido, no una clave definitiva);
+ *   - se sube `versionToken`: se cierra cualquier sesion que tuviera abierta.
+ *
+ * Mismo candado que editar: solo `sede_admin` de ESTE gimnasio.
+ */
+export async function restablecerContrasena(id, { contrasena } = {}) {
+  const Usuario = obtenerModelo('Usuario');
+
+  const usuario = await Usuario.findOne({
+    _id: id,
+    tenant: tenantActual(),
+    rol: ROLES.SEDE_ADMIN,
+  });
+
+  if (!usuario) throw ErrorApi.noEncontrado('El usuario no existe o no es administrable');
+
+  const nueva = contrasena ?? usuario.cedula;
+  if (!nueva) {
+    throw ErrorApi.solicitudInvalida(
+      'Este integrante no tiene cedula registrada. Editalo para agregarla o define una contrasena.',
+    );
+  }
+
+  usuario.contrasenaHash = await cifrarContrasena(nueva);
+  usuario.debeCambiarContrasena = true;
+  usuario.versionToken += 1;
+  await usuario.save();
+
+  // NUNCA se devuelve la clave; solo si se uso la cedula, para el mensaje al dueno.
+  return { id: usuario._id, usoCedula: contrasena == null };
 }
 
 /**

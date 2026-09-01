@@ -61,6 +61,9 @@
             <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row)">
               <q-tooltip>Editar</q-tooltip>
             </q-btn>
+            <q-btn round flat dense color="primary" icon="lock_reset" @click="confirmarRestablecer(props.row)">
+              <q-tooltip>Restablecer contraseña</q-tooltip>
+            </q-btn>
             <q-btn
               round
               flat
@@ -125,10 +128,9 @@
             />
 
             <q-input
-              v-if="!editando"
               v-model="formulario.cedula"
               label="Cedula (opcional)"
-              hint="Podra entrar con su cedula ademas del correo"
+              hint="Entra con su cedula ademas del correo, y es la clave por defecto al restablecer"
               outlined
               dense
               :rules="[reglaCedulaOpcional]"
@@ -266,6 +268,7 @@ function abrirEdicion(usuario) {
     nombres: usuario.nombres,
     apellidos: usuario.apellidos,
     email: usuario.email,
+    cedula: usuario.cedula ?? '',
     contrasenaInicial: '',
     sede: usuario.sede,
   });
@@ -279,6 +282,8 @@ async function guardar() {
       await gimnasio.actualizarUsuario(usuarioActivo.value._id, {
         nombres: formulario.nombres,
         apellidos: formulario.apellidos,
+        // Solo se manda si la escribieron; vacia no borra la que ya tuviera.
+        ...(formulario.cedula.trim() ? { cedula: formulario.cedula.trim() } : {}),
         sede: formulario.sede,
       });
       quasar.notify({ type: 'positive', message: 'Administrador actualizado' });
@@ -364,6 +369,62 @@ function confirmarEliminacion(usuario) {
         });
       }
     });
+}
+
+/**
+ * Restablece la contraseña de un integrante. Por defecto la deja igual a su
+ * numero de cedula; si no tiene cedula, pide una temporal. En ambos casos el
+ * backend le exige cambiarla al entrar y le cierra la sesion.
+ */
+function confirmarRestablecer(usuario) {
+  if (usuario.cedula) {
+    quasar
+      .dialog({
+        title: `Restablecer contraseña de ${usuario.nombres}`,
+        message:
+          `La contraseña quedará igual a su número de cédula (${usuario.cedula}). ` +
+          'Al iniciar sesión se le pedirá cambiarla, y su sesión actual se cerrará.',
+        cancel: { flat: true, noCaps: true, label: 'Volver' },
+        ok: { color: 'primary', unelevated: true, noCaps: true, label: 'Restablecer' },
+      })
+      .onOk(() => ejecutarRestablecer(usuario, {}));
+    return;
+  }
+
+  // Sin cédula no hay valor por defecto: se pide una contraseña temporal.
+  quasar
+    .dialog({
+      title: `Restablecer contraseña de ${usuario.nombres}`,
+      message:
+        'No tiene cédula registrada (puedes agregarla con Editar). Mientras tanto, ' +
+        'escribe una contraseña temporal. Deberá cambiarla al entrar.',
+      prompt: {
+        model: '',
+        type: 'password',
+        isValid: (valor) => reglaContrasena(valor ?? '') === true,
+      },
+      cancel: { flat: true, noCaps: true, label: 'Volver' },
+      ok: { color: 'primary', unelevated: true, noCaps: true, label: 'Restablecer' },
+    })
+    .onOk((contrasena) => ejecutarRestablecer(usuario, { contrasena }));
+}
+
+async function ejecutarRestablecer(usuario, datos) {
+  try {
+    const resultado = await gimnasio.restablecerContrasenaUsuario(usuario._id, datos);
+    quasar.notify({
+      type: 'positive',
+      message: `Contraseña de ${usuario.nombres} restablecida`,
+      caption: resultado.usoCedula
+        ? 'Ahora es su número de cédula. Deberá cambiarla al entrar.'
+        : 'Deberá cambiarla al entrar.',
+    });
+  } catch (error) {
+    quasar.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo restablecer la contraseña',
+    });
+  }
 }
 
 onMounted(async () => {

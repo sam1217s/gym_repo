@@ -214,6 +214,12 @@ export async function eliminarUsuario(id) {
   return respuesta.data;
 }
 
+/** Restablece la contrasena de un integrante. Sin `contrasena`, usa su cedula. */
+export async function restablecerContrasenaUsuario(id, datos = {}) {
+  const { data: respuesta } = await api.post(`/usuarios/${id}/restablecer-contrasena`, datos);
+  return respuesta.data;
+}
+
 // --- Planes de membresia -------------------------------------------------------
 
 export async function listarPlanesMembresia() {

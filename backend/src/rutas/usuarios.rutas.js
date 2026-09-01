@@ -13,6 +13,7 @@ import { esquemaIdParam } from '../validaciones/comunes.validacion.js';
 import {
   esquemaActualizarUsuario,
   esquemaCrearUsuario,
+  esquemaRestablecerContrasena,
 } from '../validaciones/usuarios.validacion.js';
 
 const rutas = Router();
@@ -34,6 +35,11 @@ rutas.post(
   controlador.crearUsuario,
 );
 rutas.patch('/:id', validar(esquemaActualizarUsuario), controlador.actualizarUsuario);
+rutas.post(
+  '/:id/restablecer-contrasena',
+  validar(esquemaRestablecerContrasena),
+  controlador.restablecerContrasena,
+);
 rutas.delete('/:id', validar(esquemaIdParam), controlador.eliminarUsuario);
 
 export default rutas;

@@ -20,3 +20,10 @@ export const actualizarUsuario = manejadorAsync(async (peticion, respuesta) =>
 export const eliminarUsuario = manejadorAsync(async (peticion, respuesta) =>
   responderOk(respuesta, await servicioUsuarios.eliminarUsuario(peticion.params.id)),
 );
+
+export const restablecerContrasena = manejadorAsync(async (peticion, respuesta) =>
+  responderOk(
+    respuesta,
+    await servicioUsuarios.restablecerContrasena(peticion.params.id, peticion.body),
+  ),
+);

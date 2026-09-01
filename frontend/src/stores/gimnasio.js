@@ -78,6 +78,10 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     usuarios.value = usuarios.value.filter((usuario) => usuario._id !== id);
   }
 
+  async function restablecerContrasenaUsuario(id, datos) {
+    return servicioGimnasio.restablecerContrasenaUsuario(id, datos);
+  }
+
   // --- Planes de membresia ----------------------------------------------------------
 
   async function cargarPlanesMembresia() {
@@ -385,6 +389,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     crearUsuario,
     actualizarUsuario,
     eliminarUsuario,
+    restablecerContrasenaUsuario,
     cargarPlanesMembresia,
     crearPlanMembresia,
     actualizarPlanMembresia,
