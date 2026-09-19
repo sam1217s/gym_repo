@@ -38,6 +38,24 @@ export const useAutenticacionStore = defineStore(
       return usuario.value;
     }
 
+    /** Pide el codigo OTP por el canal elegido (no abre sesion todavia). */
+    function enviarOtp(datos) {
+      return servicioAuth.enviarOtp(datos);
+    }
+
+    /** Verifica el codigo OTP y, si es valido, abre sesion. */
+    async function iniciarSesionOtp(datos) {
+      usuario.value = await servicioAuth.verificarOtp(datos);
+      sesionVerificada.value = true;
+      return usuario.value;
+    }
+
+    /** El usuario fija su propio telefono (para poder entrar por OTP). */
+    async function actualizarTelefono(telefono) {
+      usuario.value = await servicioAuth.actualizarMiTelefono(telefono);
+      return usuario.value;
+    }
+
     async function cerrarSesion() {
       try {
         await servicioAuth.cerrarSesion();
@@ -76,6 +94,9 @@ export const useAutenticacionStore = defineStore(
       estaAutenticado,
       debeCambiarContrasena,
       iniciarSesion,
+      enviarOtp,
+      iniciarSesionOtp,
+      actualizarTelefono,
       cerrarSesion,
       verificarSesion,
       cambiarContrasena,

@@ -33,3 +33,27 @@ export async function cambiarContrasena(datos) {
   const { data: respuesta } = await api.post('/auth/cambiar-contrasena', datos);
   return respuesta.data;
 }
+
+// --- Login por telefono con codigo (OTP) ---
+// `omitirRedireccion401`: son publicos; un 401 (codigo malo) no debe disparar el
+// interceptor de refresco/redireccion.
+
+export async function enviarOtp(datos) {
+  const { data: respuesta } = await api.post('/auth/otp/enviar', datos, {
+    omitirRedireccion401: true,
+  });
+  return respuesta.data;
+}
+
+export async function verificarOtp(datos) {
+  const { data: respuesta } = await api.post('/auth/otp/verificar', datos, {
+    omitirRedireccion401: true,
+  });
+  return respuesta.data;
+}
+
+/** El usuario en sesion fija su propio telefono (para poder entrar por OTP). */
+export async function actualizarMiTelefono(telefono) {
+  const { data: respuesta } = await api.patch('/auth/mi-telefono', { telefono });
+  return respuesta.data;
+}

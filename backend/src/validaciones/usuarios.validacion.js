@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { contrasenaSegura } from './auth.validacion.js';
-import { cedulaOpcional, idMongo } from './comunes.validacion.js';
+import { cedulaOpcional, idMongo, telefonoOpcional } from './comunes.validacion.js';
 
 /**
  * Un tenant_owner solo puede crear y administrar `sede_admin`. El rol no viaja
@@ -14,6 +14,8 @@ export const esquemaCrearUsuario = {
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
     email: z.string().email('Email invalido').toLowerCase().trim(),
     cedula: cedulaOpcional,
+    // Con telefono, el integrante puede entrar por codigo OTP ademas de contrasena.
+    telefono: telefonoOpcional,
     contrasenaInicial: contrasenaSegura,
     sede: idMongo,
   }),
@@ -28,6 +30,7 @@ export const esquemaActualizarUsuario = {
       // La cedula se puede agregar o corregir despues del alta (es la que se usa
       // por defecto al restablecer la contrasena).
       cedula: cedulaOpcional,
+      telefono: telefonoOpcional,
       sede: idMongo,
       activo: z.boolean(),
     })

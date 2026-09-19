@@ -37,6 +37,20 @@ export const cedulaOpcional = z
   })
   .optional();
 
+/**
+ * Telefono OPCIONAL en internacional (con o sin '+'). Un string vacio se trata
+ * como "no lo dio" (`undefined`), para no guardar cadenas vacias que el indice
+ * parcial contaria. El servicio lo normaliza a `+E164` al guardar.
+ */
+export const telefonoOpcional = z
+  .string()
+  .trim()
+  .transform((valor) => valor || undefined)
+  .refine((valor) => valor === undefined || /^\+?\d{7,15}$/.test(valor), {
+    message: 'Telefono en formato internacional, ej: +573001234567',
+  })
+  .optional();
+
 /** Correo OPCIONAL. Un string vacio se trata como "no lo dio" (`undefined`). */
 export const emailOpcional = z
   .string()

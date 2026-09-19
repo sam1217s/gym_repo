@@ -136,6 +136,12 @@
               :rules="[reglaCedulaOpcional]"
             />
 
+            <CampoTelefono
+              v-model="formulario.telefono"
+              label="Telefono (opcional)"
+              hint="Con el podra entrar por codigo (SMS o WhatsApp)"
+            />
+
             <q-input
               v-if="!editando"
               v-model="formulario.contrasenaInicial"
@@ -189,6 +195,7 @@
 import { useQuasar } from 'quasar';
 import { computed, onMounted, reactive, ref } from 'vue';
 
+import CampoTelefono from 'src/components/CampoTelefono.vue';
 import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
 
 import { ROLES } from 'src/stores/autenticacion.js';
@@ -244,6 +251,7 @@ const formulario = reactive({
   apellidos: '',
   email: '',
   cedula: '',
+  telefono: '',
   contrasenaInicial: '',
   sede: null,
 });
@@ -257,7 +265,15 @@ function abrirCreacion() {
   editando.value = false;
   usuarioActivo.value = null;
   contrasenaVisible.value = false;
-  Object.assign(formulario, { nombres: '', apellidos: '', email: '', cedula: '', contrasenaInicial: '', sede: null });
+  Object.assign(formulario, {
+    nombres: '',
+    apellidos: '',
+    email: '',
+    cedula: '',
+    telefono: '',
+    contrasenaInicial: '',
+    sede: null,
+  });
   dialogoAbierto.value = true;
 }
 
@@ -269,6 +285,7 @@ function abrirEdicion(usuario) {
     apellidos: usuario.apellidos,
     email: usuario.email,
     cedula: usuario.cedula ?? '',
+    telefono: usuario.telefono ?? '',
     contrasenaInicial: '',
     sede: usuario.sede,
   });
@@ -284,6 +301,7 @@ async function guardar() {
         apellidos: formulario.apellidos,
         // Solo se manda si la escribieron; vacia no borra la que ya tuviera.
         ...(formulario.cedula.trim() ? { cedula: formulario.cedula.trim() } : {}),
+        ...(formulario.telefono.trim() ? { telefono: formulario.telefono.trim() } : {}),
         sede: formulario.sede,
       });
       quasar.notify({ type: 'positive', message: 'Administrador actualizado' });
@@ -294,6 +312,7 @@ async function guardar() {
         email: formulario.email,
         // Solo se manda si la escribieron; el backend la trata como opcional.
         ...(formulario.cedula.trim() ? { cedula: formulario.cedula.trim() } : {}),
+        ...(formulario.telefono.trim() ? { telefono: formulario.telefono.trim() } : {}),
         contrasenaInicial: formulario.contrasenaInicial,
         sede: formulario.sede,
       });

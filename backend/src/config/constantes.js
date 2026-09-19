@@ -29,6 +29,10 @@ export const PREFIJO_REFERENCIA_PAGO_MIEMBRO = 'MB';
 
 export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
 
+/** Canales por los que se puede pedir el codigo OTP de login (Twilio Verify). */
+export const CANALES_OTP = Object.freeze({ SMS: 'sms', WHATSAPP: 'whatsapp' });
+export const LISTA_CANALES_OTP = Object.values(CANALES_OTP);
+
 /**
  * Plantilla de WhatsApp para el aviso de vencimiento.
  *

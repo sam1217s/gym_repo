@@ -74,6 +74,8 @@ const esquemaEntorno = z.object({
   TWILIO_ACCOUNT_SID: z.string().default(''),
   TWILIO_AUTH_TOKEN: z.string().default(''),
   TWILIO_NUMERO: z.string().default(''),
+  // Verify Service para el login por telefono con codigo (OTP).
+  TWILIO_VERIFY_SERVICE_SID: z.string().default(''),
   TWILIO_CONTENT_SID_VENCIMIENTO: z.string().default(''),
   TWILIO_CONTENT_SID_BIENVENIDA: z.string().default(''),
   TWILIO_CONTENT_SID_RECIBO: z.string().default(''),

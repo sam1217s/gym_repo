@@ -147,6 +147,7 @@ export function describirSesion(usuario, tenant = null) {
     email: usuario.email,
     cedula: usuario.cedula ?? null,
     rol: usuario.rol,
+    telefono: usuario.telefono ?? null,
     tenant: usuario.tenant,
     tenantNombre: tenant?.nombre ?? null,
     sede: usuario.sede,

@@ -52,28 +52,31 @@ export function useAutenticacion() {
     return false;
   }
 
+  /** Navegacion comun tras un login exitoso (por contrasena o por OTP). */
+  async function navegarTrasLogin(sesion) {
+    if (sesion.debeCambiarContrasena) {
+      await enrutador.push({ name: 'cambiar-contrasena' });
+      return sesion;
+    }
+
+    // Dueño con maquinas reportadas SIN LEER: se le avisa y se le lleva directo
+    // al panel de reportes. Una vez ahi se marcan leidas y no vuelve a saltar,
+    // aunque el equipo siga sin arreglarse (para verlas de nuevo entra a Reportes).
+    if (sesion.rol === ROLES.TENANT_OWNER && (await hayReportesPendientes())) {
+      await enrutador.push({ name: 'reportes' });
+      return sesion;
+    }
+
+    // `redirigir` lo pone el guard cuando alguien intenta entrar a una ruta
+    // protegida sin sesion: se le devuelve a donde queria ir.
+    await enrutador.push(ruta.query.redirigir ?? { name: 'panel' });
+    return sesion;
+  }
+
   async function iniciarSesion(credenciales) {
     cargando.value = true;
     try {
-      const sesion = await autenticacion.iniciarSesion(credenciales);
-
-      if (sesion.debeCambiarContrasena) {
-        await enrutador.push({ name: 'cambiar-contrasena' });
-        return sesion;
-      }
-
-      // Dueño con maquinas reportadas SIN LEER: se le avisa y se le lleva directo
-      // al panel de reportes. Una vez ahi se marcan leidas y no vuelve a saltar,
-      // aunque el equipo siga sin arreglarse (para verlas de nuevo entra a Reportes).
-      if (sesion.rol === ROLES.TENANT_OWNER && (await hayReportesPendientes())) {
-        await enrutador.push({ name: 'reportes' });
-        return sesion;
-      }
-
-      // `redirigir` lo pone el guard cuando alguien intenta entrar a una ruta
-      // protegida sin sesion: se le devuelve a donde queria ir.
-      await enrutador.push(ruta.query.redirigir ?? { name: 'panel' });
-      return sesion;
+      return await navegarTrasLogin(await autenticacion.iniciarSesion(credenciales));
     } catch (error) {
       const detalles = error.response?.data?.error?.detalles ?? [];
       exigeGimnasio.value = detalles.some((detalle) => detalle.campo === CAMPO_GIMNASIO_REQUERIDO);
@@ -82,6 +85,34 @@ export function useAutenticacion() {
         type: 'negative',
         message: extraerMensaje(error, 'No se pudo iniciar sesion'),
       });
+      return null;
+    } finally {
+      cargando.value = false;
+    }
+  }
+
+  /** Pide el codigo OTP por el canal elegido. Devuelve true si se envio. */
+  async function enviarOtp({ telefono, canal }) {
+    cargando.value = true;
+    try {
+      await autenticacion.enviarOtp({ telefono, canal });
+      quasar.notify({ type: 'positive', message: 'Te enviamos un codigo. Revisa tu telefono.' });
+      return true;
+    } catch (error) {
+      quasar.notify({ type: 'negative', message: extraerMensaje(error, 'No se pudo enviar el codigo') });
+      return false;
+    } finally {
+      cargando.value = false;
+    }
+  }
+
+  /** Verifica el codigo OTP y, si es valido, entra igual que el login normal. */
+  async function iniciarSesionOtp({ telefono, codigo }) {
+    cargando.value = true;
+    try {
+      return await navegarTrasLogin(await autenticacion.iniciarSesionOtp({ telefono, codigo }));
+    } catch (error) {
+      quasar.notify({ type: 'negative', message: extraerMensaje(error, 'Codigo invalido o expirado') });
       return null;
     } finally {
       cargando.value = false;
@@ -117,6 +148,8 @@ export function useAutenticacion() {
     cargando,
     exigeGimnasio,
     iniciarSesion,
+    enviarOtp,
+    iniciarSesionOtp,
     cambiarContrasena,
     cerrarSesion,
   };

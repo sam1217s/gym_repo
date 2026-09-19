@@ -480,6 +480,25 @@ plano de control multi-gym.
       recibo) con sus Content SID. Reescribir a fondo `CLAUDE.md` (aun describe el modelo
       multi-gym: facturacion de plataforma, onboarding, cobro plataforma, roles).
 
+### Login por telefono con codigo (OTP por SMS/WhatsApp) · HECHO
+Alternativa que CONVIVE con el login por correo/cedula + contrasena, para dueno y admins.
+- [x] **Twilio Verify** (`proveedores/twilioVerify.js`): `iniciarVerificacion`/`comprobarVerificacion`
+      (SMS o WhatsApp). Service SID en `TWILIO_VERIFY_SERVICE_SID`. Se inyecta para probar sin red.
+- [x] `Usuario.telefono` (+E164) con indice unico parcial `{ tenant, telefono }`.
+- [x] `servicios/otp.servicio.js`: `enviarCodigoOtp` (envia SOLO si el telefono es de un usuario;
+      respuesta generica) y `verificarCodigoOtp` (aprueba + usuario activo -> `{usuario, tenant}`).
+- [x] Rutas publicas `POST /auth/otp/enviar` y `/auth/otp/verificar` (con `limitadorLogin`);
+      el exito emite las mismas cookies que el login normal. `describirSesion` incluye `telefono`.
+- [x] Cargar telefono: en el CRUD de Equipo (dueno pone el de los admins) y self-service
+      `PATCH /auth/mi-telefono` (cualquier staff, incluido el dueno). Normalizado a +E164; 11000 -> 409.
+- [x] Frontend: `IniciarSesion.vue` con pestanas Correo/Telefono (CampoTelefono + canal +
+      codigo); "Mi telefono" en el menu de usuario del layout; store/composable/servicio.
+- [x] Pruebas `otp.prueba.js` (Twilio Verify mockeado): envio solo a usuarios, sesion solo con
+      codigo valido + usuario, mi-telefono + unicidad. **195 en verde**; build FE OK.
+- [x] Twilio: Verify Service creado (`VA4c2f4b...`), credenciales en el `.env` local.
+- [ ] **Pendiente**: `TWILIO_VERIFY_SERVICE_SID` en el `.env` del VPS al desplegar; cada usuario
+      debe cargar su telefono una vez (el dueno via "Mi telefono").
+
 ### Pendientes acumulados (para no olvidar) · anotados 29 jul 2026
 
 **WhatsApp — overhaul de la plantilla `aviso_vencimiento` (todo en UNA edicion + re-review):**

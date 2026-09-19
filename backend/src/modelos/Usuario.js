@@ -32,6 +32,14 @@ const esquemaUsuario = new mongoose.Schema(
      */
     cedula: { type: String, trim: true },
 
+    /**
+     * Telefono en internacional (E.164, ej. "+573001234567"). OPCIONAL y unico
+     * por tenant (indice parcial abajo): con el, el usuario puede entrar por
+     * codigo OTP (SMS/WhatsApp) ademas de por contrasena. Sin definir cuando
+     * falta, para que el indice parcial no lo cuente.
+     */
+    telefono: { type: String, trim: true },
+
     // `select: false` para que ningun `find()` distraido lo arrastre a una respuesta.
     contrasenaHash: { type: String, required: true, select: false },
 
@@ -70,6 +78,15 @@ esquemaUsuario.index({ tenant: 1, email: 1 }, { unique: true });
 esquemaUsuario.index(
   { tenant: 1, cedula: 1 },
   { unique: true, partialFilterExpression: { cedula: { $type: 'string' } } },
+);
+
+/**
+ * El telefono tambien es unico por tenant y OPCIONAL (indice parcial): es la
+ * llave del login por OTP, asi que dos usuarios no pueden compartirlo.
+ */
+esquemaUsuario.index(
+  { tenant: 1, telefono: 1 },
+  { unique: true, partialFilterExpression: { telefono: { $type: 'string' } } },
 );
 
 esquemaUsuario.virtual('nombreCompleto').get(function () {

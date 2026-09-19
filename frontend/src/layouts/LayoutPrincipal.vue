@@ -23,6 +23,12 @@
             </div>
             <q-separator />
             <q-list>
+              <q-item v-close-popup clickable @click="abrirDialogoTelefono">
+                <q-item-section avatar>
+                  <q-icon name="smartphone" color="primary" />
+                </q-item-section>
+                <q-item-section>Mi telefono</q-item-section>
+              </q-item>
               <q-item v-close-popup clickable @click="cerrarSesion">
                 <q-item-section avatar>
                   <q-icon name="logout" color="primary" />
@@ -82,6 +88,35 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Cada usuario fija su propio telefono para poder entrar por codigo (OTP). -->
+    <q-dialog v-model="dialogoTelefono">
+      <q-card style="min-width: 320px; max-width: 92vw">
+        <q-card-section class="q-pb-none">
+          <div class="text-h6 titulo-display">Mi telefono</div>
+          <div class="text-caption text-grey-7">
+            Con el podras entrar con un codigo por SMS o WhatsApp.
+          </div>
+        </q-card-section>
+        <q-form @submit.prevent="guardarTelefono">
+          <q-card-section>
+            <CampoTelefono v-model="telefonoNuevo" label="Tu telefono" />
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat no-caps label="Cerrar" :disable="guardandoTelefono" @click="dialogoTelefono = false" />
+            <q-btn
+              type="submit"
+              color="primary"
+              unelevated
+              no-caps
+              label="Guardar"
+              :loading="guardandoTelefono"
+              :disable="!telefonoNuevo"
+            />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -89,13 +124,41 @@
 import { useQuasar } from 'quasar';
 import { computed, onMounted, ref } from 'vue';
 
+import CampoTelefono from 'src/components/CampoTelefono.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
-import { ROLES } from 'src/stores/autenticacion.js';
+import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const { usuario, cerrarSesion } = useAutenticacion();
+const autenticacion = useAutenticacionStore();
 const $q = useQuasar();
 const gimnasio = useGimnasioStore();
+
+// --- "Mi telefono": el usuario fija su propio numero para entrar por OTP ---
+const dialogoTelefono = ref(false);
+const telefonoNuevo = ref('');
+const guardandoTelefono = ref(false);
+
+function abrirDialogoTelefono() {
+  telefonoNuevo.value = usuario.value?.telefono ?? '';
+  dialogoTelefono.value = true;
+}
+
+async function guardarTelefono() {
+  guardandoTelefono.value = true;
+  try {
+    await autenticacion.actualizarTelefono(telefonoNuevo.value);
+    $q.notify({ type: 'positive', message: 'Telefono actualizado' });
+    dialogoTelefono.value = false;
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.error?.mensaje ?? 'No se pudo guardar el telefono',
+    });
+  } finally {
+    guardandoTelefono.value = false;
+  }
+}
 
 const menuAbierto = ref(false);
 

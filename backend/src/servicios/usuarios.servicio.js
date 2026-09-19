@@ -1,6 +1,7 @@
 import { ROLES } from '../config/constantes.js';
 import { obtenerContexto } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
+import { aE164 } from '../proveedores/twilio.proveedor.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { cifrarContrasena } from '../utilidades/contrasena.js';
 import { exigirSede } from './sedes.servicio.js';
@@ -42,6 +43,8 @@ export async function crearUsuario(datos) {
       email: datos.email,
       // Opcional: si no vino, se deja sin definir para que el indice parcial no la cuente.
       cedula: datos.cedula,
+      // Telefono normalizado a +E164 para que coincida con la busqueda del login OTP.
+      telefono: datos.telefono ? aE164(datos.telefono) : undefined,
       contrasenaHash: await cifrarContrasena(datos.contrasenaInicial),
       rol: ROLES.SEDE_ADMIN,
       sede: datos.sede,
@@ -50,12 +53,17 @@ export async function crearUsuario(datos) {
     });
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {
-      // El indice que choco dice si fue el correo o la cedula.
-      const campo = error.keyPattern?.cedula ? 'la cedula' : 'el correo';
-      throw ErrorApi.conflicto(`Ya existe un usuario con ${campo} en este gimnasio`);
+      throw ErrorApi.conflicto(`Ya existe un usuario con ${campoDuplicado(error)} en este gimnasio`);
     }
     throw error;
   }
+}
+
+/** Traduce el indice unico que choco (11000) al campo legible para el mensaje. */
+function campoDuplicado(error) {
+  if (error.keyPattern?.cedula) return 'la cedula';
+  if (error.keyPattern?.telefono) return 'el telefono';
+  return 'el correo';
 }
 
 export async function actualizarUsuario(id, datos) {
@@ -72,6 +80,9 @@ export async function actualizarUsuario(id, datos) {
 
   if (datos.sede) await exigirSede(datos.sede);
 
+  // El telefono se normaliza a +E164 (igual que al crear) antes de asignarlo.
+  if (datos.telefono) datos.telefono = aE164(datos.telefono);
+
   Object.assign(usuario, datos);
 
   // Desactivar a alguien tambien lo saca de la sesion que tenga abierta.
@@ -81,11 +92,34 @@ export async function actualizarUsuario(id, datos) {
     return await usuario.save();
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {
-      const campo = error.keyPattern?.cedula ? 'la cedula' : 'el correo';
-      throw ErrorApi.conflicto(`Ya existe un usuario con ${campo} en este gimnasio`);
+      throw ErrorApi.conflicto(`Ya existe un usuario con ${campoDuplicado(error)} en este gimnasio`);
     }
     throw error;
   }
+}
+
+/**
+ * Cualquier miembro del staff fija SU propio telefono (para poder entrar por
+ * OTP). No pasa por el CRUD del dueno: es self-service, asi que el dueno tambien
+ * puede ponerse el suyo. `Usuario` no es tenant-scoped; el doc ya trae su tenant.
+ */
+export async function actualizarMiTelefono(usuarioId, telefono) {
+  const Usuario = obtenerModelo('Usuario');
+  const usuario = await Usuario.findById(usuarioId);
+  if (!usuario) throw ErrorApi.noAutenticado();
+
+  usuario.telefono = aE164(telefono);
+
+  try {
+    await usuario.save();
+  } catch (error) {
+    if (error.code === CODIGO_DUPLICADO_MONGO) {
+      throw ErrorApi.conflicto('Ese telefono ya esta en uso por otro usuario');
+    }
+    throw error;
+  }
+
+  return usuario;
 }
 
 /**

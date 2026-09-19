@@ -1,6 +1,34 @@
 import { z } from 'zod';
 
+import { LISTA_CANALES_OTP } from '../config/constantes.js';
+
 const LONGITUD_MINIMA_CONTRASENA = 8;
+
+// Telefono en internacional; se acepta con o sin '+' y se normaliza en el servicio.
+const telefono = z
+  .string()
+  .trim()
+  .min(7, 'Telefono invalido')
+  .regex(/^\+?\d{7,15}$/, 'Telefono invalido');
+
+export const esquemaEnviarOtp = {
+  body: z.object({
+    telefono,
+    canal: z.enum(LISTA_CANALES_OTP),
+  }),
+};
+
+export const esquemaVerificarOtp = {
+  body: z.object({
+    telefono,
+    codigo: z.string().trim().regex(/^\d{4,8}$/, 'El codigo debe tener entre 4 y 8 digitos'),
+  }),
+};
+
+/** Cada usuario fija su propio telefono (para poder entrar por OTP). */
+export const esquemaMiTelefono = {
+  body: z.object({ telefono }),
+};
 
 export const contrasenaSegura = z
   .string()
