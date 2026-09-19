@@ -5,22 +5,22 @@ import { aislamientoTenant } from './complementos/aislamientoTenant.js';
  * TENANT-SCOPED. La conversacion de WhatsApp con un miembro: lo que el escribe
  * (comprobantes de pago, dudas) y lo que el gimnasio le responde desde el panel.
  *
- * Existe porque un numero conectado a la Cloud API NO tiene bandeja de entrada:
- * sin esto, el mensaje del miembro llega a Meta y no lo ve nadie.
+ * Existe porque un numero conectado a la API de WhatsApp NO tiene bandeja de
+ * entrada: sin esto, el mensaje del miembro llega al proveedor y no lo ve nadie.
  *
  * `sede` se hereda del miembro para que el contrato `filtroSede` funcione igual
  * que en el resto: un sede_admin solo ve la conversacion de SUS miembros. Si el
  * numero no corresponde a ningun miembro, queda en `null` y solo lo ve el dueño.
  *
- * `idMensajeWhatsapp` (el `wamid` de Meta) es la clave de IDEMPOTENCIA: Meta
- * reintenta los webhooks, y sin ese indice el mismo comprobante entraria dos
- * veces. Misma regla que `Pago.transaccionWompi`.
+ * `idMensajeWhatsapp` (el `MessageSid` de Twilio) es la clave de IDEMPOTENCIA:
+ * el proveedor reintenta los webhooks, y sin ese indice el mismo comprobante
+ * entraria dos veces. Misma regla que `Pago.transaccionWompi`.
  */
 const esquemaMensajeWhatsapp = new mongoose.Schema(
   {
     sede: { type: mongoose.Schema.Types.ObjectId, ref: 'Sede', default: null },
     miembro: { type: mongoose.Schema.Types.ObjectId, ref: 'Miembro', default: null },
-    /** Siempre en formato internacional, como lo manda Meta: "573001234567". */
+    /** Siempre en formato internacional: "573001234567" (sin `whatsapp:` ni '+'). */
     telefono: { type: String, required: true, trim: true },
 
     direccion: { type: String, enum: ['entrante', 'saliente'], required: true },
@@ -33,13 +33,21 @@ const esquemaMensajeWhatsapp = new mongoose.Schema(
     /** Cuerpo del mensaje o pie de foto. Puede ir vacio si solo mandaron imagen. */
     texto: { type: String, trim: true, default: '' },
 
-    /** Identificador del archivo en Meta. Se guarda por trazabilidad. */
+    /** Id del archivo en el proveedor (media SID de Twilio). Trazabilidad. */
     mediaId: { type: String, default: null },
-    /** Ruta relativa dentro del almacen, una vez descargado el comprobante. */
+    /**
+     * `public_id` del comprobante en Cloudinary (con su carpeta). Con el se firma
+     * la URL de descarga y se borra en la purga. Los comprobantes HEREDADOS (en
+     * disco, previos a la migracion) no lo tienen y usan `archivo` en su lugar.
+     */
+    archivoPublicId: { type: String, default: null },
+    /** `resource_type` que eligio Cloudinary (image/video/raw): para firmar/borrar. */
+    archivoTipoRecurso: { type: String, default: null },
+    /** HEREDADO: ruta relativa dentro del almacen en disco (comprobantes viejos). */
     archivo: { type: String, default: null },
     mimeType: { type: String, default: null },
 
-    /** `wamid` de Meta. Unico por tenant: impide duplicar por reintentos. */
+    /** `MessageSid` de Twilio. Unico por tenant: impide duplicar por reintentos. */
     idMensajeWhatsapp: { type: String, default: null },
 
     /** Del lado del gimnasio: los entrantes nacen sin leer. */

@@ -18,13 +18,12 @@ rutas.post('/wompi', controlador.recibirEventoWompi);
 rutas.post('/wompi-miembro', controladorMiembro.recibirEventoWompiMiembro);
 
 /**
- * WhatsApp: los mensajes que mandan los miembros (comprobantes de pago). Mismo
- * criterio que los de Wompi, con dos pasos:
- *   - GET  -> el handshake con el que Meta da de alta la URL
- *   - POST -> el evento; el `phone_number_id` dice de que gimnasio es y con que
- *             secreto verificar la firma, que es lo que de verdad autentica.
+ * WhatsApp (Twilio): los mensajes que mandan los miembros (comprobantes de pago).
+ * Mismo criterio que los de Wompi: Twilio manda un POST (form-urlencoded) a esta
+ * URL; el numero destino `To` dice de que gimnasio es y con que Auth Token
+ * verificar la firma `X-Twilio-Signature`, que es lo que de verdad autentica.
+ * (Twilio no hace handshake de alta, asi que no hay GET.)
  */
-rutas.get('/whatsapp', controladorMensajes.verificarWebhook);
 rutas.post('/whatsapp', controladorMensajes.recibirWebhook);
 
 export default rutas;

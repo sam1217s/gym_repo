@@ -6,28 +6,28 @@ import { idMongo } from './comunes.validacion.js';
 /**
  * Canal de WhatsApp de un gimnasio. Lo configura el super_admin (`:id` en la
  * URL). Cada proveedor pide credenciales distintas, asi que se valida como
- * union discriminada: elegir `cloud_api` sin token, o `n8n` sin URL, es un 400.
- *
- * `baileys` NO se acepta: no esta implementado y dejaria el canal roto en
- * silencio hasta la corrida del cron.
+ * union discriminada: elegir `twilio` sin Account SID, o `n8n` sin URL, es un 400.
  */
-const cloudApi = z.object({
-  proveedor: z.literal(PROVEEDORES_WHATSAPP.CLOUD_API),
-  // "Phone number ID" del numero en Meta (no es el telefono, es un id numerico).
-  idTelefono: z.string().trim().min(1, 'El ID del telefono es obligatorio'),
+const twilio = z.object({
+  proveedor: z.literal(PROVEEDORES_WHATSAPP.TWILIO),
+  accountSid: z.string().trim().min(1, 'El Account SID es obligatorio'),
   /**
-   * Token permanente de la app de Meta. Es el secreto: no vuelve al cliente, asi
+   * Auth Token de la cuenta de Twilio. Es el secreto: no vuelve al cliente, asi
    * que el panel no puede reenviarlo al reguardar. Opcional aqui, y el servicio
    * conserva el que ya estaba; si no hay ninguno, es el servicio quien rechaza.
-   * Exigirlo aqui obligaria a repegar un token que Meta solo muestra una vez.
+   * Sirve tanto para enviar como para verificar la firma de los entrantes.
    */
-  token: z.string().trim().min(1).optional(),
+  authToken: z.string().trim().min(1).optional(),
+  // Numero de WhatsApp de Twilio (E.164; se acepta con o sin `whatsapp:`/'+').
+  numero: z.string().trim().min(1, 'El numero de WhatsApp es obligatorio'),
   /**
-   * Clave secreta de la app. OPCIONAL para enviar, OBLIGATORIA para RECIBIR:
-   * con ella se verifica la firma de los mensajes entrantes. Sin verificar la
-   * firma, cualquiera podria inyectar comprobantes falsos en la bandeja.
+   * Content SID (`HX...`) de cada plantilla aprobada en Twilio. Opcionales: sin
+   * el de una plantilla, ese envio en particular falla (pero el canal recibe y
+   * responde igual). Se conservan los previos si llegan vacios.
    */
-  secretoApp: z.string().trim().min(1).optional(),
+  plantillaVencimiento: z.string().trim().optional(),
+  plantillaBienvenida: z.string().trim().optional(),
+  plantillaRecibo: z.string().trim().optional(),
 });
 
 const n8n = z.object({
@@ -41,5 +41,5 @@ const ninguno = z.object({
 
 export const esquemaGuardarWhatsapp = {
   params: z.object({ id: idMongo }),
-  body: z.discriminatedUnion('proveedor', [cloudApi, n8n, ninguno]),
+  body: z.discriminatedUnion('proveedor', [twilio, n8n, ninguno]),
 };

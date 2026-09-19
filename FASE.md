@@ -420,6 +420,36 @@ detras, asi que sin esto el comprobante no lo ve nadie.
 - [ ] **Pendiente (accion en Meta)**: registrar la URL del webhook y suscribir el campo
       `messages` en la app del gimnasio, y pegar el App Secret en el panel.
 
+### Migracion de WhatsApp Cloud API (Meta) → Twilio WhatsApp + Cloudinary · HECHO
+El cliente cambio su numero/negocio a **Twilio**. Se REEMPLAZO el proveedor `cloud_api` (Meta)
+por `twilio` en todo el sistema; se conservan `n8n` y `ninguno`. Los mensajes ya guardados en
+`MensajeWhatsapp` **no se pierden** (son independientes del proveedor).
+- [x] `proveedores/twilio.proveedor.js`: envia un **Content Template** (`ContentSid` +
+      `ContentVariables` numeradas) con Basic Auth (`AccountSid:AuthToken`). El Content SID de
+      cada plantilla se resuelve por `PLANTILLA_*.clave` desde `credenciales.plantillas`.
+      Se borraron `cloudApi.proveedor.js` y `baileys.proveedor.js`.
+- [x] Bandeja entrante en Twilio (`mensajes.servicio.js`): webhook `POST /api/webhooks/whatsapp`
+      form-urlencoded; firma `X-Twilio-Signature` = base64(HMAC-SHA1(authToken, URL+params));
+      tenant por el numero `To`; sin GET de handshake. `servidor.js` monta `express.urlencoded`.
+- [x] Comprobantes a **Cloudinary** (`almacenamiento/cloudinary.js`, env `CLOUDINARY_*`), tipo
+      `authenticated`, carpeta `gymsaas/comprobantes/<tenantId>`. `GET /api/mensajes/:id/archivo`
+      **redirige** a una URL firmada; los archivos en disco heredados se siguen sirviendo.
+      `MensajeWhatsapp` gana `archivoPublicId` y `archivoTipoRecurso`.
+- [x] Retencion **3 meses** (`MESES_RETENCION_COMPROBANTE`): la purga borra el archivo (Cloudinary
+      o disco) y **conserva el registro**.
+- [x] Config del canal (super_admin): validacion/servicio para twilio
+      (`accountSid`, `authToken` secreto, `numero`, 3 Content SID). Panel `PanelPlataforma.vue`
+      con los nuevos campos. Se retiro `WHATSAPP_TOKEN_VERIFICACION`.
+- [x] Pruebas: `twilio.prueba.js` (nuevo), `mensajes.prueba.js` reescrito (firma Twilio,
+      Cloudinary inyectado, purga Cloudinary + disco), `whatsapp.prueba.js` y `notificaciones`
+      actualizados. Suite: **273 en verde**. Frontend compila.
+- [ ] **Pendiente (accion fuera del codigo)**:
+      - `.env` del VPS: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`;
+        `npm i` en el backend (dependencia `cloudinary`).
+      - En Twilio: crear las 3 Content Templates (vencimiento/bienvenida/recibo) y pegar sus
+        Content SID en el panel; apuntar el webhook entrante del WhatsApp Sender a
+        `ORIGEN_PUBLICO/api/webhooks/whatsapp`.
+
 ### Pendientes acumulados (para no olvidar) · anotados 29 jul 2026
 
 **WhatsApp — overhaul de la plantilla `aviso_vencimiento` (todo en UNA edicion + re-review):**

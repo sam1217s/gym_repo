@@ -366,24 +366,28 @@ describe('quien queda fuera de la corrida', () => {
   });
 
   it('un gimnasio mal configurado no tumba a los demas', async () => {
-    // `baileys` no esta implementado: su fabrica lanza.
-    const roto = await montarGimnasio({ slug: 'roto', proveedor: PROVEEDORES_WHATSAPP.BAILEYS });
+    // Twilio sin credenciales: su fabrica lanza (mal configurado).
+    const roto = await montarGimnasio({
+      slug: 'roto',
+      proveedor: PROVEEDORES_WHATSAPP.TWILIO,
+      credenciales: {},
+    });
     const sano = await montarGimnasio({ slug: 'sano' });
 
     await crearMiembroConPagos(roto, { documento: 'x', pagos: [{ diasHastaVencer: 1 }] });
     await crearMiembroConPagos(sano, { documento: 'y', pagos: [{ diasHastaVencer: 1 }] });
 
-    // El de `baileys` usa la fabrica real (lanza); el sano, la falsa.
+    // El de Twilio roto usa la fabrica real (lanza); el sano, la falsa.
     const falso = proveedorFalso();
     const resumen = await ejecutarAvisosDeVencimiento({
       crearProveedor: (config) =>
-        config?.proveedor === PROVEEDORES_WHATSAPP.BAILEYS
+        config?.proveedor === PROVEEDORES_WHATSAPP.TWILIO
           ? crearProveedor(config)
           : falso.crearProveedor(),
     });
 
     const porTenant = Object.fromEntries(resumen.map((fila) => [fila.tenant, fila]));
-    expect(porTenant.roto.error).toMatch(/no esta implementado/);
+    expect(porTenant.roto.error).toMatch(/credenciales/);
     expect(porTenant.sano.enviados).toBe(1);
   });
 });
@@ -499,14 +503,8 @@ describe('fabrica de proveedores', () => {
       /urlWebhook/,
     );
     expect(() =>
-      crearProveedor({ proveedor: PROVEEDORES_WHATSAPP.CLOUD_API, credenciales: { token: 'x' } }),
-    ).toThrow(/idTelefono/);
-  });
-
-  it('baileys lanza: no esta implementado', () => {
-    expect(() => crearProveedor({ proveedor: PROVEEDORES_WHATSAPP.BAILEYS })).toThrow(
-      /no esta implementado/,
-    );
+      crearProveedor({ proveedor: PROVEEDORES_WHATSAPP.TWILIO, credenciales: { accountSid: 'AC1' } }),
+    ).toThrow(/credenciales/);
   });
 
   it('un proveedor desconocido lanza', () => {

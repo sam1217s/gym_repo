@@ -1,140 +1,130 @@
 import crypto from 'node:crypto';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
-import { MESES_RETENCION_COMPROBANTE, PROVEEDORES_WHATSAPP } from '../config/constantes.js';
+import {
+  borrarComprobante,
+  subirComprobante,
+  urlFirmada,
+} from '../almacenamiento/cloudinary.js';
+import { MESES_RETENCION_COMPROBANTE } from '../config/constantes.js';
 import { entorno } from '../config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
+import { aE164, autorizacionBasica, aWhatsapp } from '../proveedores/twilio.proveedor.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 
 /**
  * Bandeja de WhatsApp: los mensajes que mandan los miembros (sobre todo
  * comprobantes de pago) y las respuestas del gimnasio.
  *
- * Existe porque un numero conectado a la Cloud API no tiene bandeja: sin esto,
- * el comprobante llega a Meta y no lo ve nadie.
+ * Existe porque un numero conectado a la API de WhatsApp no tiene bandeja: sin
+ * esto, el comprobante llega al proveedor y no lo ve nadie.
  *
  * COMO SE AUTENTICA EL WEBHOOK (mismo patron que el webhook de Wompi de los
- * miembros): Meta manda TODOS los mensajes de TODOS los gimnasios a una sola
- * URL. Se lee el `phone_number_id` del payload -dato no confiable- solo para
- * saber DE QUE GIMNASIO es y con que secreto verificar; la firma HMAC es la que
- * autentica. Sin secreto configurado no se acepta nada: aceptar mensajes sin
- * verificar permitiria inyectar comprobantes falsos.
+ * miembros): Twilio manda TODOS los mensajes de TODOS los gimnasios a una sola
+ * URL. Se lee el numero destino (`To`) -dato no confiable- solo para saber DE
+ * QUE GIMNASIO es y con que Auth Token verificar; la firma `X-Twilio-Signature`
+ * es la que autentica. Sin Auth Token configurado no se acepta nada: aceptar
+ * mensajes sin verificar permitiria inyectar comprobantes falsos.
+ *
+ * Los comprobantes se guardan en CLOUDINARY (tipo `authenticated`, no publicos).
  */
 
-const VERSION_GRAFO = 'v21.0';
 const TIEMPO_LIMITE_MS = 15_000;
-/** Tope del comprobante que se baja de Meta: evita que un archivo enorme llene el disco. */
+/** Tope del comprobante que se baja de Twilio: evita que un archivo enorme llene todo. */
 const MAX_TAMANO_MEDIA = 20 * 1024 * 1024; // 20 MB
 
-/**
- * Tipo de Meta -> tipo nuestro. Los stickers son webp (se pintan como imagen) y
- * las notas de voz son audio. Lo que no reconocemos entra como "otro".
- */
-const TIPOS = {
-  text: 'texto',
-  image: 'imagen',
-  sticker: 'imagen',
-  document: 'documento',
-  audio: 'audio',
-  voice: 'audio',
-  video: 'video',
-};
-
-/**
- * Campos de Meta que traen un archivo descargable, en orden de preferencia. Todos
- * tienen la misma forma `{ id, mime_type, ... }`. Antes solo se miraban `image` y
- * `document`, asi que audios, videos, notas de voz y stickers llegaban vacios.
- */
-const CAMPOS_MEDIA = ['image', 'document', 'audio', 'voice', 'video', 'sticker'];
+/** MIME de Twilio -> tipo nuestro. Lo que no reconocemos entra como "otro". */
+function mapearTipo(mime = '') {
+  if (mime.startsWith('image/')) return 'imagen';
+  if (mime === 'application/pdf') return 'documento';
+  if (mime.startsWith('audio/')) return 'audio';
+  if (mime.startsWith('video/')) return 'video';
+  return 'otro';
+}
 
 // --- Webhook -----------------------------------------------------------------
 
-/** El handshake con el que Meta da de alta la URL. */
-export function verificarSuscripcion({ modo, token, desafio }) {
-  if (modo === 'subscribe' && token === entorno.WHATSAPP_TOKEN_VERIFICACION) return desafio;
-  throw ErrorApi.prohibido('Token de verificacion invalido');
-}
+/**
+ * Verifica la firma `X-Twilio-Signature`: base64(HMAC-SHA1(authToken, URL +
+ * params ordenados por clave y concatenados key+value)). La URL debe ser
+ * EXACTAMENTE la que Twilio invoco (la que quedo configurada en la consola).
+ */
+export function firmaValidaTwilio(urlPublica, params, firma, authToken) {
+  if (!firma || !authToken) return false;
 
-/** `sha256=...` calculado sobre el cuerpo CRUDO con el secreto de la app. */
-function firmaValida(cuerpoCrudo, firma, secreto) {
-  if (!firma || !cuerpoCrudo) return false;
+  const datos =
+    urlPublica +
+    Object.keys(params)
+      .sort()
+      .map((clave) => clave + params[clave])
+      .join('');
 
-  const esperada = `sha256=${crypto.createHmac('sha256', secreto).update(cuerpoCrudo).digest('hex')}`;
+  const esperada = crypto.createHmac('sha1', authToken).update(Buffer.from(datos, 'utf-8')).digest('base64');
+
   const a = Buffer.from(firma);
   const b = Buffer.from(esperada);
   // Longitudes distintas rompen timingSafeEqual: se comprueba antes.
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Descarga el comprobante de Meta y lo deja en el almacen del gimnasio. */
-async function descargarArchivo({ mediaId, token, tenantId }) {
-  const cabeceras = { Authorization: `Bearer ${token}` };
-
-  const meta = await fetch(`https://graph.facebook.com/${VERSION_GRAFO}/${mediaId}`, {
-    headers: cabeceras,
-    signal: AbortSignal.timeout(TIEMPO_LIMITE_MS),
-  });
-  if (!meta.ok) throw new Error(`Meta respondio ${meta.status} al pedir el archivo`);
-  const { url, mime_type: mimeType } = await meta.json();
-
-  const binario = await fetch(url, {
-    headers: cabeceras,
-    signal: AbortSignal.timeout(TIEMPO_LIMITE_MS),
-  });
-  if (!binario.ok) throw new Error(`Meta respondio ${binario.status} al descargar`);
-
-  // Tope de tamano: un comprobante enorme no debe poder llenar el disco.
-  const tamano = Number(binario.headers.get('content-length'));
-  if (tamano > MAX_TAMANO_MEDIA) {
-    throw new Error(`El archivo pesa ${tamano} bytes, supera el limite`);
-  }
-
-  const datos = Buffer.from(await binario.arrayBuffer());
-  if (datos.length > MAX_TAMANO_MEDIA) throw new Error('El archivo supera el limite de tamano');
-
-  const extension = (mimeType?.split('/')[1] ?? 'bin').split(';')[0];
-  const relativa = path.join(String(tenantId), `${mediaId}.${extension}`);
-  const absoluta = path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', relativa);
-
-  await mkdir(path.dirname(absoluta), { recursive: true });
-  await writeFile(absoluta, datos);
-
-  return { archivo: relativa, mimeType };
-}
-
-/** El tenant dueño del numero al que le escribieron. */
-async function tenantPorNumero(idTelefono) {
+/** El tenant dueño del numero de WhatsApp de Twilio al que le escribieron. */
+async function tenantPorNumero(numeroE164) {
   const Tenant = obtenerModelo('Tenant');
   return ejecutarSinTenant(() =>
-    Tenant.findOne({ 'config.whatsapp.credenciales.idTelefono': idTelefono }),
+    Tenant.findOne({ 'config.whatsapp.credenciales.numero': numeroE164 }),
   );
 }
 
+/** Descarga un archivo de Twilio (requiere Basic Auth) y lo devuelve como buffer. */
+async function descargarMedia(url, credenciales) {
+  const respuesta = await fetch(url, {
+    headers: { Authorization: autorizacionBasica(credenciales) },
+    signal: AbortSignal.timeout(TIEMPO_LIMITE_MS),
+  });
+  if (!respuesta.ok) throw new Error(`Twilio respondio ${respuesta.status} al descargar el archivo`);
+
+  const tamano = Number(respuesta.headers.get('content-length'));
+  if (tamano > MAX_TAMANO_MEDIA) throw new Error(`El archivo pesa ${tamano} bytes, supera el limite`);
+
+  const buffer = Buffer.from(await respuesta.arrayBuffer());
+  if (buffer.length > MAX_TAMANO_MEDIA) throw new Error('El archivo supera el limite de tamano');
+
+  const mimeType = respuesta.headers.get('content-type')?.split(';')[0] ?? null;
+  return { buffer, mimeType };
+}
+
 /**
- * Procesa un evento de Meta. Devuelve cuantos mensajes se guardaron.
+ * Procesa un evento entrante de Twilio (un mensaje por webhook). Devuelve cuantos
+ * mensajes se guardaron.
  *
- * NUNCA lanza hacia Meta por un mensaje suelto que falle: si un comprobante no
- * se puede descargar, se guarda igual el mensaje (sin archivo) y se sigue. A
- * Meta hay que responderle 200 o reintenta en bucle.
+ * NUNCA lanza hacia Twilio por un comprobante que no se pueda descargar: se
+ * guarda igual el mensaje (sin archivo) y se sigue. A Twilio se le responde 200
+ * o reintenta en bucle. La descarga y la subida se inyectan para poder probar
+ * sin tocar la red.
  */
-export async function procesarEventoEntrante({ cuerpo, cuerpoCrudo, firma }) {
-  const valor = cuerpo?.entry?.[0]?.changes?.[0]?.value;
-  const idTelefono = valor?.metadata?.phone_number_id;
-  const mensajes = valor?.messages ?? [];
+export async function procesarEventoEntrante(
+  { params = {}, urlPublica, firma },
+  { subir = subirComprobante, descargar = descargarMedia } = {},
+) {
+  const destino = params.To ? aE164(params.To) : null;
+  const origen = params.From;
 
-  // Los avisos de estado (entregado, leido) llegan por aqui y se ignoran.
-  if (!idTelefono || mensajes.length === 0) return { guardados: 0, motivo: 'sin mensajes' };
+  if (!destino || !origen) return { guardados: 0, motivo: 'sin mensaje' };
 
-  const tenant = await tenantPorNumero(idTelefono);
+  const tenant = await tenantPorNumero(destino);
   if (!tenant) return { guardados: 0, motivo: 'numero desconocido' };
 
   const credenciales = tenant.config?.whatsapp?.credenciales ?? {};
-  if (!credenciales.secretoApp) return { guardados: 0, motivo: 'sin secreto de app' };
-  if (!firmaValida(cuerpoCrudo, firma, credenciales.secretoApp)) {
+  if (!credenciales.authToken) return { guardados: 0, motivo: 'sin auth token' };
+  if (!firmaValidaTwilio(urlPublica, params, firma, credenciales.authToken)) {
     throw ErrorApi.noAutenticado('Firma invalida');
   }
+
+  // El telefono se guarda en internacional sin '+' ("573001234567"), como el resto.
+  const telefono = aE164(origen).replace(/^\+/, '');
+  const numMedia = Number(params.NumMedia ?? 0);
 
   let guardados = 0;
 
@@ -142,50 +132,53 @@ export async function procesarEventoEntrante({ cuerpo, cuerpoCrudo, firma }) {
     const Mensaje = obtenerModelo('MensajeWhatsapp');
     const Miembro = obtenerModelo('Miembro');
 
-    for (const mensaje of mensajes) {
-      const telefono = mensaje.from;
-      // Se ata al miembro por telefono; si no existe, queda suelto (lo ve el dueño).
-      const miembro = await Miembro.findOne({ telefono });
+    // Se ata al miembro por telefono; si no existe, queda suelto (lo ve el dueño).
+    const miembro = await Miembro.findOne({ telefono });
 
-      const tipo = TIPOS[mensaje.type] ?? 'otro';
-      const media = CAMPOS_MEDIA.map((campo) => mensaje[campo]).find(Boolean) ?? null;
+    // Twilio manda cada archivo en MediaUrl{i}; para un comprobante casi siempre
+    // es uno. Se guarda el primero en este mensaje.
+    const mediaUrl = numMedia > 0 ? params.MediaUrl0 : null;
+    const mediaMime = params.MediaContentType0 ?? null;
 
-      let archivo = null;
-      let mimeType = media?.mime_type ?? null;
-      if (media?.id) {
-        try {
-          const guardado = await descargarArchivo({
-            mediaId: media.id,
-            token: credenciales.token,
-            tenantId: tenant._id,
-          });
-          archivo = guardado.archivo;
-          mimeType = guardado.mimeType ?? mimeType;
-        } catch (error) {
-          // El mensaje se guarda igual: mejor un comprobante sin imagen que perderlo.
-          console.error('[whatsapp] no se pudo descargar el archivo:', error.message);
-        }
-      }
+    let archivoPublicId = null;
+    let archivoTipoRecurso = null;
+    let mimeType = mediaMime;
 
+    if (mediaUrl) {
       try {
-        await Mensaje.create({
-          sede: miembro?.sede ?? null,
-          miembro: miembro?._id ?? null,
-          telefono,
-          direccion: 'entrante',
-          tipo,
-          texto: mensaje.text?.body ?? media?.caption ?? '',
-          mediaId: media?.id ?? null,
-          archivo,
-          mimeType,
-          idMensajeWhatsapp: mensaje.id ?? null,
-          leido: false,
+        const { buffer, mimeType: mimeDescarga } = await descargar(mediaUrl, credenciales);
+        const subido = await subir(buffer, {
+          tenantId: tenant._id,
+          publicId: params.MessageSid,
         });
-        guardados += 1;
+        archivoPublicId = subido.publicId;
+        archivoTipoRecurso = subido.tipoRecurso;
+        mimeType = mimeDescarga ?? mediaMime;
       } catch (error) {
-        // Indice unico: Meta reintento el mismo mensaje. No es un error.
-        if (error.code !== 11000) throw error;
+        // El mensaje se guarda igual: mejor un comprobante sin imagen que perderlo.
+        console.error('[whatsapp] no se pudo guardar el archivo:', error.message);
       }
+    }
+
+    try {
+      await Mensaje.create({
+        sede: miembro?.sede ?? null,
+        miembro: miembro?._id ?? null,
+        telefono,
+        direccion: 'entrante',
+        tipo: mediaUrl ? mapearTipo(mimeType ?? '') : 'texto',
+        texto: params.Body ?? '',
+        mediaId: params.MediaSid0 ?? null,
+        archivoPublicId,
+        archivoTipoRecurso,
+        mimeType,
+        idMensajeWhatsapp: params.MessageSid ?? null,
+        leido: false,
+      });
+      guardados += 1;
+    } catch (error) {
+      // Indice unico: Twilio reintento el mismo mensaje. No es un error.
+      if (error.code !== 11000) throw error;
     }
   });
 
@@ -229,9 +222,9 @@ export async function marcarLeidos(ids, filtroSede = {}) {
 }
 
 /**
- * Responde por WhatsApp. Es texto LIBRE, que Meta solo acepta dentro de las 24h
- * desde el ultimo mensaje del cliente; por eso responder no cuesta nada, y por
- * eso la respuesta se ofrece desde la bandeja y no como algo suelto.
+ * Responde por WhatsApp. Es texto LIBRE, que WhatsApp solo acepta dentro de las
+ * 24h desde el ultimo mensaje del cliente; por eso responder no cuesta nada, y
+ * por eso la respuesta se ofrece desde la bandeja y no como algo suelto.
  */
 export async function responder({ mensaje: idMensaje, texto }, filtroSede = {}, usuarioId = null) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
@@ -242,21 +235,23 @@ export async function responder({ mensaje: idMensaje, texto }, filtroSede = {}, 
 
   const tenant = await ejecutarSinTenant(() => Tenant.findById(original.tenant));
   const whatsapp = tenant?.config?.whatsapp ?? {};
-  if (whatsapp.proveedor !== PROVEEDORES_WHATSAPP.CLOUD_API) {
-    throw ErrorApi.solicitudInvalida('Este gimnasio no tiene WhatsApp Cloud API configurado');
+  const { accountSid, authToken, numero } = whatsapp.credenciales ?? {};
+  if (!accountSid || !authToken || !numero) {
+    throw ErrorApi.solicitudInvalida('Este gimnasio no tiene WhatsApp (Twilio) configurado');
   }
 
-  const { idTelefono, token } = whatsapp.credenciales ?? {};
   const respuesta = await fetch(
-    `https://graph.facebook.com/${VERSION_GRAFO}/${idTelefono}/messages`,
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: original.telefono,
-        type: 'text',
-        text: { body: texto },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: autorizacionBasica({ accountSid, authToken }),
+      },
+      body: new URLSearchParams({
+        From: aWhatsapp(numero),
+        To: aWhatsapp(original.telefono),
+        Body: texto,
       }),
       signal: AbortSignal.timeout(TIEMPO_LIMITE_MS),
     },
@@ -288,18 +283,20 @@ export async function responder({ mensaje: idMensaje, texto }, filtroSede = {}, 
 }
 
 /**
- * Borra del disco las IMAGENES de comprobantes mas viejas que `mesesRetencion`,
- * y suelta la referencia en el mensaje (`archivo: null`). El registro del mensaje
- * (quien escribio, cuando, el texto) se conserva: solo se va el archivo, que ya
- * cumplio su funcion. Asi el disco del servidor no crece sin tope.
+ * Borra los comprobantes mas viejos que `mesesRetencion` (de Cloudinary, o del
+ * disco si son heredados) y suelta la referencia en el mensaje. El registro del
+ * mensaje (quien escribio, cuando, el texto) se CONSERVA: solo se va el archivo,
+ * que ya cumplio su funcion. Asi la cuenta de Cloudinary no crece sin tope.
  *
  * Corre a nivel plataforma (`ejecutarSinTenant`): barre los comprobantes de
  * TODOS los gimnasios de una pasada, igual que la cobranza. La llama el cron de
- * `tareas/comprobantes.tarea.js`, y se exporta aparte para poder probarla.
+ * `tareas/comprobantes.tarea.js`, y se exporta aparte para poder probarla. El
+ * borrado en Cloudinary se inyecta para poder probar sin red.
  */
 export async function purgarComprobantesAntiguos({
   mesesRetencion = MESES_RETENCION_COMPROBANTE,
   ahora = new Date(),
+  borrar = borrarComprobante,
 } = {}) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
 
@@ -308,26 +305,32 @@ export async function purgarComprobantesAntiguos({
 
   return ejecutarSinTenant(async () => {
     const antiguos = await Mensaje.find({
-      archivo: { $ne: null },
+      $or: [{ archivoPublicId: { $ne: null } }, { archivo: { $ne: null } }],
       createdAt: { $lt: limite },
-    }).select('_id archivo');
+    }).select('_id archivo archivoPublicId archivoTipoRecurso');
 
     let borrados = 0;
 
     for (const mensaje of antiguos) {
-      const absoluta = path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', mensaje.archivo);
-
       try {
-        // `force`: si el archivo ya no esta, no es un error; igual limpiamos la ref.
-        await rm(absoluta, { force: true });
+        if (mensaje.archivoPublicId) {
+          await borrar(mensaje.archivoPublicId, { tipoRecurso: mensaje.archivoTipoRecurso });
+        } else if (mensaje.archivo) {
+          const absoluta = path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', mensaje.archivo);
+          // `force`: si el archivo ya no esta, no es un error; igual limpiamos la ref.
+          await rm(absoluta, { force: true });
+        }
       } catch (error) {
-        // Un fallo real (permisos) no debe frenar el barrido; se deja el registro
-        // como esta para reintentarlo mañana.
+        // Un fallo real no debe frenar el barrido; se deja el registro como esta
+        // para reintentarlo mañana.
         console.error('[comprobantes] no se pudo borrar el archivo:', error.message);
         continue;
       }
 
-      await Mensaje.updateOne({ _id: mensaje._id }, { $set: { archivo: null } });
+      await Mensaje.updateOne(
+        { _id: mensaje._id },
+        { $set: { archivo: null, archivoPublicId: null, archivoTipoRecurso: null } },
+      );
       borrados += 1;
     }
 
@@ -335,15 +338,29 @@ export async function purgarComprobantesAntiguos({
   });
 }
 
-/** Ruta absoluta del comprobante, ya comprobado el alcance por sede. */
+/**
+ * Como servir el comprobante, ya comprobado el alcance por sede:
+ *  - Cloudinary: una URL firmada de corta duracion a la que redirigir.
+ *  - HEREDADO (disco): la ruta absoluta del archivo para streamearlo.
+ */
 export async function rutaArchivo(id, filtroSede = {}) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
 
   const mensaje = await Mensaje.findOne({ _id: id, ...filtroSede });
-  if (!mensaje?.archivo) throw ErrorApi.noEncontrado('Ese mensaje no tiene archivo');
+  if (!mensaje) throw ErrorApi.noEncontrado('El mensaje no existe');
 
-  return {
-    ruta: path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', mensaje.archivo),
-    mimeType: mensaje.mimeType ?? 'application/octet-stream',
-  };
+  if (mensaje.archivoPublicId) {
+    return {
+      redireccion: urlFirmada(mensaje.archivoPublicId, { tipoRecurso: mensaje.archivoTipoRecurso }),
+    };
+  }
+
+  if (mensaje.archivo) {
+    return {
+      ruta: path.resolve(entorno.ALMACEN_ARCHIVOS, 'whatsapp', mensaje.archivo),
+      mimeType: mensaje.mimeType ?? 'application/octet-stream',
+    };
+  }
+
+  throw ErrorApi.noEncontrado('Ese mensaje no tiene archivo');
 }

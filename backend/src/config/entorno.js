@@ -64,14 +64,20 @@ const esquemaEntorno = z.object({
    * intenta enviar, para no fingir que el correo salio. Mismo patron que Wompi.
    */
   /**
-   * Token del handshake con el que Meta da de alta el webhook de WhatsApp. NO
-   * autentica los mensajes (de eso se encarga la firma HMAC con el secreto de
-   * la app de CADA gimnasio): solo evita que un tercero registre el webhook.
-   * Tiene que coincidir con el que se escriba en el panel de Meta.
+   * Cloudinary: donde se guardan los comprobantes que mandan los miembros por
+   * WhatsApp (antes iban al disco). Es de la PLATAFORMA (una sola cuenta), igual
+   * que Wompi: por eso vive en el entorno y no por gimnasio. Opcionales para que
+   * el proyecto arranque sin ellas; `almacenamiento/cloudinary.js` LANZA, con un
+   * mensaje claro, en cuanto se intenta subir/borrar sin credenciales.
    */
-  WHATSAPP_TOKEN_VERIFICACION: z.string().min(1).default('gymsaas-verificacion'),
+  CLOUDINARY_CLOUD_NAME: z.string().default(''),
+  CLOUDINARY_API_KEY: z.string().default(''),
+  CLOUDINARY_API_SECRET: z.string().default(''),
 
-  /** Carpeta donde se guardan los comprobantes que mandan los miembros. */
+  /**
+   * Carpeta donde vivian los comprobantes en disco. Se conserva para servir
+   * archivos HEREDADOS (los que se guardaron antes de migrar a Cloudinary).
+   */
   ALMACEN_ARCHIVOS: z.string().default('almacen'),
 
   SMTP_HOST: z.string().default(''),

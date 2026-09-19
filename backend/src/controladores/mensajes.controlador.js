@@ -1,3 +1,4 @@
+import { entorno } from '../config/entorno.js';
 import * as servicioMensajes from '../servicios/mensajes.servicio.js';
 import { manejadorAsync } from '../utilidades/manejadorAsync.js';
 import { responderCreado, responderOk } from '../utilidades/respuesta.js';
@@ -27,36 +28,33 @@ export const responder = manejadorAsync(async (peticion, respuesta) =>
   ),
 );
 
-/** Sirve el comprobante. No se expone el almacen: se streamea con permisos. */
+/**
+ * Sirve el comprobante. Los de Cloudinary se sirven redirigiendo a una URL
+ * firmada de corta duracion; los HEREDADOS (disco) se streamean con permisos.
+ * En ningun caso se expone el almacen.
+ */
 export const descargarArchivo = manejadorAsync(async (peticion, respuesta) => {
-  const { ruta, mimeType } = await servicioMensajes.rutaArchivo(
+  const { redireccion, ruta, mimeType } = await servicioMensajes.rutaArchivo(
     peticion.params.id,
     peticion.filtroSede,
   );
+  if (redireccion) return respuesta.redirect(redireccion);
   respuesta.type(mimeType);
   return respuesta.sendFile(ruta);
 });
 
-// --- Webhook de Meta (publico) -------------------------------------------------
-
-export const verificarWebhook = manejadorAsync(async (peticion, respuesta) => {
-  const desafio = servicioMensajes.verificarSuscripcion({
-    modo: peticion.query['hub.mode'],
-    token: peticion.query['hub.verify_token'],
-    desafio: peticion.query['hub.challenge'],
-  });
-  return respuesta.status(200).send(desafio);
-});
+// --- Webhook de Twilio (publico) -----------------------------------------------
 
 /**
- * A Meta se le responde 200 SIEMPRE que la firma sea valida, incluso si el
- * evento se ignora: cualquier otra cosa lo hace reintentar en bucle.
+ * A Twilio se le responde 200 salvo firma invalida, incluso si el evento se
+ * ignora: cualquier otra cosa lo hace reintentar en bucle. La URL publica se
+ * reconstruye EXACTA (la que Twilio invoco) para poder verificar la firma.
  */
 export const recibirWebhook = manejadorAsync(async (peticion, respuesta) => {
   await servicioMensajes.procesarEventoEntrante({
-    cuerpo: peticion.body,
-    cuerpoCrudo: peticion.cuerpoCrudo,
-    firma: peticion.get('x-hub-signature-256'),
+    params: peticion.body,
+    urlPublica: `${entorno.ORIGEN_PUBLICO}${peticion.originalUrl}`,
+    firma: peticion.get('x-twilio-signature'),
   });
   return respuesta.sendStatus(200);
 });

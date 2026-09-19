@@ -463,7 +463,7 @@ ejecutarConTenant(tenant._id, async () => {
         |     decidirEtapaAviso(ultimoPago): 'por_vencer' | 'vencido' | null
         v
    NotificacionProvider  <-- interfaz; la implementacion sale de tenant.config.whatsapp.proveedor
-        |                    (cloud_api | n8n | ninguno; baileys aun no implementado)
+        |                    (twilio | n8n | ninguno)
         v
    exito -> Notificacion.create({ estado: 'enviado' }) + Pago.updateOne({ [etapa]: true })
    fallo -> Notificacion.create({ estado: 'fallido' })   (la etapa NO se marca: se reintenta)
@@ -480,14 +480,15 @@ envio, asi que el segundo aviso aun puede salir y un fallo no pierde el aviso. `
 envolver cada tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto por el.
 
 **Texto libre vs. plantilla.** El servicio construye SIEMPRE dos cosas: el `mensaje` de texto
-(rico, varia segun el estado) y las `variables` de la plantilla (`[nombre, gimnasio, fecha]`,
-en ese orden). Cada proveedor usa lo que le sirve: **n8n** manda el `mensaje`; **cloud_api**
-ignora el texto y envia una **PLANTILLA** (`type: 'template'`), porque Meta solo acepta texto
-libre dentro de la ventana de 24 h y un aviso de vencimiento casi nunca cae ahi. El nombre y el
-idioma de la plantilla son una **convencion** (`PLANTILLA_VENCIMIENTO` = `aviso_vencimiento` /
-`es_CO`), igual que el plan `'Estandar'`: cada gimnasio registra en SU WABA una plantilla con
-ese nombre y esas 3 variables. El `mensaje` de texto se sigue guardando en `Notificacion` como
-registro, aunque cloud_api no lo mande.
+(rico, varia segun el estado) y las `variables` de la plantilla (`[nombre, gimnasio, fecha,
+valor]`, en ese orden). Cada proveedor usa lo que le sirve: **n8n** manda el `mensaje`; **twilio**
+ignora el texto y envia un **Content Template** aprobado (`ContentSid` + `ContentVariables`
+numeradas), porque WhatsApp solo acepta texto libre dentro de la ventana de 24 h y un aviso de
+vencimiento casi nunca cae ahi. Cada plantilla es un Content Template que el gimnasio crea en SU
+cuenta de Twilio; su **Content SID** (`HX...`) se guarda por `clave`
+(`credenciales.plantillas.vencimiento` / `.bienvenida` / `.recibo`) y el provider lo resuelve con
+`PLANTILLA_*.clave`. El `mensaje` de texto se sigue guardando en `Notificacion` como registro,
+aunque twilio no lo mande.
 
 **La trampa del aviso.** Lo obvio seria `Pago.find({ periodoFin: { $lte: umbral } })`. Esta mal:
 un miembro que ya renovo conserva su pago viejo con `periodoFin` pasado, y recibiria un aviso de
@@ -683,41 +684,48 @@ no obvias:
 - El `tenantId` se captura **dentro** del contexto (con `obtenerContexto()`) y se pasa
   explicito, porque el envio corre despues de responder, ya fuera del `AsyncLocalStorage`.
   `Tenant` es coleccion de plataforma (sin plugin): se lee por id sin contexto.
-- Usa una plantilla **propia** (`PLANTILLA_BIENVENIDA` = `bienvenida`/`es_CO`, **2 variables**:
+- Usa una plantilla **propia** (`PLANTILLA_BIENVENIDA`, clave `bienvenida`, **2 variables**:
   nombre y gimnasio), distinta de la de vencimiento. Se pasa a `crearProveedor(config,
-  { plantilla })`, que ahora acepta la plantilla como opcion (cloud_api la usa; n8n/baileys la
-  ignoran y mandan el texto).
+  { plantilla })`, que acepta la plantilla como opcion (twilio resuelve su Content SID; n8n la
+  ignora y manda el texto).
 - Al ser plantilla NUEVA y best-effort, **no hay coordinacion**: mientras el gimnasio no la
-  tenga aprobada en su WABA, el envio falla en silencio y el alta sigue igual.
+  tenga creada y aprobada en su cuenta de Twilio (con su Content SID en el panel), el envio
+  falla en silencio y el alta sigue igual.
 
 ### Bandeja de WhatsApp: recibir el comprobante y responder
 
-Un numero conectado a la Cloud API **no tiene app de WhatsApp detras**: si un miembro manda el
-comprobante de su transferencia, sin esta bandeja no lo ve nadie. `MensajeWhatsapp`
-(tenant-scoped) guarda las dos direcciones de la conversacion y `servicios/mensajes.servicio.js`
-la atiende. Lo no obvio:
+Un numero conectado a la API de WhatsApp (Twilio) **no tiene app de WhatsApp detras**: si un
+miembro manda el comprobante de su transferencia, sin esta bandeja no lo ve nadie.
+`MensajeWhatsapp` (tenant-scoped) guarda las dos direcciones de la conversacion y
+`servicios/mensajes.servicio.js` la atiende. Lo no obvio:
 
-- **La firma es lo unico que autentica.** Meta manda los mensajes de TODOS los gimnasios a una
-  sola URL (`POST /api/webhooks/whatsapp`). El `phone_number_id` del payload es dato **no
-  confiable**: solo sirve para saber de que tenant es y **con que secreto verificar**. Lo que
-  autentica es el HMAC `x-hub-signature-256` contra `tenant.config.whatsapp.credenciales
-  .secretoApp`. Sin secreto configurado **no se acepta nada**: recibir sin verificar dejaria
-  inyectar comprobantes falsos. Es el mismo patron que `/webhooks/wompi-miembro`.
-- **La firma se calcula sobre los BYTES**, no sobre el JSON reserializado; por eso
-  `servidor.js` guarda el cuerpo crudo en `express.json({ verify })`.
-- **A Meta se le responde 200** aunque el evento se ignore (avisos de estado, numero
-  desconocido), o reintenta en bucle. La idempotencia la da el indice unico parcial
-  `{ tenant, idMensajeWhatsapp }`: un `create` que choque con 11000 no es un error.
-- **El comprobante se descarga** de Meta en dos pasos (metadatos → binario) a
-  `ALMACEN_ARCHIVOS/whatsapp/<tenantId>/`, y se sirve por `GET /api/mensajes/:id/archivo` con
-  la cookie de sesion y el `filtroSede`: la carpeta nunca se expone.
-- **Responder es texto libre**, que Meta solo acepta dentro de las **24 h** desde el ultimo
-  mensaje del cliente (fuera de esa ventana solo entran plantillas, y se cobran). Por eso
-  responder cuelga siempre de un mensaje del hilo, y el fallo se traduce a un 400 explicito.
+- **La firma es lo unico que autentica.** Twilio manda los mensajes de TODOS los gimnasios a una
+  sola URL (`POST /api/webhooks/whatsapp`, form-urlencoded). El numero destino `To` del payload
+  es dato **no confiable**: solo sirve para saber de que tenant es (por `credenciales.numero`) y
+  **con que Auth Token verificar**. Lo que autentica es `X-Twilio-Signature` =
+  base64(HMAC-SHA1(authToken, URL + params ordenados)). Sin Auth Token configurado **no se acepta
+  nada**. Es el mismo patron que `/webhooks/wompi-miembro`.
+- **La firma se calcula sobre la URL publica exacta** que Twilio invoco: el controlador la
+  reconstruye con `entorno.ORIGEN_PUBLICO + originalUrl`. Si el dominio configurado en Twilio no
+  coincide con `ORIGEN_PUBLICO`, la firma no cuadra.
+- **A Twilio se le responde 200** aunque el evento se ignore (numero desconocido), o reintenta en
+  bucle. La idempotencia la da el indice unico parcial `{ tenant, idMensajeWhatsapp }` (el
+  `MessageSid` de Twilio): un `create` que choque con 11000 no es un error.
+- **El comprobante se descarga** del `MediaUrl` de Twilio (con Basic Auth) y se **sube a
+  Cloudinary** como tipo `authenticated` en `gymsaas/comprobantes/<tenantId>`. Se sirve por
+  `GET /api/mensajes/:id/archivo` (con cookie de sesion y `filtroSede`), que **redirige** a una
+  URL firmada de corta duracion. Los comprobantes en disco previos a la migracion (`archivo`) se
+  siguen sirviendo streameados. El cron `comprobantes.tarea.js` purga a los
+  `MESES_RETENCION_COMPROBANTE` (3): borra el archivo (de Cloudinary o disco) y conserva el
+  registro. Cloudinary es de la PLATAFORMA (env `CLOUDINARY_*`), no por gimnasio.
+- **Responder es texto libre** (`Body`), que WhatsApp solo acepta dentro de las **24 h** desde el
+  ultimo mensaje del cliente. Por eso responder cuelga siempre de un mensaje del hilo, y el fallo
+  se traduce a un 400 explicito.
 - El hilo se agrupa **por telefono**, no por miembro: quien escribe puede no ser miembro
   todavia (`sede` y `miembro` quedan en `null` y solo el dueño lo ve).
-- Guardar la config **conserva los secretos** que ya estaban si el campo llega vacio: entrar a
-  poner el App Secret no puede borrar el token, que Meta solo muestra una vez.
+- Guardar la config **conserva el secreto** que ya estaba si el campo llega vacio: entrar a
+  cambiar el numero no puede borrar el Auth Token (el Account SID, el numero y los Content SID no
+  son secretos y si vuelven al panel).
 
 ---
 

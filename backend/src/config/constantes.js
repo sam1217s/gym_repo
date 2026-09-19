@@ -55,8 +55,7 @@ export const LISTA_METODOS_PAGO = Object.values(METODOS_PAGO);
 export const PREFIJO_REFERENCIA_PAGO_MIEMBRO = 'MB';
 
 export const PROVEEDORES_WHATSAPP = Object.freeze({
-  BAILEYS: 'baileys',
-  CLOUD_API: 'cloud_api',
+  TWILIO: 'twilio',
   N8N: 'n8n',
   NINGUNO: 'ninguno',
 });
@@ -66,18 +65,21 @@ export const LISTA_PROVEEDORES_WHATSAPP = Object.values(PROVEEDORES_WHATSAPP);
 export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
 
 /**
- * Plantilla de WhatsApp para el aviso de vencimiento (proveedor Cloud API).
+ * Plantilla de WhatsApp para el aviso de vencimiento.
  *
- * Meta solo deja mandar texto libre dentro de la ventana de 24h; un aviso de
+ * WhatsApp solo deja mandar texto libre dentro de la ventana de 24h; un aviso de
  * vencimiento casi nunca cae ahi, asi que en produccion se envia una PLANTILLA
- * aprobada. Es una CONVENCION, igual que el plan 'Estandar': cada gimnasio
- * registra en SU WABA una plantilla con este mismo nombre e idioma. El cuerpo
- * aprobado espera 4 variables, en este orden:
+ * aprobada. Con Twilio cada plantilla es un "Content Template" identificado por
+ * su Content SID (`HX...`), que el gimnasio registra en SU cuenta de Twilio y
+ * pega en el panel; `clave` es como se busca ese SID en las credenciales del
+ * tenant (`credenciales.plantillas[clave]`). El cuerpo espera 4 variables:
  *   {{1}} = nombre · {{2}} = gimnasio · {{3}} = fecha de vencimiento · {{4}} = valor.
+ *
+ * `nombre`/`idioma` se conservan como referencia y los usan los proveedores de
+ * texto (n8n), que ignoran el Content SID y mandan el `mensaje`.
  */
 export const PLANTILLA_VENCIMIENTO = Object.freeze({
-  // Registrada en Meta como categoria UTILITY (la anterior, 'aviso_vencimiento',
-  // era Marketing). Mismo cuerpo y mismas 4 variables, sin emojis.
+  clave: 'vencimiento',
   nombre: 'avisa_vence2',
   idioma: 'es_CO',
 });
@@ -85,12 +87,12 @@ export const PLANTILLA_VENCIMIENTO = Object.freeze({
 /**
  * Plantilla de BIENVENIDA: se envia al registrar un miembro para darle contexto
  * de que por WhatsApp se manejan los avisos y comprobantes de la mensualidad.
- * Misma convencion que la de vencimiento (cada gimnasio la registra en SU WABA).
- * El cuerpo espera 2 variables, en este orden:
+ * Misma convencion que la de vencimiento (cada gimnasio la registra en SU cuenta
+ * de Twilio). El cuerpo espera 2 variables, en este orden:
  *   {{1}} = nombre del miembro · {{2}} = gimnasio.
  */
 export const PLANTILLA_BIENVENIDA = Object.freeze({
-  // El nombre debe COINCIDIR con el registrado en Meta (asi la nombro el dueño).
+  clave: 'bienvenida',
   nombre: 'msg_bienvenida',
   idioma: 'es_CO',
 });
@@ -100,10 +102,9 @@ export const PLANTILLA_BIENVENIDA = Object.freeze({
  * el panel, para confirmarle al miembro. Es una plantilla (mensaje iniciado por
  * el negocio). El cuerpo espera 4 variables, en este orden:
  *   {{1}} = nombre · {{2}} = gimnasio · {{3}} = valor pagado · {{4}} = vence el.
- * Idioma `es_CR` porque asi se registro en Meta (el texto que ve el miembro es
- * identico; el codigo de idioma solo debe COINCIDIR con el de la plantilla).
  */
 export const PLANTILLA_RECIBO = Object.freeze({
+  clave: 'recibo',
   nombre: 'recibo_pago',
   idioma: 'es_CR',
 });
@@ -213,10 +214,11 @@ export const EXPRESION_CRON_PURGA_COMPROBANTES = '0 4 * * *';
 
 /**
  * Cuanto se conserva la IMAGEN de un comprobante de WhatsApp antes de borrarla
- * del disco. El registro del mensaje (quien, cuando, texto) se conserva; solo se
- * suelta el archivo, que ya cumplio su funcion de verificar el pago.
+ * (de Cloudinary, o del disco en archivos heredados). El registro del mensaje
+ * (quien, cuando, texto) se conserva; solo se suelta el archivo, que ya cumplio
+ * su funcion de verificar el pago.
  */
-export const MESES_RETENCION_COMPROBANTE = 2;
+export const MESES_RETENCION_COMPROBANTE = 3;
 
 // --- Facturacion de plataforma (el gimnasio le paga a GymSaaS) ---------------
 

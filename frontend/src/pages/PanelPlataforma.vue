@@ -242,23 +242,23 @@
               :options="OPCIONES_PROVEEDOR"
             />
 
-            <template v-if="whatsapp.formulario.proveedor === 'cloud_api'">
+            <template v-if="whatsapp.formulario.proveedor === 'twilio'">
               <q-input
-                v-model="whatsapp.formulario.idTelefono"
-                label="Phone number ID"
-                hint="El ID del numero en Meta (no el telefono)"
+                v-model="whatsapp.formulario.accountSid"
+                label="Account SID"
+                hint="Twilio Console > Account Info (empieza por AC...)"
                 outlined
                 dense
                 :rules="[reglaObligatorio]"
               />
               <q-input
-                v-model="whatsapp.formulario.token"
+                v-model="whatsapp.formulario.authToken"
                 :type="whatsapp.verToken ? 'text' : 'password'"
-                label="Token permanente"
+                label="Auth Token"
                 :hint="
                   whatsapp.config.configurado
                     ? 'Ya hay uno guardado. Dejalo vacio para conservarlo.'
-                    : 'Se guarda en el servidor y no se vuelve a mostrar'
+                    : 'Twilio Console > Account Info. Se guarda en el servidor y no se vuelve a mostrar.'
                 "
                 outlined
                 dense
@@ -272,16 +272,43 @@
                   />
                 </template>
               </q-input>
+              <q-input
+                v-model="whatsapp.formulario.numero"
+                label="Numero de WhatsApp de Twilio"
+                hint="En formato internacional, ej. +14155238886"
+                outlined
+                dense
+                :rules="[reglaObligatorio]"
+              />
 
               <div class="aviso-plantilla">
-                Este gimnasio debe tener aprobada en SU cuenta de Meta la plantilla
-                <strong>{{ whatsapp.config.plantilla?.nombre }}</strong>
-                ({{ whatsapp.config.plantilla?.idioma }}) con 3 variables: nombre, gimnasio y fecha.
+                Pega el <strong>Content SID</strong> (HX...) de cada plantilla aprobada en Twilio.
+                Sin el de una plantilla, ese aviso no se envia (la bandeja sigue funcionando).
               </div>
+              <q-input
+                v-model="whatsapp.formulario.plantillaVencimiento"
+                label="Content SID — aviso de vencimiento"
+                hint="4 variables: nombre, gimnasio, fecha, valor"
+                outlined
+                dense
+              />
+              <q-input
+                v-model="whatsapp.formulario.plantillaBienvenida"
+                label="Content SID — bienvenida"
+                hint="2 variables: nombre, gimnasio"
+                outlined
+                dense
+              />
+              <q-input
+                v-model="whatsapp.formulario.plantillaRecibo"
+                label="Content SID — recibo de pago"
+                hint="4 variables: nombre, gimnasio, valor, vence el"
+                outlined
+                dense
+              />
 
-              <!-- Recibir es una configuracion aparte de enviar: sin el secreto
-                   de la app no se puede verificar la firma de Meta, y sin firma
-                   no se acepta ningun mensaje entrante. -->
+              <!-- En Twilio, el mismo Auth Token verifica la firma de los
+                   entrantes: no hay un secreto aparte para recibir. -->
               <q-separator />
               <div class="row items-center q-gutter-sm">
                 <span class="text-weight-medium">Bandeja de entrada</span>
@@ -298,30 +325,9 @@
               </div>
 
               <q-input
-                v-model="whatsapp.formulario.secretoApp"
-                type="password"
-                label="Clave secreta de la app (App Secret)"
-                :hint="
-                  whatsapp.config.recibeMensajes
-                    ? 'Ya hay una guardada. Dejala vacia para conservarla.'
-                    : 'Meta > Configuracion de la app > Basica. Sin esto no se reciben mensajes.'
-                "
-                outlined
-                dense
-              />
-
-              <q-input
                 :model-value="whatsapp.config.urlWebhookEntrante"
                 label="URL de devolucion de llamada"
-                hint="Pegala en Meta > WhatsApp > Configuracion > Webhooks"
-                outlined
-                dense
-                readonly
-              />
-              <q-input
-                :model-value="whatsapp.config.tokenVerificacion"
-                label="Token de verificacion"
-                hint="El mismo campo de Meta, junto a la URL"
+                hint="Pegala en Twilio > Messaging > tu WhatsApp Sender > 'When a message comes in'"
                 outlined
                 dense
                 readonly
@@ -857,10 +863,9 @@ const cobros = reactive({
 
 // --- Canal de WhatsApp del gimnasio -------------------------------------------
 
-// `baileys` no se ofrece: no esta implementado y dejaria el canal roto.
 const OPCIONES_PROVEEDOR = [
   { label: 'Ninguno (sin avisos)', value: 'ninguno' },
-  { label: 'WhatsApp Cloud API (Meta)', value: 'cloud_api' },
+  { label: 'Twilio (WhatsApp)', value: 'twilio' },
   { label: 'n8n (webhook propio)', value: 'n8n' },
 ];
 
@@ -869,17 +874,20 @@ const dialogoWhatsapp = ref(false);
 const CONFIG_VACIA = {
   proveedor: 'ninguno',
   configurado: false,
-  idTelefono: null,
-  plantilla: null,
+  accountSid: null,
+  numero: null,
+  plantillas: { vencimiento: null, bienvenida: null, recibo: null },
   recibeMensajes: false,
   urlWebhookEntrante: '',
-  tokenVerificacion: '',
 };
 const FORMULARIO_VACIO = {
   proveedor: 'ninguno',
-  idTelefono: '',
-  token: '',
-  secretoApp: '',
+  accountSid: '',
+  authToken: '',
+  numero: '',
+  plantillaVencimiento: '',
+  plantillaBienvenida: '',
+  plantillaRecibo: '',
   urlWebhook: '',
 };
 
@@ -900,10 +908,14 @@ async function abrirWhatsapp(gimnasio) {
 
   try {
     whatsapp.config = await servicioPlataforma.obtenerWhatsapp(gimnasio._id);
-    // El token es secreto y no vuelve: se deja vacio y hay que reescribirlo si
-    // se cambia algo. Lo demas son identificadores y se prellenan.
+    // El Auth Token es secreto y no vuelve: se deja vacio y hay que reescribirlo
+    // si se cambia. Lo demas son identificadores y se prellenan.
     whatsapp.formulario.proveedor = whatsapp.config.proveedor;
-    whatsapp.formulario.idTelefono = whatsapp.config.idTelefono ?? '';
+    whatsapp.formulario.accountSid = whatsapp.config.accountSid ?? '';
+    whatsapp.formulario.numero = whatsapp.config.numero ?? '';
+    whatsapp.formulario.plantillaVencimiento = whatsapp.config.plantillas?.vencimiento ?? '';
+    whatsapp.formulario.plantillaBienvenida = whatsapp.config.plantillas?.bienvenida ?? '';
+    whatsapp.formulario.plantillaRecibo = whatsapp.config.plantillas?.recibo ?? '';
     whatsapp.formulario.urlWebhook = whatsapp.config.urlWebhook ?? '';
   } catch {
     quasar.notify({ type: 'negative', message: 'No se pudo cargar la configuracion de WhatsApp' });
@@ -913,23 +925,34 @@ async function abrirWhatsapp(gimnasio) {
 async function guardarWhatsapp() {
   whatsapp.guardando = true;
   try {
-    const { proveedor, idTelefono, token, secretoApp, urlWebhook } = whatsapp.formulario;
-    // Los secretos vacios NO se mandan: el backend conserva los que ya tiene.
+    const {
+      proveedor,
+      accountSid,
+      authToken,
+      numero,
+      plantillaVencimiento,
+      plantillaBienvenida,
+      plantillaRecibo,
+      urlWebhook,
+    } = whatsapp.formulario;
+    // El Auth Token vacio NO se manda: el backend conserva el que ya tiene.
     const datos =
-      proveedor === 'cloud_api'
+      proveedor === 'twilio'
         ? {
             proveedor,
-            idTelefono,
-            ...(token ? { token } : {}),
-            ...(secretoApp ? { secretoApp } : {}),
+            accountSid,
+            numero,
+            ...(authToken ? { authToken } : {}),
+            plantillaVencimiento,
+            plantillaBienvenida,
+            plantillaRecibo,
           }
         : proveedor === 'n8n'
           ? { proveedor, urlWebhook }
           : { proveedor };
 
     whatsapp.config = await servicioPlataforma.guardarWhatsapp(whatsapp.gimnasio._id, datos);
-    whatsapp.formulario.token = '';
-    whatsapp.formulario.secretoApp = '';
+    whatsapp.formulario.authToken = '';
     quasar.notify({ type: 'positive', message: 'WhatsApp configurado' });
   } catch (error) {
     quasar.notify({

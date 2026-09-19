@@ -9,18 +9,21 @@ import { cifrarContrasena } from '../src/utilidades/contrasena.js';
 import { limpiarColecciones } from './configuracion.js';
 
 /**
- * Config del canal de WhatsApp de un gimnasio. La pone el SUPER_ADMIN, igual que
- * las llaves de Wompi y por el mismo motivo: el token de Meta es un secreto.
- * Lo critico: que el TOKEN nunca vuelva al cliente y que el dueño no la toque.
+ * Config del canal de WhatsApp (Twilio) de un gimnasio. La pone el SUPER_ADMIN,
+ * igual que las llaves de Wompi y por el mismo motivo: el Auth Token es un
+ * secreto. Lo critico: que el AUTH TOKEN nunca vuelva al cliente y que el dueño
+ * no la toque.
  */
 
 const CONTRASENA = 'ClaveInicial1';
 const app = crearServidor();
 
 const CREDENCIALES = {
-  proveedor: PROVEEDORES_WHATSAPP.CLOUD_API,
-  idTelefono: '123456789012345',
-  token: 'EAAG-token-permanente-secreto',
+  proveedor: PROVEEDORES_WHATSAPP.TWILIO,
+  accountSid: 'AC0123456789',
+  authToken: 'auth-token-secreto',
+  numero: '+14155238886',
+  plantillaVencimiento: 'HXvence123',
 };
 
 async function montar() {
@@ -61,7 +64,7 @@ const rutaWhatsapp = (id) => `/api/plataforma/tenants/${id}/whatsapp`;
 beforeEach(limpiarColecciones);
 
 describe('Canal de WhatsApp del gimnasio (config del super_admin)', () => {
-  it('arranca sin configurar y dice que plantilla hay que aprobar en Meta', async () => {
+  it('arranca sin configurar y dice que plantilla de referencia usar', async () => {
     const { tenant } = await montar();
     const admin = await entrarComo('admin@gymsaas.co');
 
@@ -69,34 +72,36 @@ describe('Canal de WhatsApp del gimnasio (config del super_admin)', () => {
     expect(respuesta.body.data).toMatchObject({
       proveedor: PROVEEDORES_WHATSAPP.NINGUNO,
       configurado: false,
-      plantilla: { nombre: 'avisa_vence2', idioma: 'es_CO' },
+      plantillaReferencia: { nombre: 'avisa_vence2', idioma: 'es_CO' },
     });
   });
 
-  it('guarda las credenciales SIN devolver el token', async () => {
+  it('guarda las credenciales SIN devolver el Auth Token', async () => {
     const { tenant } = await montar();
     const admin = await entrarComo('admin@gymsaas.co');
 
     const respuesta = await admin.put(rutaWhatsapp(tenant._id)).send(CREDENCIALES).expect(200);
     expect(respuesta.body.data).toMatchObject({
-      proveedor: PROVEEDORES_WHATSAPP.CLOUD_API,
+      proveedor: PROVEEDORES_WHATSAPP.TWILIO,
       configurado: true,
-      idTelefono: CREDENCIALES.idTelefono, // identificador, no secreto
+      accountSid: CREDENCIALES.accountSid, // identificador, no secreto
+      numero: CREDENCIALES.numero,
     });
-    expect(JSON.stringify(respuesta.body)).not.toContain(CREDENCIALES.token);
+    expect(respuesta.body.data.plantillas.vencimiento).toBe(CREDENCIALES.plantillaVencimiento);
+    expect(JSON.stringify(respuesta.body)).not.toContain(CREDENCIALES.authToken);
 
     // Pero SI quedo guardado: el cron lo necesita para enviar.
     const guardado = await ejecutarSinTenant(() => obtenerModelo('Tenant').findById(tenant._id));
-    expect(guardado.config.whatsapp.credenciales.token).toBe(CREDENCIALES.token);
+    expect(guardado.config.whatsapp.credenciales.authToken).toBe(CREDENCIALES.authToken);
   });
 
-  it('cloud_api sin token es 400', async () => {
+  it('twilio sin Auth Token (ni guardado previo) es 400', async () => {
     const { tenant } = await montar();
     const admin = await entrarComo('admin@gymsaas.co');
 
     await admin
       .put(rutaWhatsapp(tenant._id))
-      .send({ proveedor: PROVEEDORES_WHATSAPP.CLOUD_API, idTelefono: '123' })
+      .send({ proveedor: PROVEEDORES_WHATSAPP.TWILIO, accountSid: 'AC1', numero: '+1' })
       .expect(400);
   });
 
