@@ -69,12 +69,15 @@ export function firmaValidaTwilio(urlPublica, params, firma, authToken) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** El tenant dueño del numero de WhatsApp de Twilio al que le escribieron. */
-async function tenantPorNumero(numeroE164) {
+/** El unico gimnasio. Siendo software a la medida, hay exactamente un Tenant. */
+async function tenantDelGimnasio() {
   const Tenant = obtenerModelo('Tenant');
-  return ejecutarSinTenant(() =>
-    Tenant.findOne({ 'config.whatsapp.credenciales.numero': numeroE164 }),
-  );
+  return ejecutarSinTenant(() => Tenant.findOne());
+}
+
+/** Credenciales de Twilio (del entorno) para descargar media y verificar la firma. */
+function credencialesTwilio() {
+  return { accountSid: entorno.TWILIO_ACCOUNT_SID, authToken: entorno.TWILIO_AUTH_TOKEN };
 }
 
 /** Descarga un archivo de Twilio (requiere Basic Auth) y lo devuelve como buffer. */
@@ -106,21 +109,32 @@ async function descargarMedia(url, credenciales) {
  */
 export async function procesarEventoEntrante(
   { params = {}, urlPublica, firma },
-  { subir = subirComprobante, descargar = descargarMedia } = {},
+  {
+    subir = subirComprobante,
+    descargar = descargarMedia,
+    authToken = entorno.TWILIO_AUTH_TOKEN,
+    numero = entorno.TWILIO_NUMERO,
+    accountSid = entorno.TWILIO_ACCOUNT_SID,
+  } = {},
 ) {
   const destino = params.To ? aE164(params.To) : null;
   const origen = params.From;
 
   if (!destino || !origen) return { guardados: 0, motivo: 'sin mensaje' };
 
-  const tenant = await tenantPorNumero(destino);
-  if (!tenant) return { guardados: 0, motivo: 'numero desconocido' };
+  if (!authToken) return { guardados: 0, motivo: 'canal sin configurar' };
+  const credenciales = { accountSid, authToken };
 
-  const credenciales = tenant.config?.whatsapp?.credenciales ?? {};
-  if (!credenciales.authToken) return { guardados: 0, motivo: 'sin auth token' };
+  // El numero destino debe ser el del gimnasio (defensa; la firma es lo que autentica).
+  if (numero && aE164(numero) !== destino) {
+    return { guardados: 0, motivo: 'numero desconocido' };
+  }
   if (!firmaValidaTwilio(urlPublica, params, firma, credenciales.authToken)) {
     throw ErrorApi.noAutenticado('Firma invalida');
   }
+
+  const tenant = await tenantDelGimnasio();
+  if (!tenant) return { guardados: 0, motivo: 'sin gimnasio' };
 
   // El telefono se guarda en internacional sin '+' ("573001234567"), como el resto.
   const telefono = aE164(origen).replace(/^\+/, '');
@@ -228,16 +242,14 @@ export async function marcarLeidos(ids, filtroSede = {}) {
  */
 export async function responder({ mensaje: idMensaje, texto }, filtroSede = {}, usuarioId = null) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
-  const Tenant = obtenerModelo('Tenant');
 
   const original = await Mensaje.findOne({ _id: idMensaje, ...filtroSede });
   if (!original) throw ErrorApi.noEncontrado('El mensaje no existe');
 
-  const tenant = await ejecutarSinTenant(() => Tenant.findById(original.tenant));
-  const whatsapp = tenant?.config?.whatsapp ?? {};
-  const { accountSid, authToken, numero } = whatsapp.credenciales ?? {};
+  const { accountSid, authToken } = credencialesTwilio();
+  const numero = entorno.TWILIO_NUMERO;
   if (!accountSid || !authToken || !numero) {
-    throw ErrorApi.solicitudInvalida('Este gimnasio no tiene WhatsApp (Twilio) configurado');
+    throw ErrorApi.solicitudInvalida('El canal de WhatsApp (Twilio) no esta configurado');
   }
 
   const respuesta = await fetch(

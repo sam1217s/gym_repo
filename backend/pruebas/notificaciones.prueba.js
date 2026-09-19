@@ -2,16 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ESTADOS_NOTIFICACION,
-  ESTADOS_TENANT,
   ESTADOS_VENCIMIENTO,
   METODOS_PAGO,
   MILISEGUNDOS_POR_DIA,
-  PROVEEDORES_WHATSAPP,
   ROLES,
 } from '../src/config/constantes.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
-import { crearProveedor } from '../src/proveedores/indice.js';
 import { construirMensaje } from '../src/servicios/notificaciones.servicio.js';
 import { ejecutarAvisosDeVencimiento } from '../src/tareas/vencimientos.tarea.js';
 import { limpiarColecciones } from './configuracion.js';
@@ -47,30 +44,10 @@ function enDias(dias) {
   return new Date(Date.now() + dias * MILISEGUNDOS_POR_DIA);
 }
 
-async function montarGimnasio({
-  slug = 'gimnasio-avisos',
-  estado = ESTADOS_TENANT.ACTIVO,
-  whatsappEnElPlan = true,
-  proveedor = PROVEEDORES_WHATSAPP.N8N,
-  credenciales = { urlWebhook: 'https://ejemplo.invalido/hook' },
-} = {}) {
-  const tenant = await ejecutarSinTenant(async () => {
-    const plan = await obtenerModelo('PlanPlataforma').create({
-      nombre: `Plan ${Math.random()}`,
-      precioMensual: 100_000,
-      limites: { maxSedes: 5, maxMiembros: 500, maxUsuarios: 10 },
-      features: { whatsapp: whatsappEnElPlan, reportes: true },
-    });
-
-    return obtenerModelo('Tenant').create({
-      nombre: 'Gimnasio Avisos',
-      nit: '900111',
-      slug,
-      estado,
-      planPlataforma: plan._id,
-      config: { whatsapp: { proveedor, credenciales } },
-    });
-  });
+async function montarGimnasio({ slug = 'gimnasio-avisos' } = {}) {
+  const tenant = await ejecutarSinTenant(() =>
+    obtenerModelo('Tenant').create({ nombre: 'Gimnasio Avisos', nit: '900111', slug }),
+  );
 
   const contexto = await ejecutarConTenant(tenant._id, async () => {
     const sede = await obtenerModelo('Sede').create({ nombre: 'Norte', direccion: 'Calle 100' });
@@ -325,70 +302,16 @@ describe('registro del envio', () => {
 });
 
 describe('quien queda fuera de la corrida', () => {
-  it('un plan de plataforma sin la feature whatsapp no envia nada', async () => {
-    const gimnasio = await montarGimnasio({ whatsappEnElPlan: false });
-    await crearMiembroConPagos(gimnasio, { documento: 'x', pagos: [{ diasHastaVencer: 1 }] });
-
-    const falso = proveedorFalso();
-    const resumen = await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });
-
-    expect(falso.enviados).toHaveLength(0);
-    expect(resumen[0].omitido).toBe('plan_sin_whatsapp');
-  });
-
-  it('el proveedor "ninguno" no envia nada (con la fabrica real, sin red)', async () => {
-    const gimnasio = await montarGimnasio({
-      proveedor: PROVEEDORES_WHATSAPP.NINGUNO,
-      credenciales: {},
-    });
+  it('sin canal configurado (Twilio en el entorno vacio) no envia nada', async () => {
+    // La fabrica REAL lee las credenciales del entorno; en pruebas estan vacias,
+    // asi que el proveedor queda deshabilitado y no se manda nada.
+    const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, { documento: 'x', pagos: [{ diasHastaVencer: 1 }] });
 
     const resumen = await ejecutarAvisosDeVencimiento();
 
     expect(resumen[0].omitido).toBe('proveedor_ninguno');
     expect(await contarNotificaciones(gimnasio.tenant._id)).toHaveLength(0);
-  });
-
-  it('un gimnasio suspendido o cancelado no entra; uno en trial si', async () => {
-    const suspendido = await montarGimnasio({ slug: 'suspendido', estado: ESTADOS_TENANT.SUSPENDIDO });
-    const cancelado = await montarGimnasio({ slug: 'cancelado', estado: ESTADOS_TENANT.CANCELADO });
-    const trial = await montarGimnasio({ slug: 'trial', estado: ESTADOS_TENANT.TRIAL });
-
-    for (const gimnasio of [suspendido, cancelado, trial]) {
-      await crearMiembroConPagos(gimnasio, { documento: 'x', pagos: [{ diasHastaVencer: 1 }] });
-    }
-
-    const falso = proveedorFalso();
-    const resumen = await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });
-
-    expect(resumen.map((fila) => fila.tenant)).toEqual(['trial']);
-    expect(falso.enviados).toHaveLength(1);
-  });
-
-  it('un gimnasio mal configurado no tumba a los demas', async () => {
-    // Twilio sin credenciales: su fabrica lanza (mal configurado).
-    const roto = await montarGimnasio({
-      slug: 'roto',
-      proveedor: PROVEEDORES_WHATSAPP.TWILIO,
-      credenciales: {},
-    });
-    const sano = await montarGimnasio({ slug: 'sano' });
-
-    await crearMiembroConPagos(roto, { documento: 'x', pagos: [{ diasHastaVencer: 1 }] });
-    await crearMiembroConPagos(sano, { documento: 'y', pagos: [{ diasHastaVencer: 1 }] });
-
-    // El de Twilio roto usa la fabrica real (lanza); el sano, la falsa.
-    const falso = proveedorFalso();
-    const resumen = await ejecutarAvisosDeVencimiento({
-      crearProveedor: (config) =>
-        config?.proveedor === PROVEEDORES_WHATSAPP.TWILIO
-          ? crearProveedor(config)
-          : falso.crearProveedor(),
-    });
-
-    const porTenant = Object.fromEntries(resumen.map((fila) => [fila.tenant, fila]));
-    expect(porTenant.roto.error).toMatch(/credenciales/);
-    expect(porTenant.sano.enviados).toBe(1);
   });
 });
 
@@ -487,27 +410,3 @@ describe('construirMensaje', () => {
   });
 });
 
-describe('fabrica de proveedores', () => {
-  it('"ninguno" devuelve un proveedor deshabilitado', () => {
-    const proveedor = crearProveedor({ proveedor: PROVEEDORES_WHATSAPP.NINGUNO });
-    expect(proveedor.habilitado).toBe(false);
-  });
-
-  it('sin configuracion, por defecto no envia', () => {
-    expect(crearProveedor().habilitado).toBe(false);
-    expect(crearProveedor({}).habilitado).toBe(false);
-  });
-
-  it('exige las credenciales de cada proveedor', () => {
-    expect(() => crearProveedor({ proveedor: PROVEEDORES_WHATSAPP.N8N, credenciales: {} })).toThrow(
-      /urlWebhook/,
-    );
-    expect(() =>
-      crearProveedor({ proveedor: PROVEEDORES_WHATSAPP.TWILIO, credenciales: { accountSid: 'AC1' } }),
-    ).toThrow(/credenciales/);
-  });
-
-  it('un proveedor desconocido lanza', () => {
-    expect(() => crearProveedor({ proveedor: 'telegrama' })).toThrow(/desconocido/);
-  });
-});

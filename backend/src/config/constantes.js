@@ -4,38 +4,11 @@
  */
 
 export const ROLES = Object.freeze({
-  SUPER_ADMIN: 'super_admin',
   TENANT_OWNER: 'tenant_owner',
   SEDE_ADMIN: 'sede_admin',
 });
 
 export const LISTA_ROLES = Object.values(ROLES);
-
-export const ESTADOS_TENANT = Object.freeze({
-  TRIAL: 'trial',
-  ACTIVO: 'activo',
-  SUSPENDIDO: 'suspendido',
-  CANCELADO: 'cancelado',
-});
-
-export const LISTA_ESTADOS_TENANT = Object.values(ESTADOS_TENANT);
-
-/** Estados en los que el gimnasio puede OPERAR: cobrar, registrar miembros, ver reportes. */
-export const ESTADOS_TENANT_OPERATIVOS = Object.freeze([
-  ESTADOS_TENANT.TRIAL,
-  ESTADOS_TENANT.ACTIVO,
-]);
-
-/**
- * Estados con los que un usuario puede INICIAR SESION. Un gimnasio suspendido
- * entra a proposito: si no pudiera, no podria pagar la factura que lo suspendio.
- * Dentro del panel solo alcanza Facturacion (`bloquearSiGimnasioSuspendido`).
- * Un gimnasio cancelado no entra: cancelar es terminal.
- */
-export const ESTADOS_TENANT_CON_ACCESO = Object.freeze([
-  ...ESTADOS_TENANT_OPERATIVOS,
-  ESTADOS_TENANT.SUSPENDIDO,
-]);
 
 export const METODOS_PAGO = Object.freeze({
   EFECTIVO: 'efectivo',
@@ -53,14 +26,6 @@ export const LISTA_METODOS_PAGO = Object.values(METODOS_PAGO);
  * Formato: `MB-<tenantId>-<miembroId>-<planId>-<nonce>`.
  */
 export const PREFIJO_REFERENCIA_PAGO_MIEMBRO = 'MB';
-
-export const PROVEEDORES_WHATSAPP = Object.freeze({
-  TWILIO: 'twilio',
-  N8N: 'n8n',
-  NINGUNO: 'ninguno',
-});
-
-export const LISTA_PROVEEDORES_WHATSAPP = Object.values(PROVEEDORES_WHATSAPP);
 
 export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
 
@@ -132,17 +97,6 @@ export const DIAS_AVISO_VENCIMIENTO = 3;
 export const DIAS_AVISO_POR_VENCER = 2;
 export const DIAS_AVISO_VENCIDO = 2;
 
-/** Todo gimnasio nuevo estrena 2 meses gratis antes de su primera factura. */
-export const MESES_TRIAL_GRATIS = 2;
-
-/**
- * La suscripcion es una sola, plana, igual para todos: `PlanPlataforma` con
- * este nombre. El registro publico lo asigna sin que nadie elija. El seed lo
- * crea. Se busca por nombre, asi que este string es la llave.
- */
-export const PLAN_SUSCRIPCION_NOMBRE = 'Estandar';
-export const PLAN_SUSCRIPCION_PRECIO = 100_000;
-
 export const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
 
 /**
@@ -206,10 +160,7 @@ export const ESTADOS_MAQUINA_REQUIEREN_ATENCION = Object.freeze([
 /** Todos los dias a las 9:00, en la zona horaria del producto. */
 export const EXPRESION_CRON_VENCIMIENTOS = '0 9 * * *';
 
-/** Facturacion de plataforma: de madrugada, lejos de la hora pico del gimnasio. */
-export const EXPRESION_CRON_FACTURACION = '0 3 * * *';
-
-/** Limpieza de comprobantes: a las 4, despues de la cobranza y antes del dia. */
+/** Limpieza de comprobantes: a las 4, antes del dia. */
 export const EXPRESION_CRON_PURGA_COMPROBANTES = '0 4 * * *';
 
 /**
@@ -220,19 +171,7 @@ export const EXPRESION_CRON_PURGA_COMPROBANTES = '0 4 * * *';
  */
 export const MESES_RETENCION_COMPROBANTE = 3;
 
-// --- Facturacion de plataforma (el gimnasio le paga a GymSaaS) ---------------
-
-export const ESTADOS_FACTURA = Object.freeze({
-  PENDIENTE: 'pendiente',
-  PAGADA: 'pagada',
-  FALLIDA: 'fallida',
-  ANULADA: 'anulada',
-});
-
-export const LISTA_ESTADOS_FACTURA = Object.values(ESTADOS_FACTURA);
-
-/** Dias que tiene un gimnasio para pagar antes de que se le suspenda la cuenta. */
-export const DIAS_GRACIA_PAGO = 5;
+// --- Cobro en linea del miembro (Wompi del gimnasio) -------------------------
 
 /** Wompi cobra en centavos: $60.000 COP viajan como 6000000. */
 export const CENTAVOS_POR_UNIDAD = 100;

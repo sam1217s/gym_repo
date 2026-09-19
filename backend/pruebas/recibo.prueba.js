@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ESTADOS_TENANT, PLANTILLA_RECIBO } from '../src/config/constantes.js';
+import { PLANTILLA_RECIBO } from '../src/config/constantes.js';
 import { ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import {
@@ -16,17 +16,10 @@ import { limpiarColecciones } from './configuracion.js';
 
 async function crearTenant(config = {}) {
   return ejecutarSinTenant(async () => {
-    const plan = await obtenerModelo('PlanPlataforma').create({
-      nombre: `Plan ${Math.random()}`,
-      precioMensual: 100_000,
-      limites: { maxSedes: 5, maxMiembros: 500, maxUsuarios: 10 },
-    });
     return obtenerModelo('Tenant').create({
       nombre: 'GymRecibo',
       nit: '900999',
       slug: `gymr-${Math.random().toString(36).slice(2, 8)}`,
-      estado: ESTADOS_TENANT.ACTIVO,
-      planPlataforma: plan._id,
       config,
     });
   });
@@ -53,7 +46,7 @@ describe('Recibo de pago por WhatsApp', () => {
     const tenant = await crearTenant();
     const enviados = [];
     let opcionesRecibidas = null;
-    const crearProveedor = (_config, opciones) => {
+    const crearProveedor = (opciones) => {
       opcionesRecibidas = opciones;
       return { habilitado: true, enviar: async (p) => enviados.push(p) };
     };

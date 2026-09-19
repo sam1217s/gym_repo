@@ -1,7 +1,7 @@
 import peticion from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { COOKIE_ACCESO, COOKIE_REFRESCO, ESTADOS_TENANT, ROLES } from '../src/config/constantes.js';
+import { COOKIE_ACCESO, COOKIE_REFRESCO, ROLES } from '../src/config/constantes.js';
 import { ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import { crearServidor } from '../src/servidor.js';
@@ -25,20 +25,12 @@ function leerCookie(respuesta, nombre) {
   return cookies.find((cookie) => cookie.startsWith(`${nombre}=`)) ?? null;
 }
 
-async function crearGimnasioConDuena({ estado = ESTADOS_TENANT.ACTIVO, debeCambiarContrasena = false } = {}) {
+async function crearGimnasioConDuena({ debeCambiarContrasena = false } = {}) {
   return ejecutarSinTenant(async () => {
-    const planPlataforma = await obtenerModelo('PlanPlataforma').create({
-      nombre: `Plan ${Math.random()}`,
-      precioMensual: 100_000,
-      limites: { maxSedes: 3, maxMiembros: 500, maxUsuarios: 5 },
-    });
-
     const tenant = await obtenerModelo('Tenant').create({
       nombre: 'Gimnasio Prueba',
       nit: '900333',
       slug: 'gimnasio-prueba',
-      estado,
-      planPlataforma: planPlataforma._id,
     });
 
     const usuario = await obtenerModelo('Usuario').create({
@@ -98,33 +90,6 @@ describe('POST /api/auth/iniciar-sesion', () => {
       .expect(401);
 
     expect(respuesta.body.error.mensaje).toBe('Datos de acceso incorrectos');
-  });
-
-  /**
-   * Un gimnasio SUSPENDIDO si entra: dentro solo alcanza Facturacion, para
-   * poder pagar lo que debe (ver `bloquearSiGimnasioSuspendido`). Si se le
-   * cerrara el login, la suspension seria una trampa sin salida.
-   */
-  it('deja entrar a un gimnasio suspendido, y lo dice en la sesion', async () => {
-    await crearGimnasioConDuena({ estado: ESTADOS_TENANT.SUSPENDIDO });
-
-    const respuesta = await peticion(app)
-      .post('/api/auth/iniciar-sesion')
-      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
-      .expect(200);
-
-    expect(respuesta.body.data.tenantEstado).toBe(ESTADOS_TENANT.SUSPENDIDO);
-  });
-
-  it('bloquea el acceso a un gimnasio cancelado: cancelar es terminal', async () => {
-    await crearGimnasioConDuena({ estado: ESTADOS_TENANT.CANCELADO });
-
-    const respuesta = await peticion(app)
-      .post('/api/auth/iniciar-sesion')
-      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
-      .expect(403);
-
-    expect(respuesta.body.error.mensaje).toMatch(/cancelado/i);
   });
 
   it('valida el cuerpo con Zod', async () => {

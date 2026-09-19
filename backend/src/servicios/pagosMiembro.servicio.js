@@ -50,11 +50,12 @@ function leerReferencia(referencia) {
   return { tenantId, miembroId, planId };
 }
 
-/** Las llaves Wompi del gimnasio, o `null` si el dueno aun no las configuro. */
-function credencialesWompi(tenant) {
-  const wompi = tenant.config?.wompi ?? {};
-  if (!wompi.llavePublica || !wompi.secretoIntegridad) return null;
-  return wompi;
+/** Las llaves Wompi del gimnasio (del entorno), o `null` si aun no se configuraron. */
+function credencialesWompi() {
+  const llavePublica = entorno.WOMPI_MIEMBRO_LLAVE_PUBLICA;
+  const secretoIntegridad = entorno.WOMPI_MIEMBRO_SECRETO_INTEGRIDAD;
+  if (!llavePublica || !secretoIntegridad) return null;
+  return { llavePublica, secretoIntegridad };
 }
 
 /** El plan sobre el que se renueva: el del ULTIMO pago del miembro. */
@@ -84,7 +85,7 @@ export async function construirCheckoutDesdeToken(token) {
   const tenant = await Tenant.findById(carga.tenant);
   if (!tenant) throw ErrorApi.noEncontrado('El gimnasio ya no existe');
 
-  const credenciales = credencialesWompi(tenant);
+  const credenciales = credencialesWompi();
   if (!credenciales) {
     throw ErrorApi.solicitudInvalida('El gimnasio aun no tiene configurado el pago en linea');
   }
@@ -132,7 +133,7 @@ export async function aplicarEventoPagoMiembro(evento) {
 
   const Tenant = obtenerModelo('Tenant');
   const tenant = await Tenant.findById(ref.tenantId);
-  const secretoEventos = tenant?.config?.wompi?.secretoEventos;
+  const secretoEventos = entorno.WOMPI_MIEMBRO_SECRETO_EVENTOS;
   if (!tenant || !secretoEventos) return { ignorado: 'gimnasio_sin_pago_en_linea' };
 
   // LA firma: sin esto, cualquiera podria hacer un POST y renovar mensualidades.

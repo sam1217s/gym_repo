@@ -57,13 +57,6 @@
           :loading="cargando"
         />
       </q-form>
-
-      <div class="text-center q-mt-md text-caption text-grey-7">
-        ¿No tienes cuenta?
-        <router-link :to="{ name: 'registrar' }" class="enlace-registro">
-          Registra tu gimnasio
-        </router-link>
-      </div>
     </q-card-section>
   </q-card>
 </template>

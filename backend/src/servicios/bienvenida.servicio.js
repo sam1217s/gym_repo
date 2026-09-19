@@ -44,7 +44,7 @@ export async function darBienvenida(
     const tenant = await obtenerModelo('Tenant').findById(tenantId);
     if (!tenant) return { enviado: false, motivo: 'sin_tenant' };
 
-    const proveedor = crearProveedor(tenant.config?.whatsapp, { plantilla: PLANTILLA_BIENVENIDA });
+    const proveedor = crearProveedor({ plantilla: PLANTILLA_BIENVENIDA });
     if (!proveedor.habilitado) return { enviado: false, motivo: 'proveedor_ninguno' };
 
     await proveedor.enviar({

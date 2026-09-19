@@ -1,34 +1,41 @@
-import { PROVEEDORES_WHATSAPP } from '../config/constantes.js';
+import { entorno } from '../config/entorno.js';
 import { proveedorDeshabilitado } from './NotificacionProvider.js';
-import { crearProveedorN8n } from './n8n.proveedor.js';
 import { crearProveedorTwilio } from './twilio.proveedor.js';
 
 /**
- * Unico punto donde se decide QUE implementacion atiende a un gimnasio. El
+ * Unico punto donde se decide QUE implementacion envia las notificaciones. El
  * servicio de notificaciones solo conoce el contrato `NotificacionProvider`.
  *
- * El proveedor sale de `tenant.config.whatsapp.proveedor`, nunca de una
- * variable de entorno: dos gimnasios en el mismo servidor pueden usar canales
- * distintos.
+ * Siendo un solo gimnasio, el canal es Twilio y sus credenciales viven en el
+ * ENTORNO (antes se elegian por gimnasio en `tenant.config.whatsapp`). Sin
+ * credenciales completas, el proveedor queda deshabilitado (no se envia nada).
  */
-const FABRICAS = {
-  [PROVEEDORES_WHATSAPP.NINGUNO]: () => proveedorDeshabilitado(PROVEEDORES_WHATSAPP.NINGUNO),
-  [PROVEEDORES_WHATSAPP.N8N]: crearProveedorN8n,
-  [PROVEEDORES_WHATSAPP.TWILIO]: crearProveedorTwilio,
-};
+function credencialesTwilio() {
+  return {
+    accountSid: entorno.TWILIO_ACCOUNT_SID,
+    authToken: entorno.TWILIO_AUTH_TOKEN,
+    numero: entorno.TWILIO_NUMERO,
+    plantillas: {
+      vencimiento: entorno.TWILIO_CONTENT_SID_VENCIMIENTO,
+      bienvenida: entorno.TWILIO_CONTENT_SID_BIENVENIDA,
+      recibo: entorno.TWILIO_CONTENT_SID_RECIBO,
+    },
+  };
+}
+
+/** `true` si hay credenciales de Twilio suficientes para operar el canal. */
+export function canalConfigurado() {
+  const { accountSid, authToken, numero } = credencialesTwilio();
+  return Boolean(accountSid && authToken && numero);
+}
 
 /**
- * @param {{ proveedor?: string, credenciales?: object }} configWhatsapp
- * @param {{ plantilla?: object }} [opciones] Plantilla a usar (Twilio: su Content
- *   SID). Sin ella, cada fabrica usa su plantilla por defecto (la de vencimiento).
- *   Los proveedores de texto (n8n) ignoran esto y usan el `mensaje`.
+ * @param {{ plantilla?: object }} [opciones] Plantilla a usar (su Content SID
+ *   sale de las credenciales por `PLANTILLA_*.clave`). Sin ella, se usa la de
+ *   vencimiento por defecto.
  * @returns {import('./NotificacionProvider.js').NotificacionProvider}
  */
-export function crearProveedor(configWhatsapp = {}, opciones = {}) {
-  const nombre = configWhatsapp.proveedor ?? PROVEEDORES_WHATSAPP.NINGUNO;
-  const fabrica = FABRICAS[nombre];
-
-  if (!fabrica) throw new Error(`Proveedor de WhatsApp desconocido: "${nombre}"`);
-
-  return fabrica(configWhatsapp.credenciales ?? {}, opciones);
+export function crearProveedor(opciones = {}) {
+  if (!canalConfigurado()) return proveedorDeshabilitado('twilio');
+  return crearProveedorTwilio(credencialesTwilio(), opciones);
 }

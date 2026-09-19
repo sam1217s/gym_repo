@@ -1,8 +1,7 @@
-import { ROLES } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { cifrarContrasena, verificarContrasena } from '../utilidades/contrasena.js';
-import { verificarTokenRefresco, verificarTokenVerificacion } from '../utilidades/token.js';
+import { verificarTokenRefresco } from '../utilidades/token.js';
 
 /**
  * Logica de negocio de autenticacion. No conoce Express: recibe datos planos y
@@ -26,16 +25,7 @@ export async function iniciarSesion({ identificador, contrasena, slugGimnasio })
   if (!usuario || !esCorrecta) throw ErrorApi.noAutenticado(MENSAJE_CREDENCIALES);
   if (!usuario.activo) throw ErrorApi.prohibido('Tu usuario esta desactivado');
 
-  // Un dueno que se registro solo no entra hasta confirmar el enlace del correo.
-  // El resto de usuarios nace verificado, asi que esto no les afecta.
-  if (!usuario.emailVerificado) {
-    throw ErrorApi.prohibido(
-      'Confirma tu correo para activar tu cuenta. Revisa el enlace que te enviamos al registrarte.',
-    );
-  }
-
-  const tenant =
-    usuario.rol === ROLES.SUPER_ADMIN ? null : await exigirTenantConAcceso(usuario.tenant);
+  const tenant = await exigirTenant(usuario.tenant);
 
   usuario.ultimoAcceso = new Date();
   await usuario.save();
@@ -81,21 +71,14 @@ async function buscarUsuarioParaLogin(identificador, slugGimnasio) {
   return candidatos[0] ?? null;
 }
 
-/**
- * Un gimnasio SUSPENDIDO si puede entrar: dentro solo alcanza Facturacion, para
- * poder pagar lo que debe. Solo `cancelado` cierra la puerta del todo.
- */
-async function exigirTenantConAcceso(tenantId) {
+/** El gimnasio al que pertenece el usuario. */
+async function exigirTenant(tenantId) {
   if (!tenantId) throw ErrorApi.prohibido('El usuario no pertenece a ningun gimnasio');
 
   const Tenant = obtenerModelo('Tenant');
   const tenant = await Tenant.findById(tenantId);
 
   if (!tenant) throw ErrorApi.prohibido('El gimnasio ya no existe');
-  if (!tenant.permiteAcceso()) {
-    throw ErrorApi.prohibido(`El gimnasio esta ${tenant.estado}. Contacta a soporte.`);
-  }
-
   return tenant;
 }
 
@@ -119,36 +102,9 @@ export async function refrescarSesion(tokenRefresco) {
   if (!usuario || !usuario.activo) throw ErrorApi.noAutenticado('Usuario inexistente o inactivo');
   if (usuario.versionToken !== carga.version) throw ErrorApi.noAutenticado('Sesion revocada');
 
-  const tenant =
-    usuario.rol === ROLES.SUPER_ADMIN ? null : await exigirTenantConAcceso(usuario.tenant);
+  const tenant = await exigirTenant(usuario.tenant);
 
   return { usuario, tenant };
-}
-
-/**
- * Confirma el correo de un dueno que se registro solo, con el token del enlace.
- * Idempotente: pulsar dos veces el enlace no falla. No abre sesion; solo
- * desbloquea el login.
- */
-export async function verificarEmail(token) {
-  let carga;
-  try {
-    carga = verificarTokenVerificacion(token);
-  } catch {
-    throw ErrorApi.solicitudInvalida('El enlace de verificacion no es valido o ya expiro');
-  }
-
-  const Usuario = obtenerModelo('Usuario');
-  const usuario = await Usuario.findById(carga.sub);
-
-  if (!usuario) throw ErrorApi.noEncontrado('La cuenta ya no existe');
-
-  if (!usuario.emailVerificado) {
-    usuario.emailVerificado = true;
-    await usuario.save();
-  }
-
-  return { email: usuario.email, yaEstaba: false };
 }
 
 /** Cerrar sesion invalida TODOS los tokens del usuario, no solo el de este navegador. */
@@ -181,10 +137,6 @@ export async function cambiarContrasena(usuarioId, { contrasenaActual, contrasen
 
 /**
  * Datos del usuario en sesion que el frontend necesita para pintar el panel.
- *
- * `tenantEstado` viaja para que el frontend sepa mandar a Facturacion a un
- * gimnasio suspendido en vez de dejarlo chocar contra un 403 en cada pantalla.
- * Es comodidad de la interfaz: quien decide sigue siendo el backend.
  */
 export function describirSesion(usuario, tenant = null) {
   return {
@@ -196,7 +148,6 @@ export function describirSesion(usuario, tenant = null) {
     cedula: usuario.cedula ?? null,
     rol: usuario.rol,
     tenant: usuario.tenant,
-    tenantEstado: tenant?.estado ?? null,
     tenantNombre: tenant?.nombre ?? null,
     sede: usuario.sede,
     debeCambiarContrasena: usuario.debeCambiarContrasena,

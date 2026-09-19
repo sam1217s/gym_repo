@@ -25,18 +25,12 @@ let gimnasioB;
 /** Crea dos gimnasios con datos identicos, para que solo el tenant los distinga. */
 async function sembrarDosGimnasios() {
   const { tenantA, tenantB } = await ejecutarSinTenant(async () => {
-    const PlanPlataforma = obtenerModelo('PlanPlataforma');
     const Tenant = obtenerModelo('Tenant');
 
-    const planPlataforma = await PlanPlataforma.create({
-      nombre: 'Basico',
-      precioMensual: 100_000,
-      limites: { maxSedes: 3, maxMiembros: 500, maxUsuarios: 5 },
-    });
 
     const [a, b] = await Promise.all([
-      Tenant.create({ nombre: 'Gimnasio A', nit: '900111', slug: 'gimnasio-a', planPlataforma: planPlataforma._id }),
-      Tenant.create({ nombre: 'Gimnasio B', nit: '900222', slug: 'gimnasio-b', planPlataforma: planPlataforma._id }),
+      Tenant.create({ nombre: 'Gimnasio A', nit: '900111', slug: 'gimnasio-a' }),
+      Tenant.create({ nombre: 'Gimnasio B', nit: '900222', slug: 'gimnasio-b' }),
     ]);
 
     return { tenantA: a, tenantB: b };

@@ -1,7 +1,7 @@
 import peticion from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { CATEGORIAS_GASTO, ESTADOS_TENANT, ROLES } from '../src/config/constantes.js';
+import { CATEGORIAS_GASTO, ROLES } from '../src/config/constantes.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import { crearServidor } from '../src/servidor.js';
@@ -19,17 +19,10 @@ const app = crearServidor();
 
 async function montarGimnasio() {
   const tenant = await ejecutarSinTenant(async () => {
-    const plan = await obtenerModelo('PlanPlataforma').create({
-      nombre: `Plan ${Math.random()}`,
-      precioMensual: 100_000,
-      limites: { maxSedes: 5, maxMiembros: 500, maxUsuarios: 10 },
-    });
     return obtenerModelo('Tenant').create({
       nombre: 'GymFin',
       nit: '900666',
       slug: 'gymfin',
-      estado: ESTADOS_TENANT.ACTIVO,
-      planPlataforma: plan._id,
     });
   });
 

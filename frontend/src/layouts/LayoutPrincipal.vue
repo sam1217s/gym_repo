@@ -8,7 +8,7 @@
         <!-- Titulo: el NEGOCIO manda (nombre del gimnasio); GymSaaS queda como
              ceja discreta. El super_admin ve la plataforma. -->
         <q-toolbar-title class="columna-titulo">
-          <div class="ceja-marca">{{ esSuperAdmin ? 'GymSaaS' : 'GymSaaS · Panel' }}</div>
+          <div class="ceja-marca">GymSaaS · Panel</div>
           <div class="titulo-display titulo-negocio">{{ tituloNegocio }}</div>
         </q-toolbar-title>
 
@@ -90,7 +90,7 @@ import { useQuasar } from 'quasar';
 import { computed, onMounted, ref } from 'vue';
 
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
-import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
+import { ROLES } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const { usuario, cerrarSesion } = useAutenticacion();
@@ -114,7 +114,6 @@ const sobreMenu = ref(false);
 const miniActivo = computed(() => mini.value && !sobreMenu.value && $q.screen.gt.sm);
 
 const ETIQUETAS_ROL = {
-  [ROLES.SUPER_ADMIN]: 'Plataforma',
   [ROLES.TENANT_OWNER]: 'Dueno',
   [ROLES.SEDE_ADMIN]: 'Sede',
 };
@@ -122,7 +121,6 @@ const ETIQUETAS_ROL = {
 // Cada enlace declara que roles pueden verlo, igual que `meta.roles` en las rutas.
 const ENLACES = [
   { nombre: 'panel', titulo: 'Inicio', icono: 'dashboard', roles: null },
-  { nombre: 'plataforma', titulo: 'Gimnasios', icono: 'apartment', roles: [ROLES.SUPER_ADMIN] },
   {
     nombre: 'miembros',
     titulo: 'Miembros',
@@ -159,38 +157,16 @@ const ENLACES = [
   { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
   { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'facturacion', titulo: 'Facturacion', icono: 'receipt_long', roles: [ROLES.TENANT_OWNER] },
 ];
 
 const etiquetaRol = computed(() => ETIQUETAS_ROL[usuario.value?.rol] ?? '');
 
-const autenticacion = useAutenticacionStore();
-const esSuperAdmin = computed(() => usuario.value?.rol === ROLES.SUPER_ADMIN);
+// El titulo del header es el nombre del NEGOCIO; si no llega, cae a GymSaaS.
+const tituloNegocio = computed(() => usuario.value?.tenantNombre || 'GymSaaS');
 
-// El titulo del header es el nombre del NEGOCIO. El super_admin opera la
-// plataforma, no un gimnasio; si por lo que sea no llega el nombre, cae a GymSaaS.
-const tituloNegocio = computed(() => {
-  if (esSuperAdmin.value) return 'Plataforma';
-  return usuario.value?.tenantNombre || 'GymSaaS';
-});
-
-const enlacesVisibles = computed(() => {
-  // Un gimnasio suspendido solo puede ir a Facturacion: mostrar el resto seria
-  // ofrecerle puertas que el guard le cierra en la cara.
-  if (autenticacion.gimnasioSuspendido) {
-    return ENLACES.filter((enlace) => enlace.nombre === 'facturacion');
-  }
-
-  // Facturacion (la suscripcion del gimnasio a la plataforma) se oculta mientras
-  // el gimnasio opera normal: durante la prueba gratis no hay nada que cobrar, y
-  // no queremos mostrarle cobros al cliente. Reaparece solo si se le suspende
-  // por impago (rama de arriba), que es cuando de verdad necesita pagar.
-  return ENLACES.filter(
-    (enlace) =>
-      enlace.nombre !== 'facturacion' &&
-      (!enlace.roles || enlace.roles.includes(usuario.value?.rol)),
-  );
-});
+const enlacesVisibles = computed(() =>
+  ENLACES.filter((enlace) => !enlace.roles || enlace.roles.includes(usuario.value?.rol)),
+);
 
 // El boton hamburguesa: en movil abre/cierra el overlay; en escritorio FIJA el
 // menu abierto (deja de recogerse al quitar el mouse) o lo devuelve al modo

@@ -2,7 +2,6 @@ import peticion from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  ESTADOS_TENANT,
   METODOS_PAGO,
   MILISEGUNDOS_POR_DIA,
   ROLES,
@@ -27,18 +26,11 @@ const app = crearServidor();
 
 async function montarGimnasio(slug = 'gimnasio-reportes') {
   const tenant = await ejecutarSinTenant(async () => {
-    const plan = await obtenerModelo('PlanPlataforma').create({
-      nombre: `Plan ${Math.random()}`,
-      precioMensual: 100_000,
-      limites: { maxSedes: 5, maxMiembros: 500, maxUsuarios: 10 },
-    });
 
     return obtenerModelo('Tenant').create({
       nombre: 'Gimnasio',
       nit: '900111',
       slug,
-      estado: ESTADOS_TENANT.ACTIVO,
-      planPlataforma: plan._id,
     });
   });
 

@@ -4,7 +4,6 @@ import { computed, ref } from 'vue';
 import * as servicioAuth from 'src/servicios/auth.servicio.js';
 
 export const ROLES = Object.freeze({
-  SUPER_ADMIN: 'super_admin',
   TENANT_OWNER: 'tenant_owner',
   SEDE_ADMIN: 'sede_admin',
 });
@@ -26,11 +25,7 @@ export const useAutenticacionStore = defineStore(
     const sesionVerificada = ref(false);
 
     const estaAutenticado = computed(() => usuario.value !== null);
-    const esSuperAdmin = computed(() => usuario.value?.rol === ROLES.SUPER_ADMIN);
     const debeCambiarContrasena = computed(() => usuario.value?.debeCambiarContrasena === true);
-
-    /** Puede entrar, pero solo a Facturacion, hasta que pague. */
-    const gimnasioSuspendido = computed(() => usuario.value?.tenantEstado === 'suspendido');
 
     function limpiarSesion() {
       usuario.value = null;
@@ -79,9 +74,7 @@ export const useAutenticacionStore = defineStore(
       usuario,
       sesionVerificada,
       estaAutenticado,
-      esSuperAdmin,
       debeCambiarContrasena,
-      gimnasioSuspendido,
       iniciarSesion,
       cerrarSesion,
       verificarSesion,

@@ -3,7 +3,6 @@ import * as controlador from '../controladores/planesMembresia.controlador.js';
 import { autenticar } from '../middlewares/autenticacion.js';
 import {
   bloquearSiDebeCambiarContrasena,
-  bloquearSiGimnasioSuspendido,
   limitarASede,
   requiereDuenoGimnasio,
   requierePersonalGimnasio,
@@ -24,7 +23,6 @@ rutas.use(
   autenticar,
   abrirContextoTenant,
   bloquearSiDebeCambiarContrasena,
-  bloquearSiGimnasioSuspendido,
   limitarASede,
 );
 

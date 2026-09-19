@@ -1,26 +1,7 @@
 <template>
   <q-page padding class="pagina-panel">
-    <!-- El super_admin no pertenece a ningun gimnasio y los reportes son
-         tenant-scoped: para el, esta pantalla es una puerta, no un panel. -->
-    <section v-if="esSuperAdmin" class="portada-plataforma">
-      <div class="ceja">Plataforma</div>
-      <h1 class="titulo-display titulo-pagina q-my-none">Hola, {{ usuario?.nombres }}</h1>
-      <p class="text-body2 text-grey-7 q-mt-sm q-mb-lg">
-        Los reportes viven dentro de cada gimnasio. Tu trabajo es la plataforma.
-      </p>
-      <q-btn
-        color="primary"
-        unelevated
-        no-caps
-        icon-right="arrow_forward"
-        label="Ir a los gimnasios"
-        :to="{ name: 'plataforma' }"
-      />
-    </section>
-
-    <template v-else>
-      <!-- El titular: cuanto entro, y contra que se compara. -->
-      <header class="titular">
+    <!-- El titular: cuanto entro, y contra que se compara. -->
+    <header class="titular">
         <div class="ceja">Este mes · {{ nombreMesActual }}</div>
 
         <div v-if="cargando" class="q-mt-sm">
@@ -100,7 +81,6 @@
           </q-card>
         </div>
       </div>
-    </template>
   </q-page>
 </template>
 
@@ -109,8 +89,6 @@ import { useQuasar } from 'quasar';
 import { computed, onMounted } from 'vue';
 
 import GraficaIngresos from 'src/components/GraficaIngresos.vue';
-import { useAutenticacion } from 'src/composables/useAutenticacion.js';
-import { ROLES } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 /**
@@ -124,9 +102,7 @@ import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const gimnasio = useGimnasioStore();
 const quasar = useQuasar();
-const { usuario } = useAutenticacion();
 
-const esSuperAdmin = computed(() => usuario.value?.rol === ROLES.SUPER_ADMIN);
 const cargando = computed(() => gimnasio.reportePanel === null);
 
 const FORMATO_PESOS = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
@@ -220,8 +196,6 @@ const quietos = computed(() =>
 const sinPendientes = computed(() => pendientes.value.every((fila) => fila.total === 0));
 
 onMounted(async () => {
-  if (esSuperAdmin.value) return;
-
   try {
     await gimnasio.cargarReportePanel();
   } catch {

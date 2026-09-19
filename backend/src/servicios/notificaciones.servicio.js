@@ -116,27 +116,18 @@ export function construirVariables({ miembro, ultimoPago, tenant, precioPlan }) 
   ];
 }
 
-/** `true` si el plan de plataforma del gimnasio incluye el canal de WhatsApp. */
-function planIncluyeWhatsApp(tenant) {
-  return tenant.planPlataforma?.features?.whatsapp === true;
-}
-
 /**
  * Avisa a los miembros del tenant actual. DEBE llamarse ya dentro de
  * `ejecutarConTenant(tenant._id, ...)`: lee y escribe colecciones aisladas.
  *
  * `crearProveedor` se inyecta para poder probar el flujo con un proveedor falso
- * sin tocar la red.
+ * sin tocar la red. El canal (Twilio) se configura en el entorno.
  */
 export async function notificarVencimientosDelTenant(
   tenant,
   { crearProveedor = crearProveedorPorDefecto, ahora = new Date() } = {},
 ) {
-  if (!planIncluyeWhatsApp(tenant)) {
-    return { omitido: 'plan_sin_whatsapp', enviados: 0, fallidos: 0 };
-  }
-
-  const proveedor = crearProveedor(tenant.config?.whatsapp);
+  const proveedor = crearProveedor();
   if (!proveedor.habilitado) {
     return { omitido: 'proveedor_ninguno', enviados: 0, fallidos: 0 };
   }

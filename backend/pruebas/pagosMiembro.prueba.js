@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import peticion from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ESTADOS_TENANT, METODOS_PAGO } from '../src/config/constantes.js';
+import { METODOS_PAGO } from '../src/config/constantes.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import { crearServidor } from '../src/servidor.js';
@@ -29,21 +29,13 @@ const WOMPI = {
 };
 const PRECIO = 60_000;
 
-/** Un gimnasio con Wompi configurado, un miembro y un primer pago (efectivo). */
-async function montar({ conWompi = true, email } = {}) {
+/** El gimnasio (Wompi del miembro vive en el entorno), un miembro y un primer pago. */
+async function montar({ email } = {}) {
   const tenant = await ejecutarSinTenant(async () => {
-    const plan = await obtenerModelo('PlanPlataforma').create({
-      nombre: `Plan ${Math.random()}`,
-      precioMensual: 100_000,
-      limites: { maxSedes: 5, maxMiembros: 500, maxUsuarios: 10 },
-    });
     return obtenerModelo('Tenant').create({
       nombre: 'GlowUp',
       nit: '900999',
       slug: `glow-${Math.random().toString(36).slice(2, 8)}`,
-      estado: ESTADOS_TENANT.ACTIVO,
-      planPlataforma: plan._id,
-      config: conWompi ? { wompi: WOMPI } : {},
     });
   });
 
@@ -139,13 +131,6 @@ describe('construirCheckoutDesdeToken (enlace Pagar ahora)', () => {
 
   it('rechaza un token invalido', async () => {
     await expect(construirCheckoutDesdeToken('no-es-un-token')).rejects.toThrow(/no es valido/i);
-  });
-
-  it('rechaza si el gimnasio no configuro Wompi', async () => {
-    const { tenant, miembro } = await montar({ conWompi: false });
-    const token = firmarTokenPagoMiembro({ miembroId: miembro._id, tenantId: tenant._id });
-
-    await expect(construirCheckoutDesdeToken(token)).rejects.toThrow(/pago en linea/i);
   });
 });
 

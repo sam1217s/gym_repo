@@ -34,15 +34,6 @@ export function registrarGuardias(enrutador, pinia) {
       return { name: 'cambiar-contrasena' };
     }
 
-    /**
-     * Gimnasio suspendido: solo Facturacion, que es donde se pone al dia. Sin
-     * esto el usuario iria chocando contra un 403 en cada pantalla. El backend
-     * lo bloquea igual; esto solo evita el paseo.
-     */
-    if (autenticacion.gimnasioSuspendido && !destino.meta.permiteSuspendido) {
-      return { name: 'facturacion' };
-    }
-
     const rolesPermitidos = destino.meta.roles;
     if (rolesPermitidos && !rolesPermitidos.includes(autenticacion.usuario.rol)) {
       return { name: 'panel' };

@@ -3,7 +3,6 @@ import * as controlador from '../controladores/ventas.controlador.js';
 import { autenticar } from '../middlewares/autenticacion.js';
 import {
   bloquearSiDebeCambiarContrasena,
-  bloquearSiGimnasioSuspendido,
   limitarASede,
   requierePersonalGimnasio,
 } from '../middlewares/autorizacion.js';
@@ -18,7 +17,6 @@ rutas.use(
   autenticar,
   abrirContextoTenant,
   bloquearSiDebeCambiarContrasena,
-  bloquearSiGimnasioSuspendido,
   requierePersonalGimnasio,
   limitarASede,
 );

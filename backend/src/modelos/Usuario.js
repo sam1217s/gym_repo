@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { LISTA_ROLES, ROLES } from '../config/constantes.js';
+import { LISTA_ROLES } from '../config/constantes.js';
 
 /**
  * NIVEL PLATAFORMA (no tenant-scoped).
@@ -44,14 +44,6 @@ const esquemaUsuario = new mongoose.Schema(
     debeCambiarContrasena: { type: Boolean, default: true },
 
     /**
-     * `false` solo para el dueno que se registro por su cuenta desde la web:
-     * no puede iniciar sesion hasta confirmar el enlace del correo. Todo usuario
-     * creado por un admin (super_admin o dueno) nace verificado, porque el correo
-     * ya lo escribio alguien de confianza.
-     */
-    emailVerificado: { type: Boolean, default: true },
-
-    /**
      * Invalida todos los refresh tokens emitidos antes de incrementarla.
      * Sube al cerrar sesion y al cambiar la contrasena. Es lo que permite
      * revocar sesiones sin guardar los tokens en la base de datos.
@@ -83,10 +75,6 @@ esquemaUsuario.index(
 esquemaUsuario.virtual('nombreCompleto').get(function () {
   return `${this.nombres} ${this.apellidos}`.trim();
 });
-
-esquemaUsuario.methods.esSuperAdmin = function () {
-  return this.rol === ROLES.SUPER_ADMIN;
-};
 
 esquemaUsuario.set('toJSON', {
   virtuals: true,

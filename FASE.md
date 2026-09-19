@@ -450,6 +450,36 @@ por `twilio` en todo el sistema; se conservan `n8n` y `ninguno`. Los mensajes ya
         Content SID en el panel; apuntar el webhook entrante del WhatsApp Sender a
         `ORIGEN_PUBLICO/api/webhooks/whatsapp`.
 
+### Conversion a software a la medida: UN solo gimnasio · HECHO
+El producto deja de ser SaaS multi-gym. Se **mantiene** el aislamiento por tenant como red de
+seguridad (un unico Tenant fijo; el plugin y el contexto no se tocan) y se **elimina** todo el
+plano de control multi-gym.
+- [x] **Config de canales al `.env`** (ya no hay panel): Twilio (`TWILIO_ACCOUNT_SID`,
+      `TWILIO_AUTH_TOKEN`, `TWILIO_NUMERO`, `TWILIO_CONTENT_SID_*`) y Wompi del miembro
+      (`WOMPI_MIEMBRO_*`). El proveedor de notificaciones y la bandeja (`mensajes.servicio`)
+      leen del entorno; la bandeja resuelve el unico Tenant.
+- [x] **Facturacion SaaS eliminada**: borrados `PlanPlataforma`, `FacturaPlataforma`,
+      `onboarding`, `registroPublico`, `tenants`, `planesPlataforma`, `facturacionPlataforma`,
+      `cobros`, `whatsapp`(config) servicios; el modulo `plataforma` y `facturacion` (rutas +
+      controladores + validaciones); `tareas/facturacion.tarea`; `middlewares/limitesPlan`;
+      `correos/`; el webhook `/webhooks/wompi` de plataforma. Se conserva `pasarelas/wompi`
+      (la usa el pago del miembro).
+- [x] **super_admin eliminado**: fuera `ROLES.SUPER_ADMIN`, `requiereSuperAdmin`,
+      `bloquearSiGimnasioSuspendido`, `ESTADOS_TENANT*`, `Tenant.estado/finTrial/planPlataforma`
+      y `Usuario.emailVerificado`. `autenticar`/`abrirContextoTenant`/`auth.servicio` asumen que
+      todo usuario pertenece al unico gimnasio.
+- [x] **Seed**: `npm run sembrar` (`scripts/sembrarGimnasio.js`) crea Tenant + dueno
+      (`tenant_owner`) + primera sede. Se borraron los seeds de plataforma.
+- [x] **Frontend**: fuera `PanelPlataforma`, `PaginaFacturacion`, `RegistrarGimnasio`,
+      `VerificarEmail`, `FormularioOnboarding`, stores/servicios de plataforma y facturacion;
+      rutas, guardias, menu y login limpiados de super_admin/suspension/registro.
+- [x] **Pruebas**: borradas las de modulos eliminados; el resto adaptado a single-tenant;
+      `mensajes` prueba la bandeja inyectando credenciales Twilio. **188 en verde**; build FE OK.
+- [ ] **Pendiente (accion fuera del codigo)**: poner las credenciales reales de Twilio en el
+      `.env` (local y VPS) y crear en Twilio las 3 Content Templates (vencimiento, bienvenida,
+      recibo) con sus Content SID. Reescribir a fondo `CLAUDE.md` (aun describe el modelo
+      multi-gym: facturacion de plataforma, onboarding, cobro plataforma, roles).
+
 ### Pendientes acumulados (para no olvidar) · anotados 29 jul 2026
 
 **WhatsApp — overhaul de la plantilla `aviso_vencimiento` (todo en UNA edicion + re-review):**

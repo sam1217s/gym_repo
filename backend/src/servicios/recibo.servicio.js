@@ -60,7 +60,7 @@ export async function enviarReciboPago(
     const tenant = await obtenerModelo('Tenant').findById(tenantId);
     if (!tenant) return { enviado: false, motivo: 'sin_tenant' };
 
-    const proveedor = crearProveedor(tenant.config?.whatsapp, { plantilla: PLANTILLA_RECIBO });
+    const proveedor = crearProveedor({ plantilla: PLANTILLA_RECIBO });
     if (!proveedor.habilitado) return { enviado: false, motivo: 'proveedor_ninguno' };
 
     await proveedor.enviar({

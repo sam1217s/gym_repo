@@ -56,13 +56,28 @@ const esquemaEntorno = z.object({
   WOMPI_URL_REDIRECCION: z.string().url().default('http://localhost:9000/panel/facturacion'),
 
   /**
-   * SMTP para el correo de verificacion del registro publico.
-   *
-   * Son opcionales para que el proyecto arranque sin credenciales. Sin
-   * `SMTP_HOST`, en desarrollo el enlace de verificacion se imprime en consola
-   * (nadie envia nada); en produccion, `correos/correo.js` LANZA en cuanto se
-   * intenta enviar, para no fingir que el correo salio. Mismo patron que Wompi.
+   * Wompi DEL GIMNASIO: con estas llaves el propio miembro paga su mensualidad en
+   * linea (nivel de cobro "miembro"). Antes vivian por gimnasio en
+   * `tenant.config.wompi`; siendo un solo gimnasio, van al entorno. Opcionales:
+   * sin ellas el pago en linea del miembro simplemente no esta disponible.
    */
+  WOMPI_MIEMBRO_LLAVE_PUBLICA: z.string().default(''),
+  WOMPI_MIEMBRO_SECRETO_INTEGRIDAD: z.string().default(''),
+  WOMPI_MIEMBRO_SECRETO_EVENTOS: z.string().default(''),
+
+  /**
+   * Twilio WhatsApp: el canal por el que salen los avisos y entran los
+   * comprobantes. Siendo un solo gimnasio, vive en el entorno (antes por gimnasio
+   * en `tenant.config.whatsapp`). Opcionales: sin ellas el canal queda apagado.
+   * Los Content SID son los de las plantillas aprobadas en Twilio.
+   */
+  TWILIO_ACCOUNT_SID: z.string().default(''),
+  TWILIO_AUTH_TOKEN: z.string().default(''),
+  TWILIO_NUMERO: z.string().default(''),
+  TWILIO_CONTENT_SID_VENCIMIENTO: z.string().default(''),
+  TWILIO_CONTENT_SID_BIENVENIDA: z.string().default(''),
+  TWILIO_CONTENT_SID_RECIBO: z.string().default(''),
+
   /**
    * Cloudinary: donde se guardan los comprobantes que mandan los miembros por
    * WhatsApp (antes iban al disco). Es de la PLATAFORMA (una sola cuenta), igual

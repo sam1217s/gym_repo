@@ -1,4 +1,4 @@
-import { COOKIE_ACCESO, ROLES } from '../config/constantes.js';
+import { COOKIE_ACCESO } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { manejadorAsync } from '../utilidades/manejadorAsync.js';
@@ -34,30 +34,19 @@ export const autenticar = manejadorAsync(async (peticion, _respuesta, siguiente)
     throw ErrorApi.noAutenticado('Sesion revocada, vuelve a iniciar sesion');
   }
 
-  if (usuario.rol !== ROLES.SUPER_ADMIN) {
-    // Se deja en la peticion para que `bloquearSiGimnasioSuspendido` no lo
-    // vuelva a consultar.
-    peticion.tenant = await verificarTenantConAcceso(usuario.tenant);
-  }
+  peticion.tenant = await exigirTenant(usuario.tenant);
 
   peticion.usuario = usuario;
   return siguiente();
 });
 
-/**
- * Un gimnasio suspendido SI pasa por aqui: dentro solo alcanza Facturacion.
- * Si no pudiera entrar, no podria pagar la factura que lo suspendio.
- */
-async function verificarTenantConAcceso(tenantId) {
+/** El gimnasio al que pertenece el usuario. Se deja en `peticion.tenant`. */
+async function exigirTenant(tenantId) {
   if (!tenantId) throw ErrorApi.prohibido('El usuario no pertenece a ningun gimnasio');
 
   const Tenant = obtenerModelo('Tenant');
   const tenant = await Tenant.findById(tenantId);
 
   if (!tenant) throw ErrorApi.prohibido('El gimnasio ya no existe');
-  if (!tenant.permiteAcceso()) {
-    throw ErrorApi.prohibido(`El gimnasio esta ${tenant.estado}. Contacta a soporte.`);
-  }
-
   return tenant;
 }

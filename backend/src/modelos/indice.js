@@ -3,14 +3,12 @@ import { obtenerContexto } from '../contexto/contextoTenant.js';
 
 import * as auditoria from './Auditoria.js';
 import * as deuda from './Deuda.js';
-import * as facturaPlataforma from './FacturaPlataforma.js';
 import * as gasto from './Gasto.js';
 import * as mensajeWhatsapp from './MensajeWhatsapp.js';
 import * as maquina from './Maquina.js';
 import * as notificacion from './Notificacion.js';
 import * as pago from './Pago.js';
 import * as planMembresia from './PlanMembresia.js';
-import * as planPlataforma from './PlanPlataforma.js';
 import * as miembro from './Miembro.js';
 import * as reporteMaquina from './ReporteMaquina.js';
 import * as producto from './Producto.js';
@@ -32,10 +30,8 @@ import * as ventaProducto from './VentaProducto.js';
 // El orden importa poco, pero los que son referenciados por `ref` deben existir
 // antes de que se resuelva un `populate`.
 const definiciones = [
-  planPlataforma,
   tenant,
   usuario,
-  facturaPlataforma,
   sede,
   planMembresia,
   miembro,

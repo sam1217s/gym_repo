@@ -21,18 +21,6 @@ const rutas = [
         component: () => import('pages/IniciarSesion.vue'),
         meta: { publica: true },
       },
-      {
-        path: 'registrar',
-        name: 'registrar',
-        component: () => import('pages/RegistrarGimnasio.vue'),
-        meta: { publica: true },
-      },
-      {
-        path: 'verificar-email',
-        name: 'verificar-email',
-        component: () => import('pages/VerificarEmail.vue'),
-        meta: { publica: true },
-      },
     ],
   },
 
@@ -49,12 +37,6 @@ const rutas = [
         path: 'cambiar-contrasena',
         name: 'cambiar-contrasena',
         component: () => import('pages/CambiarContrasena.vue'),
-      },
-      {
-        path: 'plataforma',
-        name: 'plataforma',
-        component: () => import('pages/PanelPlataforma.vue'),
-        meta: { roles: [ROLES.SUPER_ADMIN] },
       },
       {
         path: 'miembros',
@@ -121,14 +103,6 @@ const rutas = [
         name: 'planes',
         component: () => import('pages/PaginaPlanes.vue'),
         meta: { roles: [ROLES.TENANT_OWNER] },
-      },
-      {
-        // `meta.permiteSuspendido`: la unica pantalla que alcanza un gimnasio
-        // suspendido, porque es donde se pone al dia.
-        path: 'facturacion',
-        name: 'facturacion',
-        component: () => import('pages/PaginaFacturacion.vue'),
-        meta: { roles: [ROLES.TENANT_OWNER], permiteSuspendido: true },
       },
     ],
   },

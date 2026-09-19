@@ -1,10 +1,6 @@
 import cron from 'node-cron';
 
-import {
-  ESTADOS_TENANT_OPERATIVOS,
-  EXPRESION_CRON_VENCIMIENTOS,
-  ZONA_HORARIA_POR_DEFECTO,
-} from '../config/constantes.js';
+import { EXPRESION_CRON_VENCIMIENTOS, ZONA_HORARIA_POR_DEFECTO } from '../config/constantes.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { notificarVencimientosDelTenant } from '../servicios/notificaciones.servicio.js';
@@ -13,15 +9,10 @@ import { notificarVencimientosDelTenant } from '../servicios/notificaciones.serv
  * Cron diario de avisos de vencimiento.
  *
  * Vive fuera de toda peticion HTTP, asi que nadie abre el contexto de tenant
- * por el: lo abre a mano, uno por gimnasio.
+ * por el: lo abre a mano, por gimnasio (siendo a la medida, hay uno solo).
  *
- *   ejecutarSinTenant  -> listar los gimnasios (coleccion de plataforma)
- *   ejecutarConTenant  -> avisar dentro de CADA uno (colecciones aisladas)
- *
- * Se avisa a los gimnasios OPERATIVOS (`trial` y `activo`), no solo a los
- * `activo`: un gimnasio en periodo de prueba tiene miembros de verdad que
- * vencen de verdad. `ESTADOS_TENANT_OPERATIVOS` es la misma lista que decide
- * quien puede iniciar sesion.
+ *   ejecutarSinTenant  -> listar el gimnasio (coleccion de plataforma)
+ *   ejecutarConTenant  -> avisar dentro (colecciones aisladas)
  */
 
 /**
@@ -32,11 +23,7 @@ import { notificarVencimientosDelTenant } from '../servicios/notificaciones.serv
  * demas: su error se registra y la corrida sigue.
  */
 export async function ejecutarAvisosDeVencimiento(opciones = {}) {
-  const tenants = await ejecutarSinTenant(() =>
-    obtenerModelo('Tenant')
-      .find({ estado: { $in: ESTADOS_TENANT_OPERATIVOS } })
-      .populate('planPlataforma'),
-  );
+  const tenants = await ejecutarSinTenant(() => obtenerModelo('Tenant').find());
 
   const resumen = [];
 

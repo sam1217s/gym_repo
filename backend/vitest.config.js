@@ -30,6 +30,16 @@ export default defineConfig({
       WOMPI_SECRETO_INTEGRIDAD,
       WOMPI_SECRETO_EVENTOS,
 
+      // Wompi DEL GIMNASIO (pago en linea del miembro): las pruebas de
+      // `pagosMiembro` firman/verifican con estos valores.
+      WOMPI_MIEMBRO_LLAVE_PUBLICA: 'pub_test_llave',
+      WOMPI_MIEMBRO_SECRETO_INTEGRIDAD: 'test_integrity_xyz',
+      WOMPI_MIEMBRO_SECRETO_EVENTOS: 'test_events_abc',
+
+      // Twilio se deja SIN configurar a proposito: asi el canal queda
+      // deshabilitado y bienvenida/recibo (fire-and-forget) no tocan la red.
+      // Las pruebas de la bandeja inyectan las credenciales que necesitan.
+
       // El cron nunca se programa en pruebas: sus funciones se llaman a mano.
       HABILITAR_CRON: 'false',
     },
