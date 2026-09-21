@@ -60,7 +60,10 @@
             @click="abrir(conversacion)"
           >
             <q-item-section avatar>
-              <q-avatar :color="conversacion.pendientes ? 'primary' : 'grey-5'" text-color="white">
+              <q-avatar
+                text-color="white"
+                :style="{ backgroundColor: colorAvatar(conversacion) }"
+              >
                 {{ inicial(conversacion) }}
               </q-avatar>
             </q-item-section>
@@ -322,6 +325,7 @@ const conversaciones = computed(() => {
       telefono: mensaje.telefono,
       miembro: null,
       sede: null,
+      nombrePerfil: null,
       mensajes: [],
       pendientes: 0,
       ultimo: mensaje,
@@ -329,6 +333,9 @@ const conversaciones = computed(() => {
     hilo.mensajes.unshift(mensaje);
     hilo.miembro = hilo.miembro ?? mensaje.miembro;
     hilo.sede = hilo.sede ?? mensaje.sede;
+    // Nombre de WhatsApp del remitente (Twilio ProfileName): identifica el hilo
+    // de quien aun no es miembro. Se toma el mas reciente que lo traiga.
+    hilo.nombrePerfil = hilo.nombrePerfil ?? mensaje.nombrePerfil;
     if (mensaje.direccion === 'entrante' && !mensaje.leido) hilo.pendientes += 1;
     porTelefono.set(mensaje.telefono, hilo);
   }
@@ -351,11 +358,30 @@ const hayAmpliado = computed({
 
 function titulo(conversacion) {
   const miembro = conversacion.miembro;
-  return miembro ? `${miembro.nombres} ${miembro.apellidos}` : `+${conversacion.telefono}`;
+  if (miembro) return `${miembro.nombres} ${miembro.apellidos}`;
+  // Sin miembro: el nombre de WhatsApp del remitente, o el numero si no lo hay.
+  return conversacion.nombrePerfil || `+${conversacion.telefono}`;
 }
 
 function inicial(conversacion) {
   return titulo(conversacion).replace('+', '').charAt(0).toUpperCase();
+}
+
+/**
+ * Color estable del avatar por telefono (WhatsApp no expone la foto de perfil,
+ * asi que se usa un avatar de inicial con color propio, como WhatsApp Web cuando
+ * no hay foto). El mismo contacto tiene siempre el mismo color.
+ */
+const COLORES_AVATAR = [
+  '#4a3aa7', '#eb6834', '#1f7a5a', '#b83280', '#2b6cb0',
+  '#a15c00', '#5a3e2b', '#7048a8', '#0e7490', '#9b2226',
+];
+
+function colorAvatar(conversacion) {
+  const clave = String(conversacion.telefono ?? '');
+  let suma = 0;
+  for (let i = 0; i < clave.length; i += 1) suma = (suma + clave.charCodeAt(i)) % COLORES_AVATAR.length;
+  return COLORES_AVATAR[suma];
 }
 
 const RESUMEN_TIPO = {

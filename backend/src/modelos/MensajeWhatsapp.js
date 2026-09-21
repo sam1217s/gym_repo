@@ -23,6 +23,12 @@ const esquemaMensajeWhatsapp = new mongoose.Schema(
     miembro: { type: mongoose.Schema.Types.ObjectId, ref: 'Miembro', default: null },
     /** Siempre en formato internacional: "573001234567" (sin `whatsapp:` ni '+'). */
     telefono: { type: String, required: true, trim: true },
+    /**
+     * Nombre con el que el remitente tiene configurado SU WhatsApp (`ProfileName`
+     * que manda Twilio). WhatsApp NO expone la foto de perfil, pero si el nombre.
+     * Sirve para identificar los hilos de quien aun no es miembro. Solo entrantes.
+     */
+    nombrePerfil: { type: String, trim: true, default: null },
 
     direccion: { type: String, enum: ['entrante', 'saliente'], required: true },
     tipo: {

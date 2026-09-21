@@ -79,11 +79,17 @@ async function entrarComo(email) {
 }
 
 /** Los parametros (form-urlencoded) como los manda Twilio cuando un miembro escribe. */
-function evento({ telefono = TEL_ANA, texto = 'ya hice la transferencia', sid = 'SM.AAA' } = {}) {
+function evento({
+  telefono = TEL_ANA,
+  texto = 'ya hice la transferencia',
+  sid = 'SM.AAA',
+  nombrePerfil = 'Ana WhatsApp',
+} = {}) {
   return {
     To: `whatsapp:${NUMERO_TWILIO}`,
     From: `whatsapp:+${telefono}`,
     Body: texto,
+    ProfileName: nombrePerfil,
     MessageSid: sid,
     NumMedia: '0',
   };
@@ -131,6 +137,7 @@ describe('Webhook de WhatsApp (Twilio)', () => {
       direccion: 'entrante',
       texto: 'ya hice la transferencia',
       telefono: TEL_ANA,
+      nombrePerfil: 'Ana WhatsApp',
       leido: false,
     });
     expect(String(guardados[0].miembro)).toBe(String(ana._id));

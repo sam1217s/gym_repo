@@ -179,6 +179,7 @@ export async function procesarEventoEntrante(
         sede: miembro?.sede ?? null,
         miembro: miembro?._id ?? null,
         telefono,
+        nombrePerfil: params.ProfileName ?? null,
         direccion: 'entrante',
         tipo: mediaUrl ? mapearTipo(mimeType ?? '') : 'texto',
         texto: params.Body ?? '',
