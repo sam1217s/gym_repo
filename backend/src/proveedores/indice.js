@@ -19,6 +19,7 @@ function credencialesTwilio() {
       vencimiento: entorno.TWILIO_CONTENT_SID_VENCIMIENTO,
       bienvenida: entorno.TWILIO_CONTENT_SID_BIENVENIDA,
       recibo: entorno.TWILIO_CONTENT_SID_RECIBO,
+      login: entorno.TWILIO_CONTENT_SID_LOGIN,
     },
   };
 }

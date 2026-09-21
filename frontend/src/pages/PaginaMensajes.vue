@@ -5,7 +5,8 @@
         <div class="ceja">Mi gimnasio</div>
         <h1 class="titulo-display titulo-pagina q-my-none">Mensajes</h1>
         <div class="text-caption text-grey-7">
-          Lo que te escriben por WhatsApp: comprobantes de pago y preguntas
+          La conversacion completa por WhatsApp: lo que el sistema envia (avisos,
+          bienvenida, recibos) y lo que el miembro responde
         </div>
       </div>
       <div class="row items-center q-gutter-sm">
@@ -139,6 +140,12 @@
               :class="mensaje.direccion === 'saliente' ? 'justify-end' : 'justify-start'"
             >
               <div class="burbuja" :class="`burbuja-${mensaje.direccion}`">
+                <!-- Etiqueta del envio automatico (aviso, bienvenida, recibo):
+                     asi se distingue de una respuesta escrita a mano. -->
+                <div v-if="etiquetaAuto(mensaje)" class="etiqueta-auto">
+                  <q-icon :name="etiquetaAuto(mensaje).icono" size="13px" />
+                  {{ etiquetaAuto(mensaje).texto }}
+                </div>
                 <!-- El archivo (imagen, video, audio o documento) se baja por
                      Axios (auto-refresco del token) a un object-URL y se pinta
                      segun su tipo; mientras carga se muestra un spinner. -->
@@ -361,6 +368,19 @@ const RESUMEN_TIPO = {
 function resumen(mensaje) {
   if (mensaje.texto) return mensaje.texto;
   return RESUMEN_TIPO[mensaje.tipo] ?? 'Envió un archivo';
+}
+
+// Etiqueta de los mensajes SALIENTES automaticos, para distinguirlos de una
+// respuesta escrita a mano (que no lleva etiqueta).
+const ETIQUETA_CATEGORIA = {
+  aviso: { texto: 'Aviso de vencimiento', icono: 'schedule' },
+  bienvenida: { texto: 'Bienvenida', icono: 'waving_hand' },
+  recibo: { texto: 'Recibo de pago', icono: 'receipt_long' },
+};
+
+function etiquetaAuto(mensaje) {
+  if (mensaje.direccion !== 'saliente') return null;
+  return ETIQUETA_CATEGORIA[mensaje.categoria] ?? null;
 }
 
 // El tipo de media se decide por el mimeType real, no por el `tipo` guardado:
@@ -589,6 +609,18 @@ onMounted(() => {
 .burbuja-saliente {
   background: rgba(206, 17, 38, 0.08);
   border-right: 3px solid var(--q-primary);
+}
+
+.etiqueta-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--q-primary);
+  margin-bottom: 3px;
 }
 
 .texto-burbuja {

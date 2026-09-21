@@ -1,4 +1,5 @@
 import {
+  CATEGORIAS_MENSAJE_SALIENTE,
   DIAS_AVISO_POR_VENCER,
   DIAS_AVISO_VENCIDO,
   ESTADOS_NOTIFICACION,
@@ -8,6 +9,7 @@ import {
 } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { crearProveedor as crearProveedorPorDefecto } from '../proveedores/indice.js';
+import { registrarMensajeSaliente } from './mensajes.servicio.js';
 import { listarVencimientos } from './vencimientos.servicio.js';
 
 /**
@@ -204,6 +206,16 @@ async function avisarAMiembro(
     // del ciclo aun puede salir, y un fallo no pierde este.
     const campo = etapa === 'vencido' ? 'avisadoVencido' : 'avisadoPorVencer';
     await Pago.updateOne({ _id: ultimoPago._id }, { [campo]: true });
+
+    // Deja rastro en la bandeja (hilo unificado). Best-effort: ya se envio.
+    await registrarMensajeSaliente({
+      tenantId: tenant._id,
+      telefono: miembro.telefono,
+      miembro: miembro._id,
+      sede: miembro.sede,
+      texto: mensaje,
+      categoria: CATEGORIAS_MENSAJE_SALIENTE.AVISO,
+    });
 
     return ESTADOS_NOTIFICACION.ENVIADO;
   } catch (error) {

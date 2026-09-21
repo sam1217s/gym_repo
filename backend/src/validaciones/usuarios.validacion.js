@@ -13,9 +13,13 @@ export const esquemaCrearUsuario = {
     nombres: z.string().trim().min(1, 'Los nombres son obligatorios'),
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios'),
     email: z.string().email('Email invalido').toLowerCase().trim(),
-    cedula: cedulaOpcional,
-    // Con telefono, el integrante puede entrar por codigo OTP ademas de contrasena.
-    telefono: telefonoOpcional,
+    // Cedula y telefono son OBLIGATORIOS al crear: de ahi depende el login del
+    // administrador (la cedula es su clave por defecto; el telefono, el OTP).
+    cedula: z.string().trim().regex(/^\d{4,15}$/, 'La cedula debe ser numerica (4 a 15 digitos)'),
+    telefono: z
+      .string()
+      .trim()
+      .regex(/^\+?\d{7,15}$/, 'Telefono en formato internacional, ej: +573001234567'),
     contrasenaInicial: contrasenaSegura,
     sede: idMongo,
   }),

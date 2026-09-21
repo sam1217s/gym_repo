@@ -79,6 +79,8 @@ const esquemaEntorno = z.object({
   TWILIO_CONTENT_SID_VENCIMIENTO: z.string().default(''),
   TWILIO_CONTENT_SID_BIENVENIDA: z.string().default(''),
   TWILIO_CONTENT_SID_RECIBO: z.string().default(''),
+  // Aviso de seguridad al dueño cuando inicia sesion (plantilla propia).
+  TWILIO_CONTENT_SID_LOGIN: z.string().default(''),
 
   /**
    * Cloudinary: donde se guardan los comprobantes que mandan los miembros por

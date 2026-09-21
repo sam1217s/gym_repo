@@ -129,16 +129,17 @@
 
             <q-input
               v-model="formulario.cedula"
-              label="Cedula (opcional)"
+              :label="editando ? 'Cedula (opcional)' : 'Cedula'"
               hint="Entra con su cedula ademas del correo, y es la clave por defecto al restablecer"
               outlined
               dense
-              :rules="[reglaCedulaOpcional]"
+              :rules="editando ? [reglaCedulaOpcional] : [reglaCedula]"
             />
 
             <CampoTelefono
               v-model="formulario.telefono"
-              label="Telefono (opcional)"
+              :opcional="editando"
+              :label="editando ? 'Telefono (opcional)' : 'Telefono'"
               hint="Con el podra entrar por codigo (SMS o WhatsApp)"
             />
 
@@ -242,6 +243,9 @@ const reglaEmail = (valor) => /.+@.+\..+/.test(valor) || 'Email invalido';
 // Vacia es válida (opcional); si viene, debe ser numérica.
 const reglaCedulaOpcional = (valor) =>
   !String(valor ?? '').trim() || /^\d{4,15}$/.test(valor) || 'Cedula numerica (4 a 15 digitos)';
+// Al crear, la cedula es obligatoria (de ahi depende el login del administrador).
+const reglaCedula = (valor) =>
+  /^\d{4,15}$/.test(String(valor ?? '').trim()) || 'Cedula numerica (4 a 15 digitos)';
 const reglaContrasena = (valor) =>
   (valor.length >= 8 && /[a-z]/.test(valor) && /[A-Z]/.test(valor) && /\d/.test(valor)) ||
   'Minimo 8 caracteres, con mayuscula, minuscula y numero';

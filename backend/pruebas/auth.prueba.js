@@ -203,26 +203,38 @@ describe('rutas protegidas', () => {
     await crearGimnasioConDuena();
 
     const agente = peticion.agent(app);
-    await agente
+    const respuestaLogin = await agente
       .post('/api/auth/iniciar-sesion')
       .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
       .expect(200);
 
-    // Se guarda la cookie ANTES de cerrar sesion para intentar reusarla despues.
-    const respuestaSesion = await agente.get('/api/auth/yo').expect(200);
-    expect(respuestaSesion.body.ok).toBe(true);
-
-    const cookieRobada = leerCookie(
-      await peticion(app)
-        .post('/api/auth/iniciar-sesion')
-        .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA }),
-      COOKIE_ACCESO,
-    );
+    // Se guarda la cookie de ESTA sesion para intentar reusarla tras cerrarla.
+    const cookieGuardada = leerCookie(respuestaLogin, COOKIE_ACCESO);
+    await agente.get('/api/auth/yo').expect(200);
 
     await agente.post('/api/auth/cerrar-sesion').expect(200);
 
     // `versionToken` subio, asi que el token viejo ya no vale aunque no haya expirado.
-    await peticion(app).get('/api/auth/yo').set('Cookie', cookieRobada).expect(401);
+    await peticion(app).get('/api/auth/yo').set('Cookie', cookieGuardada).expect(401);
+  });
+
+  it('una sola sesion por cuenta: un nuevo login expulsa a la sesion anterior', async () => {
+    await crearGimnasioConDuena();
+    const credenciales = { identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA };
+
+    // Dispositivo A inicia sesion y opera con normalidad.
+    const dispositivoA = peticion.agent(app);
+    await dispositivoA.post('/api/auth/iniciar-sesion').send(credenciales).expect(200);
+    await dispositivoA.get('/api/auth/yo').expect(200);
+
+    // La MISMA cuenta inicia sesion desde el dispositivo B.
+    const dispositivoB = peticion.agent(app);
+    await dispositivoB.post('/api/auth/iniciar-sesion').send(credenciales).expect(200);
+
+    // El nuevo login subio `versionToken`: la sesion de A queda invalidada...
+    await dispositivoA.get('/api/auth/yo').expect(401);
+    // ...y solo la sesion nueva (B) sigue viva.
+    await dispositivoB.get('/api/auth/yo').expect(200);
   });
 });
 

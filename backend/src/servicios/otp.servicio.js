@@ -55,6 +55,9 @@ export async function verificarCodigoOtp({ telefono, codigo }, { verificador = v
 
   const tenant = await ejecutarSinTenant(() => obtenerModelo('Tenant').findById(usuario.tenant));
 
+  // Una sola sesion por cuenta: subir `versionToken` invalida cualquier sesion
+  // anterior (mismo criterio que el login por contrasena).
+  usuario.versionToken += 1;
   usuario.ultimoAcceso = new Date();
   await usuario.save();
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PLANTILLA_RECIBO } from '../src/config/constantes.js';
-import { ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
+import { CATEGORIAS_MENSAJE_SALIENTE, PLANTILLA_RECIBO } from '../src/config/constantes.js';
+import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import {
   construirVariablesRecibo,
@@ -59,6 +59,13 @@ describe('Recibo de pago por WhatsApp', () => {
     expect(opcionesRecibidas.plantilla).toBe(PLANTILLA_RECIBO);
     expect(enviados[0].telefono).toBe('573001');
     expect(enviados[0].variables[2]).toBe('$70.000');
+
+    // Deja rastro en la bandeja (hilo unificado): un saliente con categoria recibo.
+    const mensajes = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('MensajeWhatsapp').find({ direccion: 'saliente' }),
+    );
+    expect(mensajes).toHaveLength(1);
+    expect(mensajes[0].categoria).toBe(CATEGORIAS_MENSAJE_SALIENTE.RECIBO);
   });
 
   it('no envia si el miembro no tiene telefono', async () => {

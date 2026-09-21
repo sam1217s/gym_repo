@@ -7,7 +7,7 @@ import {
   subirComprobante,
   urlFirmada,
 } from '../almacenamiento/cloudinary.js';
-import { MESES_RETENCION_COMPROBANTE } from '../config/constantes.js';
+import { CATEGORIAS_MENSAJE_SALIENTE, MESES_RETENCION_COMPROBANTE } from '../config/constantes.js';
 import { entorno } from '../config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
@@ -289,9 +289,50 @@ export async function responder({ mensaje: idMensaje, texto }, filtroSede = {}, 
     direccion: 'saliente',
     tipo: 'texto',
     texto,
+    categoria: CATEGORIAS_MENSAJE_SALIENTE.RESPUESTA,
     leido: true,
     enviadoPor: usuarioId,
   });
+}
+
+/**
+ * Registra en la bandeja un mensaje SALIENTE AUTOMATICO (aviso de vencimiento,
+ * bienvenida, recibo), para que el hilo con el miembro quede completo: quien lo
+ * mira ve lo que el sistema envio Y lo que el miembro respondio, como en WhatsApp.
+ *
+ * Es BEST-EFFORT: nunca lanza. Un fallo al registrar el rastro jamas debe tumbar
+ * el envio (que ya ocurrio) ni el alta/pago que lo disparo. Abre su propio
+ * contexto con `tenantId` porque los envios automaticos corren fuera de una
+ * peticion (cron / fire-and-forget). Guarda el `texto` que construimos nosotros;
+ * lo que ve el miembro es la plantilla aprobada, pero el texto lo refleja.
+ */
+export async function registrarMensajeSaliente({
+  tenantId,
+  telefono,
+  miembro = null,
+  sede = null,
+  texto = '',
+  categoria = CATEGORIAS_MENSAJE_SALIENTE.RESPUESTA,
+}) {
+  if (!tenantId || !telefono) return;
+
+  try {
+    await ejecutarConTenant(tenantId, () =>
+      obtenerModelo('MensajeWhatsapp').create({
+        telefono: aE164(telefono).replace(/^\+/, ''),
+        miembro,
+        sede,
+        direccion: 'saliente',
+        tipo: 'texto',
+        texto,
+        categoria,
+        leido: true,
+        enviadoPor: null,
+      }),
+    );
+  } catch (error) {
+    console.error('[whatsapp] no se pudo registrar el saliente automatico:', error.message);
+  }
 }
 
 /**

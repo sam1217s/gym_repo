@@ -59,6 +59,8 @@ const props = defineProps({
   modelValue: { type: String, default: '' },
   label: { type: String, default: 'Telefono (WhatsApp)' },
   hint: { type: String, default: '' },
+  // Si es opcional, un campo vacio es valido (para formularios de edicion).
+  opcional: { type: Boolean, default: false },
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -154,7 +156,7 @@ const hintEfectivo = computed(() => {
 
 const reglaLocal = (valor) => {
   const digitos = String(valor ?? '').replace(/\D/g, '');
-  if (!digitos) return 'El telefono es obligatorio';
+  if (!digitos) return props.opcional || 'El telefono es obligatorio';
 
   // Paises con largo fijo (Colombia: 10 digitos): se exige exacto.
   if (pais.value.digitos && digitos.length !== pais.value.digitos) {

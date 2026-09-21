@@ -1,6 +1,7 @@
-import { PLANTILLA_RECIBO } from '../config/constantes.js';
+import { CATEGORIAS_MENSAJE_SALIENTE, PLANTILLA_RECIBO } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { crearProveedor as crearProveedorPorDefecto } from '../proveedores/indice.js';
+import { registrarMensajeSaliente } from './mensajes.servicio.js';
 
 /**
  * Recibo de pago por WhatsApp: al registrar un pago desde el panel se le confirma
@@ -63,10 +64,21 @@ export async function enviarReciboPago(
     const proveedor = crearProveedor({ plantilla: PLANTILLA_RECIBO });
     if (!proveedor.habilitado) return { enviado: false, motivo: 'proveedor_ninguno' };
 
+    const mensaje = construirMensajeRecibo({ miembro, tenant, pago });
     await proveedor.enviar({
       telefono: miembro.telefono,
-      mensaje: construirMensajeRecibo({ miembro, tenant, pago }),
+      mensaje,
       variables: construirVariablesRecibo({ miembro, tenant, pago }),
+    });
+
+    // Deja rastro en la bandeja (hilo unificado). Best-effort: ya se envio.
+    await registrarMensajeSaliente({
+      tenantId,
+      telefono: miembro.telefono,
+      miembro: miembro._id,
+      sede: miembro.sede,
+      texto: mensaje,
+      categoria: CATEGORIAS_MENSAJE_SALIENTE.RECIBO,
     });
     return { enviado: true };
   } catch (error) {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PLANTILLA_BIENVENIDA } from '../src/config/constantes.js';
-import { ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
+import { CATEGORIAS_MENSAJE_SALIENTE, PLANTILLA_BIENVENIDA } from '../src/config/constantes.js';
+import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import {
   construirVariablesBienvenida,
@@ -54,6 +54,14 @@ describe('Bienvenida por WhatsApp', () => {
     expect(enviados).toHaveLength(1);
     expect(enviados[0].telefono).toBe('573001');
     expect(enviados[0].variables).toEqual(['Ana', 'GymBienvenida']);
+
+    // Deja rastro en la bandeja (hilo unificado): un saliente con categoria bienvenida.
+    const mensajes = await ejecutarConTenant(tenant._id, () =>
+      obtenerModelo('MensajeWhatsapp').find({ direccion: 'saliente' }),
+    );
+    expect(mensajes).toHaveLength(1);
+    expect(mensajes[0].categoria).toBe(CATEGORIAS_MENSAJE_SALIENTE.BIENVENIDA);
+    expect(mensajes[0].telefono).toBe('573001');
   });
 
   it('no envia si el miembro no tiene telefono', async () => {

@@ -29,6 +29,23 @@ export const PREFIJO_REFERENCIA_PAGO_MIEMBRO = 'MB';
 
 export const CANALES_NOTIFICACION = Object.freeze({ WHATSAPP: 'whatsapp' });
 
+/**
+ * De donde nace un mensaje SALIENTE de la bandeja de WhatsApp, para etiquetarlo
+ * en el hilo unificado (el dueño/recepcion ve que se le mando a cada miembro,
+ * no solo lo que respondio a mano):
+ *  - `respuesta`: escrito a mano desde la bandeja.
+ *  - `aviso`: aviso de vencimiento automatico.
+ *  - `bienvenida`: al registrar al miembro.
+ *  - `recibo`: confirmacion de un pago.
+ */
+export const CATEGORIAS_MENSAJE_SALIENTE = Object.freeze({
+  RESPUESTA: 'respuesta',
+  AVISO: 'aviso',
+  BIENVENIDA: 'bienvenida',
+  RECIBO: 'recibo',
+});
+export const LISTA_CATEGORIAS_MENSAJE_SALIENTE = Object.values(CATEGORIAS_MENSAJE_SALIENTE);
+
 /** Canales por los que se puede pedir el codigo OTP de login (Twilio Verify). */
 export const CANALES_OTP = Object.freeze({ SMS: 'sms', WHATSAPP: 'whatsapp' });
 export const LISTA_CANALES_OTP = Object.values(CANALES_OTP);
@@ -76,6 +93,18 @@ export const PLANTILLA_RECIBO = Object.freeze({
   clave: 'recibo',
   nombre: 'recibo_pago',
   idioma: 'es_CR',
+});
+
+/**
+ * Aviso de SEGURIDAD al dueño: se envia por WhatsApp cada vez que SU cuenta
+ * inicia sesion, para que se entere si alguien mas entra con sus credenciales.
+ * Solo el dueño lo recibe. El cuerpo espera 3 variables, en este orden:
+ *   {{1}} = nombre del dueño · {{2}} = fecha y hora · {{3}} = ubicacion aproximada.
+ */
+export const PLANTILLA_LOGIN = Object.freeze({
+  clave: 'login',
+  nombre: 'aviso_inicio_sesion',
+  idioma: 'es_CO',
 });
 
 export const TIPOS_NOTIFICACION = Object.freeze({

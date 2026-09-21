@@ -1,6 +1,7 @@
 import { COOKIE_REFRESCO } from '../config/constantes.js';
 import * as servicioAuth from '../servicios/auth.servicio.js';
 import * as servicioOtp from '../servicios/otp.servicio.js';
+import * as servicioSeguridad from '../servicios/seguridad.servicio.js';
 import * as servicioUsuarios from '../servicios/usuarios.servicio.js';
 import { manejadorAsync } from '../utilidades/manejadorAsync.js';
 import { responderOk } from '../utilidades/respuesta.js';
@@ -16,6 +17,8 @@ export const iniciarSesion = manejadorAsync(async (peticion, respuesta) => {
   const { usuario, tenant } = await servicioAuth.iniciarSesion(peticion.body);
 
   establecerCookiesSesion(respuesta, usuario);
+  // Aviso de seguridad al dueño (fire-and-forget: nunca frena ni rompe el login).
+  servicioSeguridad.avisarInicioSesionDueno({ usuario, tenant, ip: peticion.ip }).catch(() => {});
   return responderOk(respuesta, servicioAuth.describirSesion(usuario, tenant));
 });
 
@@ -62,6 +65,8 @@ export const verificarOtp = manejadorAsync(async (peticion, respuesta) => {
   const { usuario, tenant } = await servicioOtp.verificarCodigoOtp(peticion.body);
 
   establecerCookiesSesion(respuesta, usuario);
+  // Aviso de seguridad al dueño (fire-and-forget: nunca frena ni rompe el login).
+  servicioSeguridad.avisarInicioSesionDueno({ usuario, tenant, ip: peticion.ip }).catch(() => {});
   return responderOk(respuesta, servicioAuth.describirSesion(usuario, tenant));
 });
 

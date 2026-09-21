@@ -196,6 +196,9 @@ describe('roles sobre sedes, usuarios y planes de membresia', () => {
         nombres: 'Nueva',
         apellidos: 'Admin',
         email: 'sur@gimnasio-a.co',
+        // Cedula y telefono son obligatorios al crear (de ahi depende el login).
+        cedula: '1122334455',
+        telefono: '573001112222',
         contrasenaInicial: 'ClaveDeSur123',
         sede: String(sedes.sur._id),
       })

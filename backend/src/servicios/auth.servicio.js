@@ -27,6 +27,10 @@ export async function iniciarSesion({ identificador, contrasena, slugGimnasio })
 
   const tenant = await exigirTenant(usuario.tenant);
 
+  // Una sola sesion por cuenta: subir `versionToken` invalida de inmediato
+  // cualquier sesion anterior de este usuario (el otro dispositivo cae a 401 en
+  // su siguiente accion, y el controlador reemite cookies con la nueva version).
+  usuario.versionToken += 1;
   usuario.ultimoAcceso = new Date();
   await usuario.save();
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { LISTA_CATEGORIAS_MENSAJE_SALIENTE } from '../config/constantes.js';
 import { aislamientoTenant } from './complementos/aislamientoTenant.js';
 
 /**
@@ -28,6 +29,16 @@ const esquemaMensajeWhatsapp = new mongoose.Schema(
       type: String,
       enum: ['texto', 'imagen', 'documento', 'audio', 'video', 'otro'],
       default: 'texto',
+    },
+    /**
+     * Solo en SALIENTES: de donde nacio el mensaje (respuesta a mano, aviso de
+     * vencimiento, bienvenida, recibo). Sirve para etiquetarlo en el hilo. Los
+     * entrantes lo dejan en `null`.
+     */
+    categoria: {
+      type: String,
+      enum: [...LISTA_CATEGORIAS_MENSAJE_SALIENTE, null],
+      default: null,
     },
 
     /** Cuerpo del mensaje o pie de foto. Puede ir vacio si solo mandaron imagen. */

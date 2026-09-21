@@ -1,6 +1,7 @@
-import { PLANTILLA_BIENVENIDA } from '../config/constantes.js';
+import { CATEGORIAS_MENSAJE_SALIENTE, PLANTILLA_BIENVENIDA } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { crearProveedor as crearProveedorPorDefecto } from '../proveedores/indice.js';
+import { registrarMensajeSaliente } from './mensajes.servicio.js';
 
 /**
  * Bienvenida por WhatsApp al registrar un miembro. Le da contexto de que por
@@ -47,10 +48,21 @@ export async function darBienvenida(
     const proveedor = crearProveedor({ plantilla: PLANTILLA_BIENVENIDA });
     if (!proveedor.habilitado) return { enviado: false, motivo: 'proveedor_ninguno' };
 
+    const mensaje = construirMensajeBienvenida({ miembro, tenant });
     await proveedor.enviar({
       telefono: miembro.telefono,
-      mensaje: construirMensajeBienvenida({ miembro, tenant }),
+      mensaje,
       variables: construirVariablesBienvenida({ miembro, tenant }),
+    });
+
+    // Deja rastro en la bandeja (hilo unificado). Best-effort: ya se envio.
+    await registrarMensajeSaliente({
+      tenantId,
+      telefono: miembro.telefono,
+      miembro: miembro._id,
+      sede: miembro.sede,
+      texto: mensaje,
+      categoria: CATEGORIAS_MENSAJE_SALIENTE.BIENVENIDA,
     });
     return { enviado: true };
   } catch (error) {
