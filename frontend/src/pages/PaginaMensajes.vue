@@ -431,9 +431,11 @@ watch(hilo, (actual) => {
   if (actual) actual.mensajes.forEach((mensaje) => cargarArchivo(mensaje));
 });
 
-// Los object-URL viven en memoria del navegador: se liberan al salir.
+// Los object-URL viven en memoria del navegador: se liberan al salir; y se
+// detiene el auto-refresco para no dejar un intervalo huerfano.
 onBeforeUnmount(() => {
   Object.values(urlsArchivo.value).forEach((url) => URL.revokeObjectURL(url));
+  if (temporizadorRefresco) clearInterval(temporizadorRefresco);
 });
 
 function abrir(conversacion) {
@@ -538,6 +540,25 @@ async function cargar() {
   }
 }
 
+/**
+ * Auto-refresco en tiempo (casi) real: se vuelve a consultar la bandeja cada
+ * pocos segundos mientras la pantalla esta abierta. Es SILENCIOSO (no muestra el
+ * spinner ni cierra el hilo abierto: `telefonoAbierto` no cambia, asi que el hilo
+ * se mantiene) y se PAUSA cuando la pestana no esta visible, para no gastar red
+ * ni bateria. Un fallo puntual no molesta: el siguiente tick reintenta.
+ */
+const INTERVALO_REFRESCO_MS = 10_000;
+let temporizadorRefresco = null;
+
+async function refrescarEnSilencio() {
+  if (document.hidden || cargando.value) return;
+  try {
+    await gimnasio.cargarMensajes(sedeFiltro.value ? { sede: sedeFiltro.value } : {});
+  } catch {
+    // Silencioso a proposito.
+  }
+}
+
 // Al cambiar de sede se recarga y se cierra el hilo abierto (ya no está en la lista).
 watch(sedeFiltro, () => {
   telefonoAbierto.value = null;
@@ -548,6 +569,8 @@ onMounted(() => {
   cargar();
   // Las sedes alimentan el filtro; solo el dueño las necesita.
   if (esDueno.value) gimnasio.cargarSedes().catch(() => {});
+  // Auto-refresco: mantiene la bandeja al dia sin recargar la pagina.
+  temporizadorRefresco = setInterval(refrescarEnSilencio, INTERVALO_REFRESCO_MS);
 });
 </script>
 
