@@ -49,6 +49,11 @@ export const descargarArchivo = manejadorAsync(async (peticion, respuesta) => {
  * A Twilio se le responde 200 salvo firma invalida, incluso si el evento se
  * ignora: cualquier otra cosa lo hace reintentar en bucle. La URL publica se
  * reconstruye EXACTA (la que Twilio invoco) para poder verificar la firma.
+ *
+ * Se responde TwiML VACIO (`<Response></Response>`), no `sendStatus(200)`: el
+ * webhook de mensajeria de Twilio interpreta el cuerpo de la respuesta como la
+ * contestacion al miembro, y `sendStatus(200)` manda el texto "OK", que llegaba
+ * al miembro como un auto-reply. Un TwiML vacio le dice a Twilio que no conteste.
  */
 export const recibirWebhook = manejadorAsync(async (peticion, respuesta) => {
   await servicioMensajes.procesarEventoEntrante({
@@ -56,5 +61,5 @@ export const recibirWebhook = manejadorAsync(async (peticion, respuesta) => {
     urlPublica: `${entorno.ORIGEN_PUBLICO}${peticion.originalUrl}`,
     firma: peticion.get('x-twilio-signature'),
   });
-  return respuesta.sendStatus(200);
+  return respuesta.type('text/xml').send('<Response></Response>');
 });
