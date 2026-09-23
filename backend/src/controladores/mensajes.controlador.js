@@ -1,5 +1,6 @@
 import { entorno } from '../config/entorno.js';
 import * as servicioMensajes from '../servicios/mensajes.servicio.js';
+import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { manejadorAsync } from '../utilidades/manejadorAsync.js';
 import { responderCreado, responderOk } from '../utilidades/respuesta.js';
 
@@ -28,17 +29,31 @@ export const responder = manejadorAsync(async (peticion, respuesta) =>
   ),
 );
 
+const TIEMPO_LIMITE_DESCARGA_MS = 15_000;
+
 /**
- * Sirve el comprobante. Los de Cloudinary se sirven redirigiendo a una URL
- * firmada de corta duracion; los HEREDADOS (disco) se streamean con permisos.
- * En ningun caso se expone el almacen.
+ * Sirve el comprobante SIEMPRE desde nuestro propio origen. Los de Cloudinary se
+ * bajan en el servidor (con la URL firmada) y se reenvian al navegador; los
+ * HEREDADOS (disco) se streamean. NO se redirige a Cloudinary: el frontend baja
+ * el archivo por Axios (con cookie, para heredar el auto-refresco del token), y
+ * un redirect cross-origin con credenciales lo bloquea CORS. En ningun caso se
+ * expone el almacen ni la URL firmada al cliente.
  */
 export const descargarArchivo = manejadorAsync(async (peticion, respuesta) => {
   const { redireccion, ruta, mimeType } = await servicioMensajes.rutaArchivo(
     peticion.params.id,
     peticion.filtroSede,
   );
-  if (redireccion) return respuesta.redirect(redireccion);
+
+  if (redireccion) {
+    const arriba = await fetch(redireccion, { signal: AbortSignal.timeout(TIEMPO_LIMITE_DESCARGA_MS) });
+    if (!arriba.ok) throw ErrorApi.noEncontrado('No se pudo obtener el archivo');
+    const tipo = arriba.headers.get('content-type') || mimeType || 'application/octet-stream';
+    const buffer = Buffer.from(await arriba.arrayBuffer());
+    respuesta.type(tipo);
+    return respuesta.send(buffer);
+  }
+
   respuesta.type(mimeType);
   return respuesta.sendFile(ruta);
 });

@@ -152,7 +152,7 @@
                 <!-- El archivo (imagen, video, audio o documento) se baja por
                      Axios (auto-refresco del token) a un object-URL y se pinta
                      segun su tipo; mientras carga se muestra un spinner. -->
-                <template v-if="mensaje.archivo">
+                <template v-if="tieneArchivo(mensaje)">
                   <template v-if="urlsArchivo[mensaje._id]">
                     <q-img
                       v-if="esImagen(mensaje)"
@@ -409,10 +409,17 @@ function etiquetaAuto(mensaje) {
   return ETIQUETA_CATEGORIA[mensaje.categoria] ?? null;
 }
 
+// Un mensaje tiene archivo si viene de Cloudinary (`archivoPublicId`) o del disco
+// heredado (`archivo`). Antes solo se miraba `archivo`, asi que los comprobantes
+// nuevos (Cloudinary) salian como "no se pudo mostrar".
+function tieneArchivo(mensaje) {
+  return Boolean(mensaje.archivo || mensaje.archivoPublicId);
+}
+
 // El tipo de media se decide por el mimeType real, no por el `tipo` guardado:
 // asi un sticker (image/webp) o una nota de voz (audio/ogg) se pintan solos.
 function esArchivoDe(mensaje, prefijo) {
-  return Boolean(mensaje.archivo) && (mensaje.mimeType ?? '').startsWith(prefijo);
+  return tieneArchivo(mensaje) && (mensaje.mimeType ?? '').startsWith(prefijo);
 }
 function esImagen(mensaje) {
   return esArchivoDe(mensaje, 'image/');
@@ -434,7 +441,7 @@ const urlsArchivo = ref({});
 const archivoCargando = ref({});
 
 async function cargarArchivo(mensaje) {
-  if (!mensaje.archivo || urlsArchivo.value[mensaje._id] || archivoCargando.value[mensaje._id]) {
+  if (!tieneArchivo(mensaje) || urlsArchivo.value[mensaje._id] || archivoCargando.value[mensaje._id]) {
     return;
   }
   archivoCargando.value[mensaje._id] = true;
