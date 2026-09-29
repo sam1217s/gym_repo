@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ESTADOS_NOTIFICACION,
-  ESTADOS_VENCIMIENTO,
   METODOS_PAGO,
   MILISEGUNDOS_POR_DIA,
   ROLES,
@@ -131,9 +130,10 @@ describe('a quien se avisa', () => {
     await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });
 
     expect(falso.enviados).toHaveLength(2);
+    // El texto es el de la plantilla avisa_vence2 (mismo cuerpo por-vencer/vencido).
     const textos = falso.enviados.map((aviso) => aviso.mensaje).join(' | ');
-    expect(textos).toMatch(/vence en 2 dias/);
-    expect(textos).toMatch(/vencio el/);
+    expect(textos).toMatch(/te recordamos que el pago/);
+    expect(textos).toMatch(/Valor a pagar/);
 
     // Ademas del texto, cada aviso lleva las 4 variables de la plantilla
     // (nombre, gimnasio, fecha, VALOR) para el proveedor Cloud API.
@@ -205,9 +205,6 @@ describe('varios recordatorios por ciclo (offsets 2, 1, -1, -2, -5)', () => {
 
     // Los de 2 y 1 dia; el de 3 no entra (3 no esta en la lista de offsets).
     expect(falso.enviados).toHaveLength(2);
-    const textos = falso.enviados.map((a) => a.mensaje).join(' | ');
-    expect(textos).toMatch(/vence en 2 dias/);
-    expect(textos).toMatch(/vence en 1 dia/);
   });
 
   it('avisa a 1, 2 y 5 dias vencido; a 3 y 4 no (no son offsets)', async () => {
@@ -223,7 +220,7 @@ describe('varios recordatorios por ciclo (offsets 2, 1, -1, -2, -5)', () => {
 
     // -1, -2 y -5 (tres); -3 y -4 no estan en la lista.
     expect(falso.enviados).toHaveLength(3);
-    expect(falso.enviados.every((a) => /vencio el/.test(a.mensaje))).toBe(true);
+    expect(falso.enviados.every((a) => /te recordamos que el pago/.test(a.mensaje))).toBe(true);
   });
 
   it('no reenvia un recordatorio ya enviado (mismo offset)', async () => {
@@ -338,77 +335,32 @@ describe('aislamiento entre gimnasios', () => {
   });
 });
 
-describe('construirMensaje', () => {
+describe('construirMensaje (texto identico a la plantilla avisa_vence2)', () => {
   const tenant = { nombre: 'GymFuerza', config: { zonaHoraria: 'America/Bogota' } };
   const miembro = { nombres: 'Ana' };
-  const ahora = new Date('2026-07-09T12:00:00-05:00');
+  const ultimoPago = { periodoFin: new Date('2026-07-11T12:00:00-05:00'), monto: 55_000 };
 
-  it('avisa los dias que faltan cuando esta por vencer', () => {
-    const mensaje = construirMensaje({
-      miembro,
-      ultimoPago: { periodoFin: new Date('2026-07-11T12:00:00-05:00') },
-      estado: ESTADOS_VENCIMIENTO.POR_VENCER,
-      tenant,
-      ahora,
-    });
+  it('lleva nombre, gimnasio, fecha de vencimiento y valor del plan', () => {
+    const mensaje = construirMensaje({ miembro, ultimoPago, tenant, precioPlan: 60_000 });
 
     expect(mensaje).toContain('Ana');
     expect(mensaje).toContain('GymFuerza');
-    expect(mensaje).toMatch(/vence en 2 dias/);
+    expect(mensaje).toMatch(/vence el 11 de julio/);
+    expect(mensaje).toMatch(/Valor a pagar: \$ 60\.000/);
   });
 
-  it('usa el singular con un solo dia', () => {
-    const mensaje = construirMensaje({
-      miembro,
-      ultimoPago: { periodoFin: new Date('2026-07-10T12:00:00-05:00') },
-      estado: ESTADOS_VENCIMIENTO.POR_VENCER,
-      tenant,
-      ahora,
-    });
+  it('incluye los datos de pago (Bre-B, Nequi, Bancolombia, titular)', () => {
+    const mensaje = construirMensaje({ miembro, ultimoPago, tenant, precioPlan: 60_000 });
 
-    expect(mensaje).toMatch(/vence en 1 dia,/);
+    expect(mensaje).toContain('Bre-B');
+    expect(mensaje).toContain('Nequi');
+    expect(mensaje).toContain('Bancolombia');
+    expect(mensaje).toContain('Titular');
   });
 
-  /**
-   * Se cuentan dias de CALENDARIO, no instantes: faltan 6 horas, pero es hoy.
-   * Restando milisegundos y redondeando hacia arriba diria "vence en 1 dia".
-   */
-  it('dice "vence hoy" el mismo dia, aunque falten horas', () => {
-    const mensaje = construirMensaje({
-      miembro,
-      ultimoPago: { periodoFin: new Date('2026-07-09T18:00:00-05:00') },
-      estado: ESTADOS_VENCIMIENTO.POR_VENCER,
-      tenant,
-      ahora,
-    });
-
-    expect(mensaje).toMatch(/vence hoy/);
-  });
-
-  /** Casi 48 horas de diferencia, pero solo un dia de calendario. */
-  it('cuenta dias civiles, no bloques de 24 horas', () => {
-    const mensaje = construirMensaje({
-      miembro,
-      ultimoPago: { periodoFin: new Date('2026-07-10T23:00:00-05:00') },
-      estado: ESTADOS_VENCIMIENTO.POR_VENCER,
-      tenant,
-      ahora: new Date('2026-07-09T01:00:00-05:00'),
-    });
-
-    expect(mensaje).toMatch(/vence en 1 dia,/);
-  });
-
-  it('habla en pasado cuando ya vencio', () => {
-    const mensaje = construirMensaje({
-      miembro,
-      ultimoPago: { periodoFin: new Date('2026-07-01T12:00:00-05:00') },
-      estado: ESTADOS_VENCIMIENTO.VENCIDO,
-      tenant,
-      ahora,
-    });
-
-    expect(mensaje).toMatch(/vencio el 1 de julio/);
-    expect(mensaje).toMatch(/Renuevala/);
+  it('si no hay precio de plan fresco, usa el monto del pago', () => {
+    const mensaje = construirMensaje({ miembro, ultimoPago, tenant });
+    expect(mensaje).toMatch(/Valor a pagar: \$ 55\.000/);
   });
 });
 

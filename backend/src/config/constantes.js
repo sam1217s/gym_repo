@@ -132,6 +132,20 @@ export const DIAS_AVISO_VENCIMIENTO = 3;
  */
 export const OFFSETS_AVISO_VENCIMIENTO = Object.freeze([2, 1, -1, -2, -5]);
 
+/**
+ * Datos de pago que van en el aviso de vencimiento. DEBEN COINCIDIR con la
+ * plantilla `avisa_vence2` aprobada en Twilio/Meta, que es lo que REALMENTE recibe
+ * el miembro; este texto se usa para el registro en la bandeja (para que el hilo
+ * muestre lo mismo que le llego) y para los proveedores de texto (n8n). Si cambian
+ * las cuentas, actualiza AMBOS: aqui y la plantilla en Twilio.
+ */
+export const DATOS_PAGO_AVISO = [
+  'Llave Bre-B: 1095701644',
+  'Nequi: 315 804 4633',
+  'Bancolombia Ahorros: 32207168407',
+  'Titular: Diego López',
+].join('\n');
+
 export const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
 
 /**

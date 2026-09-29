@@ -1,7 +1,7 @@
 import {
   CATEGORIAS_MENSAJE_SALIENTE,
+  DATOS_PAGO_AVISO,
   ESTADOS_NOTIFICACION,
-  ESTADOS_VENCIMIENTO,
   MILISEGUNDOS_POR_DIA,
   OFFSETS_AVISO_VENCIMIENTO,
   ZONA_HORARIA_POR_DEFECTO,
@@ -64,59 +64,47 @@ function formatearFecha(fecha, zonaHoraria) {
   }).format(new Date(fecha));
 }
 
-/**
- * El texto que recibe el miembro. Se separa del envio para poder probarlo sin
- * tocar la red ni la base de datos.
- */
-export function construirMensaje({ miembro, ultimoPago, estado, tenant, ahora = new Date() }) {
+const FORMATO_MONEDA = new Intl.NumberFormat('es-CO');
+
+/** Datos que llenan el aviso (los MISMOS para el texto y para las variables). */
+function datosAviso({ miembro, ultimoPago, tenant, precioPlan }) {
   const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
-  const cuando = formatearFecha(ultimoPago.periodoFin, zonaHoraria);
-  const saludo = `Hola ${miembro.nombres}`;
+  return {
+    nombre: miembro.nombres,
+    gimnasio: tenant.nombre,
+    fecha: formatearFecha(ultimoPago.periodoFin, zonaHoraria),
+    valor: FORMATO_MONEDA.format(precioPlan ?? ultimoPago.monto ?? 0),
+  };
+}
 
-  if (estado === ESTADOS_VENCIMIENTO.VENCIDO) {
-    return (
-      `${saludo}, tu mensualidad en ${tenant.nombre} vencio el ${cuando}. ` +
-      'Renuevala cuando puedas y sigue entrenando con nosotros.'
-    );
-  }
-
-  const dias = diasCalendarioHasta(ultimoPago.periodoFin, ahora, zonaHoraria);
-
-  if (dias <= 0) {
-    return `${saludo}, tu mensualidad en ${tenant.nombre} vence hoy (${cuando}). Te esperamos.`;
-  }
-
-  const plural = dias === 1 ? 'dia' : 'dias';
+/**
+ * El texto del aviso, IDENTICO a la plantilla `avisa_vence2` que recibe el miembro.
+ * Se usa como REGISTRO en la bandeja (para que el hilo muestre lo mismo que le
+ * llego) y como texto para proveedores sin plantilla (n8n). Con Twilio el cuerpo
+ * lo fija la plantilla aprobada; este texto debe reflejarla, por eso los datos de
+ * pago salen de `DATOS_PAGO_AVISO`. Todos los recordatorios (por vencer y vencido)
+ * usan la MISMA plantilla, asi que el texto no cambia por etapa.
+ */
+export function construirMensaje({ miembro, ultimoPago, tenant, precioPlan }) {
+  const d = datosAviso({ miembro, ultimoPago, tenant, precioPlan });
   return (
-    `${saludo}, tu mensualidad en ${tenant.nombre} vence en ${dias} ${plural}, ` +
-    `el ${cuando}. Te esperamos.`
+    `Hola ${d.nombre}, te recordamos que el pago de tu mensualidad en ${d.gimnasio} ` +
+    `vence el ${d.fecha}. Valor a pagar: $ ${d.valor}.\n\n` +
+    `Puedes realizar el pago por:\n${DATOS_PAGO_AVISO}\n\n` +
+    'Cuando realices el pago, respondenos por este medio con la foto del comprobante para registrarlo.\n' +
+    `Mensaje automatico de ${d.gimnasio}`
   );
 }
 
-const FORMATO_MONEDA = new Intl.NumberFormat('es-CO');
-
 /**
- * Las variables de la PLANTILLA de WhatsApp, en el orden que espera el cuerpo
- * aprobado en Meta: nombre, gimnasio, fecha de vencimiento y VALOR de la
- * mensualidad. El proveedor Cloud API las mete como parametros de la plantilla;
- * los de texto (n8n) las ignoran y usan el `mensaje`.
- *
- * `precioPlan` se resuelve FRESCO desde el plan del ultimo pago (no del monto
- * pagado): si el gimnasio sube el precio, el aviso ya lo refleja.
- *
- * El VALOR va SOLO como numero ("70.000"), sin el "$": en la plantilla el signo
- * es texto fijo ("Valor a pagar: $ {{4}}"), asi que mandarlo con "$" duplicaria
- * el simbolo ("$ $70.000").
+ * Las variables de la PLANTILLA, en el orden del cuerpo aprobado en Meta: nombre,
+ * gimnasio, fecha de vencimiento y VALOR. `precioPlan` se resuelve FRESCO del plan
+ * del ultimo pago (no del monto pagado). El VALOR va SOLO como numero ("70.000"):
+ * el "$" es texto fijo en la plantilla ("Valor a pagar: $ {{4}}").
  */
 export function construirVariables({ miembro, ultimoPago, tenant, precioPlan }) {
-  const zonaHoraria = tenant.config?.zonaHoraria || ZONA_HORARIA_POR_DEFECTO;
-  const valor = precioPlan ?? ultimoPago.monto ?? 0;
-  return [
-    miembro.nombres,
-    tenant.nombre,
-    formatearFecha(ultimoPago.periodoFin, zonaHoraria),
-    FORMATO_MONEDA.format(valor),
-  ];
+  const d = datosAviso({ miembro, ultimoPago, tenant, precioPlan });
+  return [d.nombre, d.gimnasio, d.fecha, d.valor];
 }
 
 /**
@@ -177,15 +165,13 @@ function offsetAvisoDeHoy(ultimoPago, ahora, zonaHoraria) {
 
 async function avisarAMiembro(
   { miembro, ultimoPago, offset },
-  { tenant, proveedor, ahora, precioPorPlan },
+  { tenant, proveedor, precioPorPlan },
 ) {
   const Notificacion = obtenerModelo('Notificacion');
   const Pago = obtenerModelo('Pago');
 
-  // Offset negativo = ya vencido; positivo = aun por vencer.
-  const estado = offset < 0 ? ESTADOS_VENCIMIENTO.VENCIDO : ESTADOS_VENCIMIENTO.POR_VENCER;
   const precioPlan = precioPorPlan?.get(String(ultimoPago.planMembresia));
-  const mensaje = construirMensaje({ miembro, ultimoPago, estado, tenant, ahora });
+  const mensaje = construirMensaje({ miembro, ultimoPago, tenant, precioPlan });
   const variables = construirVariables({ miembro, ultimoPago, tenant, precioPlan });
 
   try {

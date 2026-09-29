@@ -477,23 +477,29 @@ vencido). El cron corre a diario y `offsetAvisoDeHoy()` mira los dias de calenda
 del ULTIMO pago: si coinciden EXACTO con un offset de la lista y ese offset aun no esta en
 `avisosEnviados`, se envia y se anota (con `$addToSet`) SOLO tras confirmar el envio, asi que cada
 recordatorio sale una vez y un fallo se reintenta al dia siguiente. Consecuencia del match EXACTO:
-si un dia el cron no corre, ese offset se salta (no hay catch-up). Todos los recordatorios se envian
-con la MISMA plantilla `avisa_vence2` (la fecha es la de vencimiento, aunque el recordatorio sea de
-"ya vencido"); el estado por_vencer/vencido solo cambia el texto guardado, no lo que ve el miembro.
-`DIAS_AVISO_VENCIMIENTO = 3` es OTRA cosa: solo el umbral con que el PANEL pinta el chip "por vencer".
+si un dia el cron no corre, ese offset se salta (no hay catch-up). TODOS los recordatorios (por
+vencer y vencido) se envian con la MISMA plantilla `avisa_vence2`, con la fecha de vencimiento; no
+hay texto distinto por etapa. `DIAS_AVISO_VENCIMIENTO = 3` es OTRA cosa: solo el umbral con que el
+PANEL pinta el chip "por vencer".
 El cron **debe** envolver cada tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el
 contexto por el.
 
-**Texto libre vs. plantilla.** El servicio construye SIEMPRE dos cosas: el `mensaje` de texto
-(rico, varia segun el estado) y las `variables` de la plantilla (`[nombre, gimnasio, fecha,
-valor]`, en ese orden). Cada proveedor usa lo que le sirve: **n8n** manda el `mensaje`; **twilio**
-ignora el texto y envia un **Content Template** aprobado (`ContentSid` + `ContentVariables`
-numeradas), porque WhatsApp solo acepta texto libre dentro de la ventana de 24 h y un aviso de
-vencimiento casi nunca cae ahi. Cada plantilla es un Content Template que el gimnasio crea en SU
-cuenta de Twilio; su **Content SID** (`HX...`) se guarda por `clave`
-(`credenciales.plantillas.vencimiento` / `.bienvenida` / `.recibo`) y el provider lo resuelve con
-`PLANTILLA_*.clave`. El `mensaje` de texto se sigue guardando en `Notificacion` como registro,
-aunque twilio no lo mande.
+**Texto libre vs. plantilla.** El servicio construye SIEMPRE dos cosas: el `mensaje` de texto y las
+`variables` de la plantilla (`[nombre, gimnasio, fecha, valor]`, en ese orden), ambas desde
+`datosAviso()`. Cada proveedor usa lo que le sirve: **n8n** manda el `mensaje`; **twilio** ignora el
+texto y envia un **Content Template** aprobado (`ContentSid` + `ContentVariables` numeradas), porque
+WhatsApp solo acepta texto libre dentro de la ventana de 24 h y un aviso de vencimiento casi nunca
+cae ahi. Cada plantilla es un Content Template que el gimnasio crea en SU cuenta de Twilio; su
+**Content SID** (`HX...`) se guarda por `clave` (`credenciales.plantillas.vencimiento` / `.bienvenida`
+/ `.recibo`) y el provider lo resuelve con `PLANTILLA_*.clave`.
+
+**El `mensaje` de texto DEBE reflejar la plantilla.** Como twilio no manda el `mensaje` (manda la
+plantilla), pero ese `mensaje` es lo que se guarda en `Notificacion` Y en la bandeja (`categoria
+'aviso'`), `construirMensaje()` reproduce EXACTAMENTE el cuerpo de `avisa_vence2`, con los datos de
+pago desde `DATOS_PAGO_AVISO` (constante que DEBE coincidir con la plantilla en Meta). Asi, en
+`/panel/mensajes` el hilo muestra lo mismo que recibio el miembro. Si el `mensaje` fuera distinto de
+la plantilla, la bandeja mentiria sobre lo que se envio (era el bug: guardaba un texto corto que el
+miembro nunca vio). Si cambian los datos de pago, actualiza AMBOS: `DATOS_PAGO_AVISO` y la plantilla.
 
 **La trampa del aviso.** Lo obvio seria `Pago.find({ periodoFin: { $lte: umbral } })`. Esta mal:
 un miembro que ya renovo conserva su pago viejo con `periodoFin` pasado, y recibiria un aviso de
