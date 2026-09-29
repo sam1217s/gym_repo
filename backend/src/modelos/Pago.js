@@ -40,11 +40,13 @@ const esquemaPago = new mongoose.Schema(
     registradoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
 
     /**
-     * Avisos ya enviados de este periodo. Son DOS por ciclo (uno "por vencer",
-     * otro "vencido"), cada uno una sola vez: por eso hay dos marcas y no una.
+     * Recordatorios de vencimiento YA enviados de este periodo, como offsets de
+     * dias respecto al `periodoFin` (positivo = antes de vencer, negativo =
+     * despues). Cada offset de `OFFSETS_AVISO_VENCIMIENTO` se envia una sola vez;
+     * aqui se anota cual ya salio para no repetirlo. Al corregir el periodo del
+     * pago se vacia (los avisos eran del periodo anterior).
      */
-    avisadoPorVencer: { type: Boolean, default: false },
-    avisadoVencido: { type: Boolean, default: false },
+    avisosEnviados: { type: [Number], default: [] },
   },
   { timestamps: true },
 );

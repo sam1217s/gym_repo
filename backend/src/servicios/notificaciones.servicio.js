@@ -1,10 +1,9 @@
 import {
   CATEGORIAS_MENSAJE_SALIENTE,
-  DIAS_AVISO_POR_VENCER,
-  DIAS_AVISO_VENCIDO,
   ESTADOS_NOTIFICACION,
   ESTADOS_VENCIMIENTO,
   MILISEGUNDOS_POR_DIA,
+  OFFSETS_AVISO_VENCIMIENTO,
   ZONA_HORARIA_POR_DEFECTO,
 } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
@@ -24,10 +23,12 @@ import { listarVencimientos } from './vencimientos.servicio.js';
  * El vencimiento se DERIVA del ULTIMO pago, aqui igual que en el panel; el resto
  * de pagos son historia.
  *
- * Son DOS avisos por ciclo, cada uno una sola vez (ver `decidirEtapaAviso`):
- * uno faltando pocos dias y otro al llevar varios vencido. Cada etapa tiene su
- * marca en el pago (`avisadoPorVencer` / `avisadoVencido`) y se pone SOLO tras
- * confirmar el envio: si falla, no se marca y mañana se reintenta.
+ * Son VARIOS recordatorios por ciclo (ver `OFFSETS_AVISO_VENCIMIENTO`): unos
+ * antes de vencer y otros ya vencido. Cada uno se envia una sola vez: el offset
+ * de dias se anota en `Pago.avisosEnviados` SOLO tras confirmar el envio, asi que
+ * si falla no se marca y se reintenta al dia siguiente (mientras siga coincidiendo
+ * con un offset). El cron corre a diario y avisa cuando los dias que faltan/lleva
+ * vencido coinciden EXACTO con un offset de la lista.
  */
 
 const SIN_TELEFONO = 'El miembro no tiene telefono';
@@ -143,8 +144,8 @@ export async function notificarVencimientosDelTenant(
 
   const filas = await listarVencimientos();
   const porAvisar = filas
-    .map((fila) => ({ ...fila, etapa: decidirEtapaAviso(fila.ultimoPago, ahora, zonaHoraria) }))
-    .filter((fila) => fila.etapa);
+    .map((fila) => ({ ...fila, offset: offsetAvisoDeHoy(fila.ultimoPago, ahora, zonaHoraria) }))
+    .filter((fila) => fila.offset !== null);
 
   let enviados = 0;
   let fallidos = 0;
@@ -159,34 +160,30 @@ export async function notificarVencimientosDelTenant(
 }
 
 /**
- * Que aviso corresponde HOY para el ultimo pago, o `null` si ninguno. Son dos
- * por ciclo y cada uno una sola vez (lo garantizan las dos marcas del pago):
- *  - `por_vencer`: faltan `DIAS_AVISO_POR_VENCER` dias o menos (aun no vence).
- *  - `vencido`: lleva `DIAS_AVISO_VENCIDO` dias o mas vencido.
+ * El offset de recordatorio que toca HOY para el ultimo pago, o `null` si ninguno.
+ * Devuelve el offset (dias respecto al vencimiento) solo si los dias que faltan
+ * (o lleva vencido) coinciden EXACTO con uno de `OFFSETS_AVISO_VENCIMIENTO` y ese
+ * offset aun no se envio para este pago. Cada offset sale una sola vez.
  */
-function decidirEtapaAviso(ultimoPago, ahora, zonaHoraria) {
+function offsetAvisoDeHoy(ultimoPago, ahora, zonaHoraria) {
   if (!ultimoPago) return null;
 
   const dias = diasCalendarioHasta(ultimoPago.periodoFin, ahora, zonaHoraria);
+  if (!OFFSETS_AVISO_VENCIMIENTO.includes(dias)) return null;
 
-  if (dias > 0 && dias <= DIAS_AVISO_POR_VENCER && !ultimoPago.avisadoPorVencer) {
-    return 'por_vencer';
-  }
-  if (dias <= -DIAS_AVISO_VENCIDO && !ultimoPago.avisadoVencido) {
-    return 'vencido';
-  }
-  return null;
+  const enviados = ultimoPago.avisosEnviados ?? [];
+  return enviados.includes(dias) ? null : dias;
 }
 
 async function avisarAMiembro(
-  { miembro, ultimoPago, etapa },
+  { miembro, ultimoPago, offset },
   { tenant, proveedor, ahora, precioPorPlan },
 ) {
   const Notificacion = obtenerModelo('Notificacion');
   const Pago = obtenerModelo('Pago');
 
-  const estado =
-    etapa === 'vencido' ? ESTADOS_VENCIMIENTO.VENCIDO : ESTADOS_VENCIMIENTO.POR_VENCER;
+  // Offset negativo = ya vencido; positivo = aun por vencer.
+  const estado = offset < 0 ? ESTADOS_VENCIMIENTO.VENCIDO : ESTADOS_VENCIMIENTO.POR_VENCER;
   const precioPlan = precioPorPlan?.get(String(ultimoPago.planMembresia));
   const mensaje = construirMensaje({ miembro, ultimoPago, estado, tenant, ahora });
   const variables = construirVariables({ miembro, ultimoPago, tenant, precioPlan });
@@ -202,10 +199,9 @@ async function avisarAMiembro(
       mensaje,
     });
 
-    // Se marca SOLO la etapa enviada, y solo tras confirmar: asi el otro aviso
-    // del ciclo aun puede salir, y un fallo no pierde este.
-    const campo = etapa === 'vencido' ? 'avisadoVencido' : 'avisadoPorVencer';
-    await Pago.updateOne({ _id: ultimoPago._id }, { [campo]: true });
+    // Se anota SOLO el offset enviado, y solo tras confirmar: asi cada
+    // recordatorio del ciclo sale una vez y un fallo no pierde este.
+    await Pago.updateOne({ _id: ultimoPago._id }, { $addToSet: { avisosEnviados: offset } });
 
     // Deja rastro en la bandeja (hilo unificado). Best-effort: ya se envio.
     await registrarMensajeSaliente({

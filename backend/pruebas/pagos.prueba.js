@@ -355,16 +355,13 @@ describe('PATCH /api/pagos/:id (corregir un pago)', () => {
     expect(fin.getDate()).toBe(1);
   });
 
-  it('corregir el periodo reinicia las marcas de aviso ya enviadas', async () => {
+  it('corregir el periodo reinicia los recordatorios ya enviados', async () => {
     const { tenant, planMensual, miembros } = await montarGimnasio();
     const dueno = await entrarComo('owner@gimnasio-pagos.co');
     const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
 
     await ejecutarConTenant(tenant._id, () =>
-      obtenerModelo('Pago').updateOne(
-        { _id: pago._id },
-        { avisadoPorVencer: true, avisadoVencido: true },
-      ),
+      obtenerModelo('Pago').updateOne({ _id: pago._id }, { avisosEnviados: [2, -1] }),
     );
 
     await dueno.patch(`/api/pagos/${pago._id}`).send({ periodoInicio: '2026-08-01' }).expect(200);
@@ -372,8 +369,7 @@ describe('PATCH /api/pagos/:id (corregir un pago)', () => {
     const enBase = await ejecutarConTenant(tenant._id, () =>
       obtenerModelo('Pago').findById(pago._id),
     );
-    expect(enBase.avisadoPorVencer).toBe(false);
-    expect(enBase.avisadoVencido).toBe(false);
+    expect(enBase.avisosEnviados).toHaveLength(0);
   });
 
   it('cambiar solo el monto NO toca el periodo ni sus avisos', async () => {
@@ -382,7 +378,7 @@ describe('PATCH /api/pagos/:id (corregir un pago)', () => {
     const pago = await registrarPago(dueno, planMensual, miembros.ana, '2026-07-01');
 
     await ejecutarConTenant(tenant._id, () =>
-      obtenerModelo('Pago').updateOne({ _id: pago._id }, { avisadoPorVencer: true }),
+      obtenerModelo('Pago').updateOne({ _id: pago._id }, { avisosEnviados: [2] }),
     );
 
     const corregido = await dueno
@@ -395,7 +391,7 @@ describe('PATCH /api/pagos/:id (corregir un pago)', () => {
     const enBase = await ejecutarConTenant(tenant._id, () =>
       obtenerModelo('Pago').findById(pago._id),
     );
-    expect(enBase.avisadoPorVencer).toBe(true); // no se reinicio
+    expect(enBase.avisosEnviados).toEqual([2]); // no se reinicio
   });
 
   it('un sede_admin NO puede corregir un pago (es cosa del dueño)', async () => {

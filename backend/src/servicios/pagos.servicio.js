@@ -81,9 +81,9 @@ export async function registrarPago(datos, filtroSede = {}) {
  * Lo delicado es el PERIODO. Si cambia `periodoInicio` (o el plan, que define la
  * duracion), se RECALCULA `periodoFin` con la misma regla que al registrar
  * (`sumarDuracion`): el vencimiento del miembro se deriva de ahi, asi que no se
- * puede tocar el inicio y dejar el fin viejo. Ademas se reinician las marcas de
- * aviso (`avisadoPorVencer`/`avisadoVencido`): eran del periodo anterior, y el
- * cron debe reevaluar el aviso sobre el periodo corregido.
+ * puede tocar el inicio y dejar el fin viejo. Ademas se vacia `avisosEnviados`:
+ * los recordatorios eran del periodo anterior, y el cron debe reevaluarlos sobre
+ * el periodo corregido.
  */
 export async function actualizarPago(id, datos, filtroSede = {}) {
   const Pago = obtenerModelo('Pago');
@@ -115,8 +115,7 @@ export async function actualizarPago(id, datos, filtroSede = {}) {
     if (!planDuracion) throw ErrorApi.solicitudInvalida('El plan del pago ya no existe');
 
     pago.periodoFin = sumarDuracion(pago.periodoInicio, planDuracion);
-    pago.avisadoPorVencer = false;
-    pago.avisadoVencido = false;
+    pago.avisosEnviados = [];
   }
 
   await pago.save();

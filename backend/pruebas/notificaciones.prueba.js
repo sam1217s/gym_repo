@@ -98,8 +98,7 @@ async function crearMiembroConPagos(gimnasio, { documento, telefono = '573001234
         periodoInicio: new Date(periodoFin.getTime() - 30 * MILISEGUNDOS_POR_DIA),
         periodoFin,
         registradoPor: gimnasio.usuario._id,
-        avisadoPorVencer: pago.avisadoPorVencer ?? false,
-        avisadoVencido: pago.avisadoVencido ?? false,
+        avisosEnviados: pago.avisosEnviados ?? [],
       });
     }
 
@@ -180,11 +179,11 @@ describe('a quien se avisa', () => {
     expect(falso.enviados).toHaveLength(0);
   });
 
-  it('no reavisa la etapa "por vencer" si ya se envio', async () => {
+  it('no reavisa un recordatorio ("por vencer") si ya se envio', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, {
       documento: 'ya-avisado',
-      pagos: [{ diasHastaVencer: 2, avisadoPorVencer: true }],
+      pagos: [{ diasHastaVencer: 2, avisosEnviados: [2] }],
     });
 
     const falso = proveedorFalso();
@@ -194,41 +193,44 @@ describe('a quien se avisa', () => {
   });
 });
 
-describe('dos avisos por ciclo (por vencer + vencido)', () => {
-  it('faltando 2 dias avisa "por vencer"; faltando 3 aun no', async () => {
+describe('varios recordatorios por ciclo (offsets 2, 1, -1, -2, -5)', () => {
+  it('avisa faltando 2 y 1 dia; faltando 3 aun no (no es un offset)', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, { documento: 'faltan-3', pagos: [{ diasHastaVencer: 3 }] });
     await crearMiembroConPagos(gimnasio, { documento: 'faltan-2', pagos: [{ diasHastaVencer: 2 }] });
+    await crearMiembroConPagos(gimnasio, { documento: 'faltan-1', pagos: [{ diasHastaVencer: 1 }] });
 
     const falso = proveedorFalso();
     await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });
 
-    // Solo el de 2 dias; el de 3 todavia no entra en la ventana.
-    expect(falso.enviados).toHaveLength(1);
-    expect(falso.enviados[0].mensaje).toMatch(/vence en 2 dias/);
+    // Los de 2 y 1 dia; el de 3 no entra (3 no esta en la lista de offsets).
+    expect(falso.enviados).toHaveLength(2);
+    const textos = falso.enviados.map((a) => a.mensaje).join(' | ');
+    expect(textos).toMatch(/vence en 2 dias/);
+    expect(textos).toMatch(/vence en 1 dia/);
   });
 
-  it('a 1 dia vencido aun NO avisa; a 2 dias vencido SI (segundo aviso)', async () => {
+  it('avisa a 1, 2 y 5 dias vencido; a 3 y 4 no (no son offsets)', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, { documento: 'venc-1', pagos: [{ diasHastaVencer: -1 }] });
-    // Ya recibio el "por vencer"; ahora, a 2 dias vencido, toca el segundo.
-    await crearMiembroConPagos(gimnasio, {
-      documento: 'venc-2',
-      pagos: [{ diasHastaVencer: -2, avisadoPorVencer: true }],
-    });
+    await crearMiembroConPagos(gimnasio, { documento: 'venc-2', pagos: [{ diasHastaVencer: -2 }] });
+    await crearMiembroConPagos(gimnasio, { documento: 'venc-3', pagos: [{ diasHastaVencer: -3 }] });
+    await crearMiembroConPagos(gimnasio, { documento: 'venc-4', pagos: [{ diasHastaVencer: -4 }] });
+    await crearMiembroConPagos(gimnasio, { documento: 'venc-5', pagos: [{ diasHastaVencer: -5 }] });
 
     const falso = proveedorFalso();
     await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });
 
-    expect(falso.enviados).toHaveLength(1);
-    expect(falso.enviados[0].mensaje).toMatch(/vencio el/);
+    // -1, -2 y -5 (tres); -3 y -4 no estan en la lista.
+    expect(falso.enviados).toHaveLength(3);
+    expect(falso.enviados.every((a) => /vencio el/.test(a.mensaje))).toBe(true);
   });
 
-  it('no manda un TERCER aviso: con las dos etapas ya enviadas, nada', async () => {
+  it('no reenvia un recordatorio ya enviado (mismo offset)', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, {
-      documento: 'completo',
-      pagos: [{ diasHastaVencer: -10, avisadoPorVencer: true, avisadoVencido: true }],
+      documento: 'ya-venc-2',
+      pagos: [{ diasHastaVencer: -2, avisosEnviados: [-2] }],
     });
 
     const falso = proveedorFalso();
@@ -239,7 +241,7 @@ describe('dos avisos por ciclo (por vencer + vencido)', () => {
 });
 
 describe('registro del envio', () => {
-  it('marca la etapa en el ULTIMO pago y deja el viejo intacto', async () => {
+  it('anota el offset en el ULTIMO pago y deja el viejo intacto', async () => {
     const gimnasio = await montarGimnasio();
     const miembro = await crearMiembroConPagos(gimnasio, {
       documento: 'dos-pagos',
@@ -253,8 +255,8 @@ describe('registro del envio', () => {
     expect(falso.enviados).toHaveLength(1);
 
     const [viejo, ultimo] = await listarPagosDe(gimnasio.tenant._id, miembro._id);
-    expect(viejo.avisadoVencido).toBe(false);
-    expect(ultimo.avisadoVencido).toBe(true);
+    expect(viejo.avisosEnviados).toHaveLength(0);
+    expect(ultimo.avisosEnviados).toContain(-2);
 
     const notificaciones = await contarNotificaciones(gimnasio.tenant._id);
     expect(notificaciones).toHaveLength(1);
@@ -274,7 +276,7 @@ describe('registro del envio', () => {
     expect(resumen[0]).toMatchObject({ enviados: 0, fallidos: 1 });
 
     const [pago] = await listarPagosDe(gimnasio.tenant._id, miembro._id);
-    expect(pago.avisadoPorVencer).toBe(false);
+    expect(pago.avisosEnviados).toHaveLength(0);
 
     const notificaciones = await contarNotificaciones(gimnasio.tenant._id);
     expect(notificaciones[0].estado).toBe(ESTADOS_NOTIFICACION.FALLIDO);

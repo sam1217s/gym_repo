@@ -123,12 +123,14 @@ export const ESTADOS_NOTIFICACION = Object.freeze({
 export const DIAS_AVISO_VENCIMIENTO = 3;
 
 /**
- * Avisos por WhatsApp: DOS por ciclo de pago, cada uno una sola vez.
- *  - `POR_VENCER`: faltando este numero de dias (o menos) para vencer.
- *  - `VENCIDO`: cuando lleva este numero de dias (o mas) vencido.
+ * Recordatorios de vencimiento por WhatsApp: los dias (respecto al vencimiento)
+ * en que se avisa. POSITIVO = antes de vencer; NEGATIVO = ya vencido. Cada offset
+ * se envia UNA sola vez (se registra en `Pago.avisosEnviados`). El cron corre a
+ * diario y avisa cuando los dias que faltan/lleva vencido coinciden EXACTO con un
+ * offset de esta lista.
+ *   faltando 2 dias, faltando 1 dia, 1 dia vencido, 2 dias vencido, 5 dias vencido.
  */
-export const DIAS_AVISO_POR_VENCER = 2;
-export const DIAS_AVISO_VENCIDO = 2;
+export const OFFSETS_AVISO_VENCIMIENTO = Object.freeze([2, 1, -1, -2, -5]);
 
 export const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
 

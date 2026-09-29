@@ -460,24 +460,29 @@ ejecutarConTenant(tenant._id, async () => {
         |  si proveedor === 'ninguno'  -> omitido
         |
         |  listarVencimientos()   <-- LA MISMA consulta que pinta el panel de miembros
-        |     decidirEtapaAviso(ultimoPago): 'por_vencer' | 'vencido' | null
+        |     offsetAvisoDeHoy(ultimoPago): un offset de OFFSETS_AVISO_VENCIMIENTO o null
         v
    NotificacionProvider  <-- interfaz; la implementacion sale de tenant.config.whatsapp.proveedor
         |                    (twilio | n8n | ninguno)
         v
-   exito -> Notificacion.create({ estado: 'enviado' }) + Pago.updateOne({ [etapa]: true })
-   fallo -> Notificacion.create({ estado: 'fallido' })   (la etapa NO se marca: se reintenta)
+   exito -> Notificacion.create({ estado: 'enviado' }) + Pago $addToSet avisosEnviados: offset
+   fallo -> Notificacion.create({ estado: 'fallido' })   (el offset NO se anota: se reintenta)
 })
 ```
 
-**DOS avisos por ciclo, cada uno una sola vez.** No hay un booleano `notificado`, sino DOS
-marcas en el pago: `avisadoPorVencer` y `avisadoVencido`. `decidirEtapaAviso()` mira los dias de
-calendario del `periodoFin` del ULTIMO pago: manda "por vencer" cuando faltan
-`DIAS_AVISO_POR_VENCER` dias o menos (aun no vence), y "vencido" cuando lleva `DIAS_AVISO_VENCIDO`
-dias o mas vencido (ambos `= 2`). Cada etapa se marca por separado y SOLO tras confirmar el
-envio, asi que el segundo aviso aun puede salir y un fallo no pierde el aviso. `DIAS_AVISO_VENCIMIENTO
-= 3` es OTRA cosa: solo el umbral con que el PANEL pinta el chip "por vencer". El cron **debe**
-envolver cada tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el contexto por el.
+**VARIOS recordatorios por ciclo, cada uno una sola vez.** No hay booleanos por etapa, sino un
+arreglo `Pago.avisosEnviados` con los OFFSETS (dias respecto al vencimiento) ya enviados.
+`OFFSETS_AVISO_VENCIMIENTO = [2, 1, -1, -2, -5]` (positivo = antes de vencer; negativo = ya
+vencido). El cron corre a diario y `offsetAvisoDeHoy()` mira los dias de calendario del `periodoFin`
+del ULTIMO pago: si coinciden EXACTO con un offset de la lista y ese offset aun no esta en
+`avisosEnviados`, se envia y se anota (con `$addToSet`) SOLO tras confirmar el envio, asi que cada
+recordatorio sale una vez y un fallo se reintenta al dia siguiente. Consecuencia del match EXACTO:
+si un dia el cron no corre, ese offset se salta (no hay catch-up). Todos los recordatorios se envian
+con la MISMA plantilla `avisa_vence2` (la fecha es la de vencimiento, aunque el recordatorio sea de
+"ya vencido"); el estado por_vencer/vencido solo cambia el texto guardado, no lo que ve el miembro.
+`DIAS_AVISO_VENCIMIENTO = 3` es OTRA cosa: solo el umbral con que el PANEL pinta el chip "por vencer".
+El cron **debe** envolver cada tenant en `ejecutarConTenant`, porque no hay peticion HTTP que abra el
+contexto por el.
 
 **Texto libre vs. plantilla.** El servicio construye SIEMPRE dos cosas: el `mensaje` de texto
 (rico, varia segun el estado) y las `variables` de la plantilla (`[nombre, gimnasio, fecha,
