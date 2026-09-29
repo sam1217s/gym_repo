@@ -192,8 +192,12 @@ export const ESTADOS_MAQUINA_REQUIEREN_ATENCION = Object.freeze([
   ESTADOS_MAQUINA.DANADA,
 ]);
 
-/** Todos los dias a las 9:00, en la zona horaria del producto. */
-export const EXPRESION_CRON_VENCIMIENTOS = '0 9 * * *';
+/**
+ * Todos los dias a las 6:00 y a las 17:00, en la zona horaria del producto. La
+ * segunda corrida es red de respaldo: como cada recordatorio se marca en
+ * `Pago.avisosEnviados`, no reenvia lo ya enviado en la manana.
+ */
+export const EXPRESION_CRON_VENCIMIENTOS = '0 6,17 * * *';
 
 /** Limpieza de comprobantes: a las 4, antes del dia. */
 export const EXPRESION_CRON_PURGA_COMPROBANTES = '0 4 * * *';
