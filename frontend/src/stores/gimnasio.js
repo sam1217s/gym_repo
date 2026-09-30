@@ -21,6 +21,8 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
   const reportesNoLeidos = ref(0);
   const mensajes = ref([]);
   const mensajesPendientes = ref(0);
+  /** Ids de miembro con un comprobante por confirmar (pestaña de pendientes). */
+  const comprobantesPendientes = ref([]);
   const auditoria = ref([]);
   const gastos = ref([]);
   const deudas = ref([]);
@@ -298,6 +300,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     const datos = await servicioGimnasio.listarMensajes(params);
     mensajes.value = datos.mensajes;
     mensajesPendientes.value = datos.pendientes;
+    comprobantesPendientes.value = datos.comprobantesPendientes ?? [];
     return datos;
   }
 
@@ -348,6 +351,7 @@ export const useGimnasioStore = defineStore('gimnasio', () => {
     reportesNoLeidos,
     mensajes,
     mensajesPendientes,
+    comprobantesPendientes,
     auditoria,
     gastos,
     deudas,

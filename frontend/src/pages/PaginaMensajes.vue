@@ -38,20 +38,57 @@
       </div>
     </div>
 
-    <div v-if="conversaciones.length === 0 && !cargando" class="estado-vacio">
-      <q-icon name="chat_bubble_outline" size="42px" color="grey-6" />
-      <div class="q-mt-sm">Aun no hay mensajes.</div>
-      <div class="text-caption q-mt-xs">
-        Llegan aqui cuando alguien le escribe al WhatsApp del gimnasio.
-      </div>
-    </div>
-
-    <div v-else class="row q-col-gutter-md">
+    <div class="row q-col-gutter-md">
       <!-- Lista de conversaciones. En movil se oculta al abrir una. -->
       <div v-show="!enHilo || $q.screen.gt.sm" class="col-12 col-md-4">
-        <q-list bordered separator class="rounded-borders lista-hilos">
+        <!-- Dos pestañas: la conversacion normal y los comprobantes por aprobar,
+             para que un pago pendiente no se pierda entre tantos hilos. -->
+        <q-tabs
+          v-model="pestana"
+          dense
+          no-caps
+          align="left"
+          class="text-grey-7 q-mb-sm"
+          active-color="primary"
+          indicator-color="primary"
+        >
+          <q-tab name="mensajes" label="Mensajes" />
+          <q-tab name="pendientes">
+            <div class="row items-center no-wrap">
+              <span>Por confirmar pago</span>
+              <q-badge
+                v-if="conversacionesPendientes.length"
+                color="warning"
+                rounded
+                class="q-ml-xs"
+              >
+                {{ conversacionesPendientes.length }}
+              </q-badge>
+            </div>
+          </q-tab>
+        </q-tabs>
+
+        <div v-if="conversacionesVisibles.length === 0 && !cargando" class="estado-vacio">
+          <q-icon
+            :name="pestana === 'pendientes' ? 'task_alt' : 'chat_bubble_outline'"
+            size="42px"
+            color="grey-6"
+          />
+          <div class="q-mt-sm">
+            {{ pestana === 'pendientes' ? 'No hay comprobantes por confirmar.' : 'Aun no hay mensajes.' }}
+          </div>
+          <div class="text-caption q-mt-xs">
+            {{
+              pestana === 'pendientes'
+                ? 'Cuando un miembro envie la foto de su pago, aparece aqui hasta que lo apruebes.'
+                : 'Llegan aqui cuando alguien le escribe al WhatsApp del gimnasio.'
+            }}
+          </div>
+        </div>
+
+        <q-list v-else bordered separator class="rounded-borders lista-hilos">
           <q-item
-            v-for="conversacion in conversaciones"
+            v-for="conversacion in conversacionesVisibles"
             :key="conversacion.telefono"
             v-ripple
             clickable
@@ -83,6 +120,15 @@
             </q-item-section>
             <q-item-section side top>
               <div class="text-caption text-grey-7">{{ formatearHora(conversacion.ultimo.createdAt) }}</div>
+              <q-icon
+                v-if="esPendiente(conversacion)"
+                name="receipt_long"
+                color="warning"
+                size="18px"
+                class="q-mt-xs"
+              >
+                <q-tooltip>Comprobante por confirmar</q-tooltip>
+              </q-icon>
               <q-badge v-if="conversacion.pendientes" color="primary" rounded class="q-mt-xs">
                 {{ conversacion.pendientes }}
               </q-badge>
@@ -342,6 +388,28 @@ const conversaciones = computed(() => {
 
   return [...porTelefono.values()];
 });
+
+// --- Pestañas: "Mensajes" vs "Por confirmar pago" ---------------------------
+const pestana = ref('mensajes');
+
+/** Ids de miembro con un comprobante por confirmar (los calcula el backend). */
+const conjuntoPendientes = computed(() => new Set(gimnasio.comprobantesPendientes ?? []));
+
+/** `true` si el hilo es de un miembro con comprobante por confirmar. */
+function esPendiente(conversacion) {
+  const id = conversacion.miembro?._id ?? conversacion.miembro;
+  return Boolean(id) && conjuntoPendientes.value.has(String(id));
+}
+
+// Un hilo pendiente vive SOLO en su pestaña, para no perderlo entre los demas;
+// al aprobar el pago el backend lo saca de pendientes y vuelve a "Mensajes".
+const conversacionesPendientes = computed(() => conversaciones.value.filter(esPendiente));
+const conversacionesNormales = computed(() =>
+  conversaciones.value.filter((c) => !esPendiente(c)),
+);
+const conversacionesVisibles = computed(() =>
+  pestana.value === 'pendientes' ? conversacionesPendientes.value : conversacionesNormales.value,
+);
 
 const hilo = computed(
   () => conversaciones.value.find((c) => c.telefono === telefonoAbierto.value) ?? null,

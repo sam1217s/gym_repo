@@ -227,6 +227,43 @@ export async function contarPendientes(filtroSede = {}) {
   return Mensaje.countDocuments({ ...filtroSede, direccion: 'entrante', leido: false });
 }
 
+/**
+ * Miembros con un COMPROBANTE por confirmar: el ULTIMO comprobante (imagen o
+ * documento entrante) que mandaron NO tiene un pago registrado despues. Sirve
+ * para separar la pestaña "pendientes por confirmar pago" en la bandeja: al
+ * aprobar el pago se crea un `Pago` con fecha posterior y el hilo sale de aqui.
+ * Devuelve ids de miembro (string).
+ */
+export async function comprobantesPendientes(filtroSede = {}) {
+  const Mensaje = obtenerModelo('MensajeWhatsapp');
+  const Pago = obtenerModelo('Pago');
+
+  const ultimoPorMiembro = await Mensaje.aggregate([
+    {
+      $match: {
+        ...filtroSede,
+        direccion: 'entrante',
+        miembro: { $ne: null },
+        tipo: { $in: ['imagen', 'documento'] },
+      },
+    },
+    { $sort: { miembro: 1, createdAt: -1 } },
+    { $group: { _id: '$miembro', comprobante: { $first: '$createdAt' } } },
+  ]);
+
+  const pendientes = [];
+  for (const fila of ultimoPorMiembro) {
+    // Un pago registrado DESPUES del comprobante = ya confirmado.
+    const pago = await Pago.findOne({
+      miembro: fila._id,
+      createdAt: { $gt: fila.comprobante },
+    }).select('_id');
+    if (!pago) pendientes.push(String(fila._id));
+  }
+
+  return pendientes;
+}
+
 export async function marcarLeidos(ids, filtroSede = {}) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
   const filtro = { ...filtroSede, direccion: 'entrante', leido: false };

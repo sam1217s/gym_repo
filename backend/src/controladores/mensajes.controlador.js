@@ -7,11 +7,12 @@ import { responderCreado, responderOk } from '../utilidades/respuesta.js';
 /** `peticion.filtroSede` lo deja `limitarASede`: `{}` o `{ sede }` segun el rol. */
 
 export const listarMensajes = manejadorAsync(async (peticion, respuesta) => {
-  const [mensajes, pendientes] = await Promise.all([
+  const [mensajes, pendientes, comprobantesPendientes] = await Promise.all([
     servicioMensajes.listarMensajes(peticion.filtroSede, peticion.query),
     servicioMensajes.contarPendientes(peticion.filtroSede),
+    servicioMensajes.comprobantesPendientes(peticion.filtroSede),
   ]);
-  return responderOk(respuesta, { mensajes, pendientes });
+  return responderOk(respuesta, { mensajes, pendientes, comprobantesPendientes });
 });
 
 export const contarPendientes = manejadorAsync(async (peticion, respuesta) =>

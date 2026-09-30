@@ -10,6 +10,7 @@ import { entorno } from '../src/config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../src/contexto/contextoTenant.js';
 import { obtenerModelo } from '../src/modelos/indice.js';
 import {
+  comprobantesPendientes,
   procesarEventoEntrante,
   purgarComprobantesAntiguos,
 } from '../src/servicios/mensajes.servicio.js';
@@ -252,6 +253,51 @@ describe('Bandeja de mensajes', () => {
 
     const pendientes = await dueno.get('/api/mensajes/pendientes').expect(200);
     expect(pendientes.body.data.pendientes).toBe(0);
+  });
+});
+
+describe('Comprobantes por confirmar pago', () => {
+  it('un comprobante entrante sin pago posterior queda pendiente; con pago, sale', async () => {
+    const { tenant, ana } = await montar();
+
+    await ejecutarConTenant(tenant._id, async () => {
+      const Mensaje = obtenerModelo('MensajeWhatsapp');
+
+      // Comprobante (imagen entrante) de Ana, fechado una hora atras.
+      const comp = await Mensaje.create({
+        miembro: ana._id,
+        sede: ana.sede,
+        telefono: TEL_ANA,
+        direccion: 'entrante',
+        tipo: 'imagen',
+        archivoPublicId: 'gymsaas/comprobantes/x',
+      });
+      await Mensaje.updateOne(
+        { _id: comp._id },
+        { $set: { createdAt: new Date(Date.now() - 3_600_000) } },
+      );
+
+      expect(await comprobantesPendientes()).toContain(String(ana._id));
+
+      // Al registrar un pago (posterior al comprobante), deja de estar pendiente.
+      const plan = await obtenerModelo('PlanMembresia').create({
+        sede: ana.sede,
+        nombre: 'Mensual',
+        precio: 60_000,
+        duracionMeses: 1,
+      });
+      await obtenerModelo('Pago').create({
+        sede: ana.sede,
+        miembro: ana._id,
+        planMembresia: plan._id,
+        monto: 60_000,
+        metodoPago: 'efectivo',
+        periodoInicio: new Date(),
+        periodoFin: new Date(Date.now() + 30 * 24 * 3_600_000),
+      });
+
+      expect(await comprobantesPendientes()).not.toContain(String(ana._id));
+    });
   });
 });
 
