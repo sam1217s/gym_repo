@@ -1,4 +1,8 @@
-import { CATEGORIAS_MENSAJE_SALIENTE, PLANTILLA_BIENVENIDA } from '../config/constantes.js';
+import {
+  CATEGORIAS_MENSAJE_SALIENTE,
+  PIE_MENSAJE_PLANTILLA,
+  PLANTILLA_BIENVENIDA,
+} from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { crearProveedor as crearProveedorPorDefecto } from '../proveedores/indice.js';
 import { registrarMensajeSaliente } from './mensajes.servicio.js';
@@ -19,7 +23,8 @@ export function construirMensajeBienvenida({ miembro, tenant }) {
   return (
     `¡Hola ${miembro.nombres}! Te damos la bienvenida a ${tenant.nombre}. ` +
     'Por este WhatsApp te enviaremos los recordatorios de tu mensualidad y aqui ' +
-    'puedes mandarnos el comprobante de tus pagos. ¡Gracias por unirte!'
+    'puedes mandarnos el comprobante de tus pagos. ¡Gracias por unirte!\n\n' +
+    PIE_MENSAJE_PLANTILLA
   );
 }
 

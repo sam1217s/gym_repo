@@ -4,6 +4,7 @@ import {
   ESTADOS_NOTIFICACION,
   MILISEGUNDOS_POR_DIA,
   OFFSETS_AVISO_VENCIMIENTO,
+  PIE_MENSAJE_PLANTILLA,
   ZONA_HORARIA_POR_DEFECTO,
 } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
@@ -92,7 +93,7 @@ export function construirMensaje({ miembro, ultimoPago, tenant, precioPlan }) {
     `vence el ${d.fecha}. Valor a pagar: $ ${d.valor}.\n\n` +
     `Puedes realizar el pago por:\n${DATOS_PAGO_AVISO}\n\n` +
     'Cuando realices el pago, respondenos por este medio con la foto del comprobante para registrarlo.\n' +
-    `Mensaje automatico de ${d.gimnasio}`
+    PIE_MENSAJE_PLANTILLA
   );
 }
 

@@ -146,6 +146,15 @@ export const DATOS_PAGO_AVISO = [
   'Titular: Diego López',
 ].join('\n');
 
+/**
+ * Pie comun de TODAS las plantillas de WhatsApp (vencimiento, bienvenida, recibo).
+ * DEBE coincidir con el pie de las plantillas aprobadas en Twilio/Meta: aqui es
+ * solo lo que se guarda en la bandeja como registro; lo que ve el miembro lo fija
+ * la plantilla. Si cambia el pie, actualiza AMBOS.
+ */
+export const PIE_MENSAJE_PLANTILLA =
+  'Mensaje generado automaticamente desde el sistema GymBarichara.com';
+
 export const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
 
 /**

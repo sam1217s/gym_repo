@@ -1,4 +1,8 @@
-import { CATEGORIAS_MENSAJE_SALIENTE, PLANTILLA_RECIBO } from '../config/constantes.js';
+import {
+  CATEGORIAS_MENSAJE_SALIENTE,
+  PIE_MENSAJE_PLANTILLA,
+  PLANTILLA_RECIBO,
+} from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { crearProveedor as crearProveedorPorDefecto } from '../proveedores/indice.js';
 import { registrarMensajeSaliente } from './mensajes.servicio.js';
@@ -30,7 +34,8 @@ export function construirMensajeRecibo({ miembro, tenant, pago }) {
   return (
     `Hola ${miembro.nombres}, confirmamos el pago de tu mensualidad en ${tenant.nombre}. ` +
     `Valor pagado: $${FORMATO_MONEDA.format(pago.monto)}. ` +
-    `Tu membresia queda al dia hasta el ${FORMATO_FECHA.format(new Date(pago.periodoFin))}. Gracias.`
+    `Tu membresia queda al dia hasta el ${FORMATO_FECHA.format(new Date(pago.periodoFin))}. Gracias.\n\n` +
+    PIE_MENSAJE_PLANTILLA
   );
 }
 
