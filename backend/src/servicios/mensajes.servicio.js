@@ -9,6 +9,7 @@ import {
 } from '../almacenamiento/cloudinary.js';
 import {
   CATEGORIAS_MENSAJE_SALIENTE,
+  ESTADOS_VENCIMIENTO,
   MESES_RETENCION_COMPROBANTE,
   ZONA_HORARIA_POR_DEFECTO,
 } from '../config/constantes.js';
@@ -17,6 +18,7 @@ import { ejecutarConTenant, ejecutarSinTenant } from '../contexto/contextoTenant
 import { obtenerModelo } from '../modelos/indice.js';
 import { aE164, autorizacionBasica, aWhatsapp } from '../proveedores/twilio.proveedor.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
+import { derivarEstado } from './vencimientos.servicio.js';
 
 /**
  * Bandeja de WhatsApp: los mensajes que mandan los miembros (sobre todo
@@ -246,9 +248,12 @@ function inicioDelMes(ahora = new Date()) {
  * pago" en la bandeja. Un comprobante cuenta como pendiente cuando:
  *  1. es del MES ACTUAL: el ultimo comprobante (imagen/documento entrante) se envio
  *     este mes. Asi, una foto de un ciclo anterior no marca al miembro para siempre.
- *  2. sigue SIN confirmar (pago pendiente): no hay un pago registrado despues del
- *     comprobante. Al aprobarlo se crea un `Pago` posterior y el hilo sale de aqui.
- * Devuelve ids de miembro (string).
+ *  2. sigue SIN confirmar: no hay un pago registrado despues del comprobante.
+ *  3. el miembro NO esta al dia: si su mensualidad ya esta cubierta (pago vigente),
+ *     el comprobante es redundante (mando la foto despues de que se le registro el
+ *     pago) y no debe quedar pendiente.
+ * Al aprobar el pago se crea un `Pago` posterior y el hilo sale de aqui. Devuelve
+ * ids de miembro (string).
  */
 export async function comprobantesPendientes(filtroSede = {}) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
@@ -270,12 +275,18 @@ export async function comprobantesPendientes(filtroSede = {}) {
 
   const pendientes = [];
   for (const fila of ultimoPorMiembro) {
-    // Sin confirmar: ningun pago registrado despues del comprobante.
-    const pago = await Pago.findOne({
+    // Ya aprobado: hay un pago registrado despues del comprobante.
+    const pagoPosterior = await Pago.findOne({
       miembro: fila._id,
       createdAt: { $gt: fila.comprobante },
     }).select('_id');
-    if (!pago) pendientes.push(String(fila._id));
+    if (pagoPosterior) continue;
+
+    // Ya cubierto: si su ultimo pago lo deja al dia, el comprobante es redundante.
+    const ultimoPago = await Pago.findOne({ miembro: fila._id }).sort({ periodoFin: -1 });
+    if (derivarEstado(ultimoPago) === ESTADOS_VENCIMIENTO.AL_DIA) continue;
+
+    pendientes.push(String(fila._id));
   }
 
   return pendientes;

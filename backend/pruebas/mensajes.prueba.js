@@ -301,6 +301,39 @@ describe('Comprobantes por confirmar pago', () => {
       expect(await comprobantesPendientes()).not.toContain(String(ana._id));
     });
   });
+
+  it('un miembro AL DIA que manda foto (comprobante redundante) NO queda pendiente', async () => {
+    const { tenant, beto } = await montar();
+
+    await ejecutarConTenant(tenant._id, async () => {
+      const Mensaje = obtenerModelo('MensajeWhatsapp');
+      const fechar = (id, ms) =>
+        Mensaje.collection.updateOne({ _id: id }, { $set: { createdAt: new Date(Date.now() - ms) } });
+
+      // Pago vigente (al dia), registrado hace 2 horas.
+      const plan = await obtenerModelo('PlanMembresia').create({
+        sede: beto.sede, nombre: 'Mensual', precio: 60_000, duracionMeses: 1,
+      });
+      const pago = await obtenerModelo('Pago').create({
+        sede: beto.sede, miembro: beto._id, planMembresia: plan._id, monto: 60_000,
+        metodoPago: 'efectivo', periodoInicio: new Date(), periodoFin: new Date(Date.now() + 20 * 24 * 3_600_000),
+      });
+      await obtenerModelo('Pago').collection.updateOne(
+        { _id: pago._id },
+        { $set: { createdAt: new Date(Date.now() - 7_200_000) } },
+      );
+
+      // Foto enviada DESPUES del pago (hace 1 hora): comprobante redundante.
+      const comp = await Mensaje.create({
+        miembro: beto._id, sede: beto.sede, telefono: TEL_BETO,
+        direccion: 'entrante', tipo: 'imagen', archivoPublicId: 'gymsaas/comprobantes/y',
+      });
+      await fechar(comp._id, 3_600_000);
+
+      // Esta al dia -> no debe quedar pendiente aunque haya foto de este mes.
+      expect(await comprobantesPendientes()).not.toContain(String(beto._id));
+    });
+  });
 });
 
 describe('Purga de comprobantes antiguos', () => {
