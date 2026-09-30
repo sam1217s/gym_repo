@@ -7,7 +7,11 @@ import {
   subirComprobante,
   urlFirmada,
 } from '../almacenamiento/cloudinary.js';
-import { CATEGORIAS_MENSAJE_SALIENTE, MESES_RETENCION_COMPROBANTE } from '../config/constantes.js';
+import {
+  CATEGORIAS_MENSAJE_SALIENTE,
+  MESES_RETENCION_COMPROBANTE,
+  ZONA_HORARIA_POR_DEFECTO,
+} from '../config/constantes.js';
 import { entorno } from '../config/entorno.js';
 import { ejecutarConTenant, ejecutarSinTenant } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
@@ -227,15 +231,24 @@ export async function contarPendientes(filtroSede = {}) {
   return Mensaje.countDocuments({ ...filtroSede, direccion: 'entrante', leido: false });
 }
 
+/** Primer instante del mes actual, en la zona del gimnasio (Bogota, UTC-5 fijo). */
+function inicioDelMes(ahora = new Date()) {
+  const aMo = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    timeZone: ZONA_HORARIA_POR_DEFECTO,
+  }).format(ahora); // "2026-10"
+  return new Date(`${aMo}-01T00:00:00-05:00`);
+}
+
 /**
  * Miembros con un COMPROBANTE por confirmar, para separar la pestaña "por confirmar
  * pago" en la bandeja. Un comprobante cuenta como pendiente cuando:
- *  1. es una RESPUESTA al aviso: el ultimo comprobante (imagen/documento entrante)
- *     llego DESPUES del ultimo aviso de vencimiento enviado al miembro. Asi, una
- *     foto vieja de un ciclo anterior no lo marca para siempre.
- *  2. sigue SIN confirmar: no hay un pago registrado despues del comprobante.
- * Al aprobar el pago se crea un `Pago` posterior y el hilo sale de aqui. Devuelve
- * ids de miembro (string).
+ *  1. es del MES ACTUAL: el ultimo comprobante (imagen/documento entrante) se envio
+ *     este mes. Asi, una foto de un ciclo anterior no marca al miembro para siempre.
+ *  2. sigue SIN confirmar (pago pendiente): no hay un pago registrado despues del
+ *     comprobante. Al aprobarlo se crea un `Pago` posterior y el hilo sale de aqui.
+ * Devuelve ids de miembro (string).
  */
 export async function comprobantesPendientes(filtroSede = {}) {
   const Mensaje = obtenerModelo('MensajeWhatsapp');
@@ -248,6 +261,7 @@ export async function comprobantesPendientes(filtroSede = {}) {
         direccion: 'entrante',
         miembro: { $ne: null },
         tipo: { $in: ['imagen', 'documento'] },
+        createdAt: { $gte: inicioDelMes() },
       },
     },
     { $sort: { miembro: 1, createdAt: -1 } },
@@ -256,17 +270,7 @@ export async function comprobantesPendientes(filtroSede = {}) {
 
   const pendientes = [];
   for (const fila of ultimoPorMiembro) {
-    // 1. El comprobante debe ser posterior al ULTIMO aviso (una respuesta a el).
-    const aviso = await Mensaje.findOne({
-      miembro: fila._id,
-      direccion: 'saliente',
-      categoria: CATEGORIAS_MENSAJE_SALIENTE.AVISO,
-    })
-      .sort({ createdAt: -1 })
-      .select('createdAt');
-    if (!aviso || fila.comprobante <= aviso.createdAt) continue;
-
-    // 2. Aun sin confirmar: ningun pago registrado despues del comprobante.
+    // Sin confirmar: ningun pago registrado despues del comprobante.
     const pago = await Pago.findOne({
       miembro: fila._id,
       createdAt: { $gt: fila.comprobante },
