@@ -262,21 +262,30 @@ describe('Comprobantes por confirmar pago', () => {
 
     await ejecutarConTenant(tenant._id, async () => {
       const Mensaje = obtenerModelo('MensajeWhatsapp');
+      // `createdAt` es inmutable via Mongoose (timestamps); se fija con el driver nativo.
+      const fechar = (id, ms) =>
+        Mensaje.collection.updateOne({ _id: id }, { $set: { createdAt: new Date(Date.now() - ms) } });
 
-      // Comprobante (imagen entrante) de Ana, fechado una hora atras.
-      const comp = await Mensaje.create({
-        miembro: ana._id,
-        sede: ana.sede,
-        telefono: TEL_ANA,
-        direccion: 'entrante',
-        tipo: 'imagen',
-        archivoPublicId: 'gymsaas/comprobantes/x',
+      // Aviso hace 2 horas.
+      const aviso = await Mensaje.create({
+        miembro: ana._id, sede: ana.sede, telefono: TEL_ANA,
+        direccion: 'saliente', tipo: 'texto', categoria: 'aviso', texto: 'aviso de vencimiento',
       });
-      await Mensaje.updateOne(
-        { _id: comp._id },
-        { $set: { createdAt: new Date(Date.now() - 3_600_000) } },
-      );
+      await fechar(aviso._id, 7_200_000);
 
+      // Comprobante (imagen entrante) DESPUES del aviso, hace una hora.
+      const comp = await Mensaje.create({
+        miembro: ana._id, sede: ana.sede, telefono: TEL_ANA,
+        direccion: 'entrante', tipo: 'imagen', archivoPublicId: 'gymsaas/comprobantes/x',
+      });
+      await fechar(comp._id, 3_600_000);
+
+      expect(await comprobantesPendientes()).toContain(String(ana._id));
+
+      // Foto ANTERIOR al aviso (comprobante de un ciclo viejo): NO debe marcar.
+      await fechar(comp._id, 10_800_000); // 3h atras, antes del aviso (2h)
+      expect(await comprobantesPendientes()).not.toContain(String(ana._id));
+      await fechar(comp._id, 3_600_000); // se restaura (despues del aviso)
       expect(await comprobantesPendientes()).toContain(String(ana._id));
 
       // Al registrar un pago (posterior al comprobante), deja de estar pendiente.
