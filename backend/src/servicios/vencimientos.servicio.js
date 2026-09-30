@@ -2,6 +2,7 @@ import {
   DIAS_AVISO_VENCIMIENTO,
   ESTADOS_VENCIMIENTO,
   MILISEGUNDOS_POR_DIA,
+  ZONA_HORARIA_POR_DEFECTO,
 } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 
@@ -29,15 +30,34 @@ export async function obtenerUltimoPagoPorMiembro(filtroSede = {}) {
   return new Map(filas.map((fila) => [String(fila._id), fila.ultimoPago]));
 }
 
+/**
+ * Dias de CALENDARIO entre hoy y una fecha, en la zona del gimnasio. Se comparan
+ * DIAS CIVILES, no instantes: una mensualidad que vence "el 30" cubre TODO el 30,
+ * asi que a cualquier hora del 30 faltan 0 dias ("vence hoy"), no "ya vencio".
+ * Restar milisegundos marcaria como vencido el mismo dia pasada la medianoche.
+ * Mismo criterio que el cron de avisos (`notificaciones.servicio`).
+ */
+function diasCalendarioHasta(fecha, ahora, zonaHoraria = ZONA_HORARIA_POR_DEFECTO) {
+  const diaCivil = (valor) =>
+    new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: zonaHoraria,
+    }).format(new Date(valor));
+  const aUtc = (valor) => Date.parse(`${diaCivil(valor)}T00:00:00Z`);
+  return Math.round((aUtc(fecha) - aUtc(ahora)) / MILISEGUNDOS_POR_DIA);
+}
+
 /** Estado de membresia que corresponde a un pago (o a su ausencia). */
 export function derivarEstado(ultimoPago, ahora = new Date()) {
   if (!ultimoPago) return ESTADOS_VENCIMIENTO.SIN_PAGOS;
 
-  if (ultimoPago.periodoFin < ahora) return ESTADOS_VENCIMIENTO.VENCIDO;
+  const dias = diasCalendarioHasta(ultimoPago.periodoFin, ahora);
 
-  const umbralAviso = new Date(ahora.getTime() + DIAS_AVISO_VENCIMIENTO * MILISEGUNDOS_POR_DIA);
-  if (ultimoPago.periodoFin <= umbralAviso) return ESTADOS_VENCIMIENTO.POR_VENCER;
-
+  // dias < 0: el dia de vencimiento ya paso. dias === 0: vence hoy (aun cubierto).
+  if (dias < 0) return ESTADOS_VENCIMIENTO.VENCIDO;
+  if (dias <= DIAS_AVISO_VENCIMIENTO) return ESTADOS_VENCIMIENTO.POR_VENCER;
   return ESTADOS_VENCIMIENTO.AL_DIA;
 }
 

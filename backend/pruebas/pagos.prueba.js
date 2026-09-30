@@ -435,6 +435,8 @@ describe('derivarEstado (la regla, en unitario)', () => {
   it.each([
     ['sin pagos', null, ESTADOS_VENCIMIENTO.SIN_PAGOS],
     ['vencido ayer', { periodoFin: enDias(-1) }, ESTADOS_VENCIMIENTO.VENCIDO],
+    // Vence HOY sigue cubierto: es "por vencer", NO "vencido" (cubre todo el dia).
+    ['vence hoy', { periodoFin: enDias(0) }, ESTADOS_VENCIMIENTO.POR_VENCER],
     ['vence en 2 dias', { periodoFin: enDias(2) }, ESTADOS_VENCIMIENTO.POR_VENCER],
     ['vence en 30 dias', { periodoFin: enDias(30) }, ESTADOS_VENCIMIENTO.AL_DIA],
   ])('%s -> %s', (_nombre, ultimoPago, esperado) => {
