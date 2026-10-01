@@ -266,6 +266,8 @@ export async function comprobantesPendientes(filtroSede = {}) {
         direccion: 'entrante',
         miembro: { $ne: null },
         tipo: { $in: ['imagen', 'documento'] },
+        // Los stickers llegan como image/webp: no son comprobantes, se excluyen.
+        mimeType: { $ne: 'image/webp' },
         createdAt: { $gte: inicioDelMes() },
       },
     },

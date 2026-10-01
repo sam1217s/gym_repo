@@ -334,6 +334,18 @@ describe('Comprobantes por confirmar pago', () => {
       expect(await comprobantesPendientes()).not.toContain(String(beto._id));
     });
   });
+
+  it('un sticker (image/webp) NO cuenta como comprobante', async () => {
+    const { tenant, ana } = await montar();
+    await ejecutarConTenant(tenant._id, async () => {
+      await obtenerModelo('MensajeWhatsapp').create({
+        miembro: ana._id, sede: ana.sede, telefono: TEL_ANA,
+        direccion: 'entrante', tipo: 'imagen', mimeType: 'image/webp',
+        archivoPublicId: 'gymsaas/comprobantes/sticker',
+      });
+      expect(await comprobantesPendientes()).not.toContain(String(ana._id));
+    });
+  });
 });
 
 describe('Purga de comprobantes antiguos', () => {
