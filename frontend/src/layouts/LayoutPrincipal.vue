@@ -8,7 +8,7 @@
         <!-- Titulo: el NEGOCIO manda (nombre del gimnasio); GymSaaS queda como
              ceja discreta. El super_admin ve la plataforma. -->
         <q-toolbar-title class="columna-titulo">
-          <div class="ceja-marca">GymSaaS · Panel</div>
+          <div class="ceja-marca">Gimnasio Barichara · Panel</div>
           <div class="titulo-display titulo-negocio">{{ tituloNegocio }}</div>
         </q-toolbar-title>
 
@@ -224,8 +224,8 @@ const ENLACES = [
 
 const etiquetaRol = computed(() => ETIQUETAS_ROL[usuario.value?.rol] ?? '');
 
-// El titulo del header es el nombre del NEGOCIO; si no llega, cae a GymSaaS.
-const tituloNegocio = computed(() => usuario.value?.tenantNombre || 'GymSaaS');
+// El titulo del header es el nombre del NEGOCIO; si no llega, cae a Gimnasio Barichara.
+const tituloNegocio = computed(() => usuario.value?.tenantNombre || 'Gimnasio Barichara');
 
 const enlacesVisibles = computed(() =>
   ENLACES.filter((enlace) => !enlace.roles || enlace.roles.includes(usuario.value?.rol)),

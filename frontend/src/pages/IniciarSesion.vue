@@ -1,8 +1,9 @@
 <template>
   <q-card class="tarjeta-acceso q-pa-lg">
     <q-card-section class="text-center q-pb-none">
-      <div class="text-h4 titulo-display">GymSaaS</div>
-      <div class="text-caption text-grey-7">Entra al panel de tu gimnasio</div>
+      <img src="/landing/logo-barichara.jpeg" alt="Logo Gimnasio Barichara" class="logo-acceso" />
+      <div class="text-h4 titulo-display">Gimnasio Barichara</div>
+      <div class="text-caption text-grey-7">Acceso para funcionarios</div>
     </q-card-section>
 
     <q-tabs v-model="modo" class="text-grey-7 q-mt-sm" active-color="primary" indicator-color="primary" dense narrow-indicator>
@@ -119,6 +120,12 @@
         </q-form>
       </q-tab-panel>
     </q-tab-panels>
+
+    <div class="text-center q-mt-sm">
+      <router-link :to="{ name: 'inicio' }" class="enlace-registro">
+        ← Volver al inicio
+      </router-link>
+    </div>
   </q-card>
 </template>
 
@@ -174,6 +181,14 @@ function reiniciarOtp() {
 </script>
 
 <style scoped>
+.logo-acceso {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 8px;
+}
+
 .tarjeta-acceso {
   width: 100%;
   max-width: 420px;

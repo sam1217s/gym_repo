@@ -8,13 +8,19 @@ import { ROLES } from 'src/stores/autenticacion.js';
  * usuario autenticado entra. El guard de `router/guardias.js` los aplica.
  */
 const rutas = [
+  // Portada publica del gimnasio (landing). Trae su propio layout y el boton
+  // "Iniciar sesión" para los funcionarios.
+  {
+    path: '/',
+    name: 'inicio',
+    component: () => import('pages/LandingPage.vue'),
+    meta: { publica: true },
+  },
+
   {
     path: '/',
     component: () => import('layouts/LayoutAutenticacion.vue'),
     children: [
-      // Sin esto, `/` resolveria al layout sin ningun hijo: pantalla en blanco.
-      // Se manda al panel y que el guard decida: si no hay sesion, va al login.
-      { path: '', redirect: { name: 'panel' } },
       {
         path: 'iniciar-sesion',
         name: 'iniciar-sesion',
