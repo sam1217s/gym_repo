@@ -2,9 +2,9 @@
   "name": "@gymsaas/frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "Gimnasio Barichara: portada y panel (Quasar + Vue 3)",
-  "productName": "Gimnasio Barichara",
-  "author": "Gimnasio Barichara",
+  "description": "Gym Barichara: portada y panel (Quasar + Vue 3)",
+  "productName": "Gym Barichara",
+  "author": "Gym Barichara",
   "type": "module",
   "scripts": {
     "dev": "quasar dev",

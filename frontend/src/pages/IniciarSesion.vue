@@ -1,8 +1,8 @@
 <template>
   <q-card class="tarjeta-acceso q-pa-lg">
     <q-card-section class="text-center q-pb-none">
-      <img src="/landing/logo-barichara.jpeg" alt="Logo Gimnasio Barichara" class="logo-acceso" />
-      <div class="text-h4 titulo-display">Gimnasio Barichara</div>
+      <img src="/landing/logo-barichara.jpeg" alt="Logo Gym Barichara" class="logo-acceso" />
+      <div class="text-h4 titulo-display">Gym Barichara</div>
       <div class="text-caption text-grey-7">Acceso para funcionarios</div>
     </q-card-section>
 

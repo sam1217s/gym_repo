@@ -4,8 +4,8 @@
     <q-header :class="['barra', { 'barra-solida': conScroll }]">
       <q-toolbar class="barra-contenido">
         <a class="marca" href="#inicio" @click.prevent="irA('inicio')">
-          <img src="/landing/logo-barichara.jpeg" alt="Logo Gimnasio Barichara" class="marca-logo" />
-          <span class="marca-nombre">Gimnasio Barichara</span>
+          <img src="/landing/logo-barichara.jpeg" alt="Logo Gym Barichara" class="marca-logo" />
+          <span class="marca-nombre">Gym Barichara</span>
         </a>
 
         <q-space />
@@ -34,7 +34,7 @@
           <div class="portada-velo" />
           <div class="portada-contenido">
             <div class="ceja">Barichara · Villanueva</div>
-            <h1 class="portada-titulo">Gimnasio<br /><span>Barichara</span></h1>
+            <h1 class="portada-titulo">Gym<br /><span>Barichara</span></h1>
             <p class="lema">Fuerza · Disciplina · Salud</p>
             <p class="portada-texto">
               Dos sedes para entrenar cerca de ti. Pesas libres, máquinas, zona funcional y un
@@ -174,7 +174,7 @@
             <div class="pie-marca">
               <img src="/landing/logo-barichara.jpeg" alt="" class="pie-logo" />
               <div>
-                <div class="pie-nombre">Gimnasio Barichara</div>
+                <div class="pie-nombre">Gym Barichara</div>
                 <div class="pie-lema">Fuerza · Disciplina · Salud</div>
               </div>
             </div>
@@ -182,7 +182,7 @@
               <router-link :to="{ name: 'iniciar-sesion' }" class="pie-acceso">
                 Acceso funcionarios
               </router-link>
-              <div class="pie-copy">© {{ anio }} Gimnasio Barichara · Sedes Barichara y Villanueva</div>
+              <div class="pie-copy">© {{ anio }} Gym Barichara · Sedes Barichara y Villanueva</div>
             </div>
           </div>
         </footer>
