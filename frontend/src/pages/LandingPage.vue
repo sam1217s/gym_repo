@@ -87,7 +87,6 @@
           <div class="contenedor">
             <q-icon name="format_quote" size="40px" class="frase-icono" />
             <p class="frase-texto">Lo único imposible es aquello que no intentas.</p>
-            <p class="frase-firma">— En las paredes de nuestro gimnasio</p>
           </div>
         </section>
 
@@ -514,11 +513,6 @@ function ampliar(src, sede) {
   line-height: 1.05;
   margin: 6px auto 10px;
   max-width: 820px;
-}
-.frase-firma {
-  margin: 0;
-  font-weight: 500;
-  opacity: 0.75;
 }
 
 /* Sedes */
