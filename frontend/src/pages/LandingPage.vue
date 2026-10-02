@@ -21,6 +21,7 @@
           no-caps
           class="boton-dorado q-ml-md"
           icon="login"
+          :dense="$q.screen.lt.sm"
           :label="$q.screen.lt.sm ? 'Entrar' : 'Iniciar sesión'"
           :to="{ name: 'iniciar-sesion' }"
         />
@@ -55,7 +56,7 @@
               <q-btn
                 unelevated
                 no-caps
-                size="lg"
+                :size="$q.screen.lt.sm ? 'md' : 'lg'"
                 class="boton-dorado"
                 label="Conoce nuestras sedes"
                 icon-right="arrow_downward"
@@ -64,7 +65,7 @@
               <q-btn
                 outline
                 no-caps
-                size="lg"
+                :size="$q.screen.lt.sm ? 'md' : 'lg'"
                 class="boton-contorno"
                 label="Servicios"
                 @click="irA('servicios')"
@@ -932,6 +933,16 @@ function ampliar(src, sede) {
   }
   .boton-dorado.q-ml-md {
     margin-left: 6px;
+    padding: 2px 12px;
+    font-size: 0.85rem;
+  }
+  .portada-acciones {
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .portada-acciones .q-btn {
+    padding: 4px 14px;
+    font-size: 0.92rem;
   }
   .pie-derecha {
     text-align: left;
