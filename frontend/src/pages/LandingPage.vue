@@ -21,7 +21,7 @@
           no-caps
           class="boton-dorado q-ml-md"
           icon="login"
-          label="Iniciar sesión"
+          :label="$q.screen.lt.sm ? 'Entrar' : 'Iniciar sesión'"
           :to="{ name: 'iniciar-sesion' }"
         />
       </q-toolbar>
@@ -79,8 +79,8 @@
             <div class="ceja ceja-oscura">Lo que encuentras</div>
             <h2 class="titulo-seccion">Todo para tu entrenamiento</h2>
 
-            <div class="row q-col-gutter-lg q-mt-md">
-              <div v-for="servicio in SERVICIOS" :key="servicio.titulo" class="col-12 col-sm-6 col-md-4">
+            <div class="row q-col-gutter-md q-mt-md">
+              <div v-for="servicio in SERVICIOS" :key="servicio.titulo" class="col-6 col-md-4">
                 <article class="tarjeta-servicio">
                   <div class="icono-servicio">
                     <q-icon :name="servicio.icono" size="28px" />
@@ -725,6 +725,11 @@ function ampliar(src, sede) {
   grid-column: 1 / -1;
   aspect-ratio: 16 / 9;
 }
+/* Si la ultima foto quedaria sola en su fila, ocupa el ancho entero (sin hueco). */
+.foto:not(.foto-principal):last-child:nth-child(even) {
+  grid-column: 1 / -1;
+  aspect-ratio: 16 / 9;
+}
 .foto img {
   width: 100%;
   height: 100%;
@@ -749,6 +754,7 @@ function ampliar(src, sede) {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
 }
 .tarjeta-pago h3 {
+  line-height: 1.05;
   font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   font-weight: 700;
   text-transform: uppercase;
@@ -877,6 +883,49 @@ function ampliar(src, sede) {
 @media (max-width: 600px) {
   .marca-nombre {
     font-size: 1.05rem;
+  }
+  .marca-logo {
+    width: 38px;
+    height: 38px;
+  }
+  .seccion {
+    padding: 52px 0;
+  }
+  .contenedor {
+    padding: 0 16px;
+  }
+  /* Servicios en dos columnas: seis tarjetas a una columna eran un scroll eterno. */
+  .tarjeta-servicio {
+    padding: 16px 14px;
+    border-radius: 12px;
+  }
+  .tarjeta-servicio h3 {
+    font-size: 1rem;
+    margin: 10px 0 4px;
+  }
+  .tarjeta-servicio p {
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+  .icono-servicio {
+    width: 40px;
+    height: 40px;
+  }
+  .icono-servicio .q-icon {
+    font-size: 22px !important;
+  }
+  .sede-logo {
+    width: 72px;
+    height: 72px;
+  }
+  .sede-galeria {
+    gap: 8px;
+  }
+  .tarjeta-pago {
+    padding: 22px 20px;
+  }
+  .tarjeta-pago h3 {
+    font-size: 1.4rem;
   }
   .barra-contenido {
     padding: 0 8px;
