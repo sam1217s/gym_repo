@@ -138,16 +138,18 @@
               <div class="col-12 col-md-6">
                 <div class="tarjeta-pago">
                   <h3>Medios de pago</h3>
+                  <!-- Sin numeros de cuenta a proposito: la portada es publica. Los datos
+                       para transferir le llegan al miembro en el aviso de WhatsApp. -->
                   <ul class="lista-pagos">
-                    <li><q-icon name="bolt" /> <strong>Llave Bre-B:</strong> 1095701644</li>
-                    <li><q-icon name="smartphone" /> <strong>Nequi:</strong> 315 804 4633</li>
-                    <li>
-                      <q-icon name="account_balance" /> <strong>Bancolombia Ahorros:</strong>
-                      32207168407
-                    </li>
-                    <li><q-icon name="person" /> <strong>Titular:</strong> Diego López</li>
-                    <li><q-icon name="payments" /> También en efectivo en recepción.</li>
+                    <li><q-icon name="bolt" /> <strong>Llave Bre-B</strong></li>
+                    <li><q-icon name="smartphone" /> <strong>Nequi</strong></li>
+                    <li><q-icon name="account_balance" /> <strong>Transferencia Bancolombia</strong></li>
+                    <li><q-icon name="payments" /> <strong>Efectivo</strong> en recepción</li>
                   </ul>
+                  <p class="nota-pago">
+                    Los datos para transferir te llegan en el aviso de WhatsApp, o pídelos en
+                    recepción.
+                  </p>
                 </div>
               </div>
               <div class="col-12 col-md-6">
@@ -619,6 +621,11 @@ function ampliar(src, sede) {
 }
 .nota {
   color: var(--oro);
+}
+.nota-pago {
+  margin: 16px 0 0;
+  color: #5b6170;
+  font-size: 0.92rem;
 }
 .lista-pagos {
   list-style: none;
