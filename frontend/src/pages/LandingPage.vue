@@ -40,7 +40,13 @@
               <span aria-hidden="true">{{ lineaUno }}<span v-if="escribiendoLineaUno" class="cursor" /></span><br />
               <span class="oro" aria-hidden="true">{{ lineaDos }}<span v-if="!escribiendoLineaUno" class="cursor" /></span>
             </h1>
-            <p class="lema">Fuerza · Disciplina · Salud</p>
+            <!-- Cada valor es una "placa" con su banda dorada, como los discos de la barra. -->
+            <ul class="lema" aria-label="Fuerza, Disciplina, Salud">
+              <li v-for="(valor, i) in VALORES" :key="valor.texto" :style="{ '--i': i }">
+                <q-icon :name="valor.icono" class="lema-icono" />
+                <span>{{ valor.texto }}</span>
+              </li>
+            </ul>
             <p class="portada-texto">
               Dos sedes para entrenar cerca de ti. Pesas libres, máquinas, zona funcional y un
               ambiente que te empuja a dar lo mejor.
@@ -269,6 +275,12 @@ const SEDES = [
   },
 ];
 
+const VALORES = [
+  { texto: 'Fuerza', icono: 'fitness_center' },
+  { texto: 'Disciplina', icono: 'event_repeat' },
+  { texto: 'Salud', icono: 'favorite' },
+];
+
 const anio = new Date().getFullYear();
 
 // La barra se vuelve solida al bajar, para no perder legibilidad sobre el contenido.
@@ -495,11 +507,74 @@ function ampliar(src, sede) {
   }
 }
 .lema {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 22px;
+}
+.lema li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px 7px 12px;
+  border-left: 4px solid var(--oro);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
   font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  font-size: 1.3rem;
-  letter-spacing: 0.22em;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  margin: 0 0 18px;
+  /* Entran una tras otra, como se cargan los discos en la barra. */
+  opacity: 0;
+  animation: entrar-valor 0.5s ease-out forwards;
+  animation-delay: calc(0.25s + var(--i) * 0.18s);
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.lema li:hover {
+  background: rgba(245, 197, 24, 0.18);
+  transform: translateY(-2px);
+}
+.lema-icono {
+  color: var(--oro);
+  font-size: 1.1rem;
+}
+@keyframes entrar-valor {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 600px) {
+  /* En movil las tres placas caben en una sola fila. */
+  .lema {
+    gap: 6px;
+  }
+  .lema li {
+    gap: 5px;
+    padding: 6px 9px 6px 7px;
+    border-left-width: 3px;
+    font-size: 0.92rem;
+    letter-spacing: 0.08em;
+  }
+  .lema-icono {
+    font-size: 0.95rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lema li {
+    opacity: 1;
+    animation: none;
+  }
 }
 .portada-texto {
   max-width: 560px;
