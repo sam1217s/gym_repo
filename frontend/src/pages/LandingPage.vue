@@ -34,7 +34,12 @@
           <div class="portada-velo" />
           <div class="portada-contenido">
             <div class="ceja">Barichara · Villanueva</div>
-            <h1 class="portada-titulo">Gym<br /><span>Barichara</span></h1>
+            <!-- Se escribe y se borra en bucle. El texto completo va en aria-label para
+                 que un lector de pantalla no lea letra por letra. -->
+            <h1 class="portada-titulo" aria-label="Gym Barichara">
+              <span aria-hidden="true">{{ lineaUno }}<span v-if="escribiendoLineaUno" class="cursor" /></span><br />
+              <span class="oro" aria-hidden="true">{{ lineaDos }}<span v-if="!escribiendoLineaUno" class="cursor" /></span>
+            </h1>
             <p class="lema">Fuerza · Disciplina · Salud</p>
             <p class="portada-texto">
               Dos sedes para entrenar cerca de ti. Pesas libres, máquinas, zona funcional y un
@@ -274,8 +279,55 @@ function alHacerScroll() {
 onMounted(() => {
   alHacerScroll();
   window.addEventListener('scroll', alHacerScroll, { passive: true });
+  iniciarMaquinaEscribir();
 });
-onBeforeUnmount(() => window.removeEventListener('scroll', alHacerScroll));
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', alHacerScroll);
+  clearTimeout(temporizadorTitulo);
+});
+
+// Titulo tipo maquina de escribir: escribe "Gym" + "Barichara", espera, borra y repite.
+const TITULO_UNO = 'Gym';
+const TITULO_DOS = 'Barichara';
+const TOTAL_LETRAS = TITULO_UNO.length + TITULO_DOS.length;
+const MS_ESCRIBIR = 130;
+const MS_BORRAR = 60;
+const MS_PAUSA_ESCRITO = 2600;
+const MS_PAUSA_BORRADO = 700;
+
+const letras = ref(TOTAL_LETRAS);
+let borrando = false;
+let temporizadorTitulo = null;
+
+const lineaUno = computed(() => TITULO_UNO.slice(0, letras.value));
+const lineaDos = computed(() => TITULO_DOS.slice(0, Math.max(0, letras.value - TITULO_UNO.length)));
+const escribiendoLineaUno = computed(() => letras.value <= TITULO_UNO.length);
+
+function pasoTitulo() {
+  let espera = borrando ? MS_BORRAR : MS_ESCRIBIR;
+  if (borrando) {
+    letras.value -= 1;
+    if (letras.value === 0) {
+      borrando = false;
+      espera = MS_PAUSA_BORRADO;
+    }
+  } else {
+    letras.value += 1;
+    if (letras.value === TOTAL_LETRAS) {
+      borrando = true;
+      espera = MS_PAUSA_ESCRITO;
+    }
+  }
+  temporizadorTitulo = setTimeout(pasoTitulo, espera);
+}
+
+function iniciarMaquinaEscribir() {
+  // Quien pidio menos movimiento ve el titulo fijo y completo.
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  // Arranca escrito (se ve el nombre al cargar) y empieza a borrar tras la pausa.
+  borrando = true;
+  temporizadorTitulo = setTimeout(pasoTitulo, MS_PAUSA_ESCRITO);
+}
 
 function irA(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -421,8 +473,26 @@ function ampliar(src, sede) {
   margin: 18px 0 10px;
   letter-spacing: 0.01em;
 }
-.portada-titulo span {
+.portada-titulo {
+  /* Reserva las dos lineas para que el contenido de abajo no salte al borrar. */
+  min-height: 1.84em;
+}
+.portada-titulo .oro {
   color: var(--oro);
+}
+.cursor {
+  display: inline-block;
+  width: 0.08em;
+  height: 0.8em;
+  margin-left: 0.06em;
+  background: var(--oro);
+  vertical-align: baseline;
+  animation: parpadeo 0.9s steps(1) infinite;
+}
+@keyframes parpadeo {
+  50% {
+    opacity: 0;
+  }
 }
 .lema {
   font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
