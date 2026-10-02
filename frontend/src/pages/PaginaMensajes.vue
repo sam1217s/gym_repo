@@ -693,8 +693,8 @@ onMounted(() => {
 }
 
 .hilo-activo {
-  background: rgba(206, 17, 38, 0.08);
-  color: var(--q-primary);
+  background: rgba(245, 197, 24, 0.16);
+  color: var(--color-primario-texto);
 }
 
 .badge-sede {
@@ -731,7 +731,7 @@ onMounted(() => {
 
 /* Lo del gimnasio va a la derecha y con la banda de la marca. */
 .burbuja-saliente {
-  background: rgba(206, 17, 38, 0.08);
+  background: rgba(245, 197, 24, 0.14);
   border-right: 3px solid var(--q-primary);
 }
 
@@ -743,7 +743,7 @@ onMounted(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--q-primary);
+  color: var(--color-primario-texto);
   margin-bottom: 3px;
 }
 

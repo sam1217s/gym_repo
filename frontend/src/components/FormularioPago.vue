@@ -390,7 +390,7 @@ function cerrar(valor) {
 }
 
 .banner-aprobacion {
-  background: rgba(206, 17, 38, 0.06);
+  background: rgba(245, 197, 24, 0.12);
   border-left: 4px solid var(--q-primary);
   border-radius: 3px;
 }

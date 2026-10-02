@@ -325,12 +325,12 @@ onMounted(() => {
 }
 
 .enlace-activo {
-  background: rgba(206, 17, 38, 0.1);
-  color: var(--q-primary);
+  background: rgba(245, 197, 24, 0.18);
+  color: var(--color-primario-texto);
   font-weight: 600;
 }
 
 .enlace-activo :deep(.q-icon) {
-  color: var(--q-primary);
+  color: var(--color-primario-texto);
 }
 </style>

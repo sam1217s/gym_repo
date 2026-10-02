@@ -197,7 +197,7 @@ function reiniciarOtp() {
 }
 
 .enlace-registro {
-  color: var(--q-primary);
+  color: var(--color-primario-texto);
   font-weight: 600;
   text-decoration: none;
 }

@@ -30,12 +30,29 @@ body {
 // declara su peso. Aqui la banda declara un ESTADO. Estas clases las comparten
 // todas las paginas del panel; el color se inyecta por variable CSS o estilo.
 
+// El primario es DORADO (el del logo). El dorado puro sobre blanco no se lee
+// (contraste ~1.6:1), asi que:
+//  - el texto dorado sobre fondo claro usa este dorado oscuro (contraste AA);
+//  - sobre un relleno dorado (botones, badges) el texto va oscuro, no blanco.
+:root {
+  --color-primario-texto: #8a6d00;
+}
+
+.bg-primary.text-white,
+.bg-primary.text-white .q-icon {
+  color: #141414 !important;
+}
+
+.text-primary {
+  color: var(--color-primario-texto) !important;
+}
+
 .ceja {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--q-primary);
+  color: var(--color-primario-texto);
 }
 
 .titulo-pagina {
@@ -119,9 +136,9 @@ body {
 }
 
 // Pantallas previas a tener sesion: tinta con un resplandor sutil, no un
-// degradado del color primario (el rojo a pantalla completa gritaria).
+// degradado del color primario (el dorado a pantalla completa gritaria).
 .pantalla-autenticacion {
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(179, 39, 30, 0.28), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245, 197, 24, 0.18), transparent 60%),
     $secondary;
 }

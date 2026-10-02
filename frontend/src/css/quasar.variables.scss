@@ -6,8 +6,10 @@
 // amarillo 15 kg, verde 10 kg). La accion primaria es el rojo del disco grande;
 // la estructura es tinta; los estados usan las bandas.
 
-// Accion: rojo disco de 25 kg.
-$primary: #b3271e;
+// Accion: el DORADO del logo de Gym Barichara (antes, rojo disco de 25 kg).
+// Ojo con el contraste: sobre dorado va texto oscuro, y el texto dorado sobre
+// fondo claro usa `--color-primario-texto` (ver app.scss).
+$primary: #f5c518;
 // Estructura (header, drawer, titulos): tinta.
 $secondary: #1b1e24;
 // Azul disco de 20 kg (estado "trial" y acentos informativos).
