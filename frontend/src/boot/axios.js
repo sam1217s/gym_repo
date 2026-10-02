@@ -16,6 +16,8 @@ export const api = axios.create({
 
 /** Rutas donde un 401 es una respuesta legitima y no debe disparar el refresco. */
 const RUTAS_SIN_REFRESCO = ['/auth/iniciar-sesion', '/auth/refrescar', '/auth/cerrar-sesion'];
+// Pantallas publicas: un 401 estando en ellas no redirige a ningun sitio.
+const RUTAS_PUBLICAS_401 = ['inicio', 'iniciar-sesion'];
 
 /**
  * Refresco compartido: si varias peticiones reciben 401 a la vez, todas esperan
@@ -74,9 +76,10 @@ export default defineBoot(({ app, router }) => {
          */
         const debeRedirigir =
           !peticionOriginal?.omitirRedireccion401 &&
-          router.currentRoute.value.name !== 'iniciar-sesion';
+          !RUTAS_PUBLICAS_401.includes(router.currentRoute.value.name);
 
-        if (debeRedirigir) await router.push({ name: 'iniciar-sesion' });
+        // Sesion caida (expiro o se abrio en otro equipo): de vuelta a la portada.
+        if (debeRedirigir) await router.push({ name: 'inicio' });
       }
 
       return Promise.reject(error);

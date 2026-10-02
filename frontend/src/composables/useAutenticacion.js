@@ -139,7 +139,8 @@ export function useAutenticacion() {
 
   async function cerrarSesion() {
     await autenticacion.cerrarSesion();
-    await enrutador.push({ name: 'iniciar-sesion' });
+    // Al salir se vuelve a la portada publica, no al formulario de acceso.
+    await enrutador.push({ name: 'inicio' });
   }
 
   return {
