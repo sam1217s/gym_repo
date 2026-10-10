@@ -29,6 +29,15 @@ export async function obtenerSesion() {
   return respuesta.data;
 }
 
+/**
+ * Comprobacion periodica mientras el panel esta abierto: si otra persona inicio
+ * sesion con esta cuenta, este GET recibe el 401 y el interceptor muestra el aviso
+ * aunque el usuario no este tocando nada.
+ */
+export async function comprobarSesion() {
+  await api.get('/auth/yo');
+}
+
 export async function cambiarContrasena(datos) {
   const { data: respuesta } = await api.post('/auth/cambiar-contrasena', datos);
   return respuesta.data;

@@ -1,7 +1,7 @@
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { cifrarContrasena, verificarContrasena } from '../utilidades/contrasena.js';
-import { verificarTokenRefresco } from '../utilidades/token.js';
+import { errorSesionRevocada, verificarTokenRefresco } from '../utilidades/token.js';
 
 /**
  * Logica de negocio de autenticacion. No conoce Express: recibe datos planos y
@@ -104,7 +104,7 @@ export async function refrescarSesion(tokenRefresco) {
   const usuario = await Usuario.findById(carga.sub);
 
   if (!usuario || !usuario.activo) throw ErrorApi.noAutenticado('Usuario inexistente o inactivo');
-  if (usuario.versionToken !== carga.version) throw ErrorApi.noAutenticado('Sesion revocada');
+  if (usuario.versionToken !== carga.version) throw errorSesionRevocada(usuario, carga);
 
   const tenant = await exigirTenant(usuario.tenant);
 

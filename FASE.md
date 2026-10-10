@@ -538,6 +538,35 @@ Alternativa que CONVIVE con el login por correo/cedula + contrasena, para dueno 
       miembro es OPCIONAL: solo a quien lo tenga). Falta: cuenta + API key + verificar
       dominio (DKIM/SPF en deSEC para gymbarichara.dedyn.io).
 
+**Dominio propio `gymbarichara.com` (comprado el 4 oct 2026; reemplaza a `gymbarichara.dedyn.io`):**
+El codigo NO tiene el dominio quemado (todo sale de `ORIGEN_FRONTEND`/`ORIGEN_PUBLICO`): el
+cambio es solo de infraestructura.
+- [x] DNS en el registrador: `A @` y `A www` → `187.33.151.251` (VPS). Borrar los registros
+      del parking (`2.57.91.91`) y cualquier `AAAA`.
+- [x] nginx: anadir `gymbarichara.com www.gymbarichara.com` al `server_name` del sitio actual
+      (servir AMBOS dominios durante la transicion) + `certbot --nginx` para los dos nombres.
+      Hecho: el cert `gymbarichara.dedyn.io` se amplio (`--expand`) a los 3 nombres; respaldos
+      en `/root/gymbarichara.nginx.bak` y `/root/gym.env.bak`.
+- [x] `.env` del VPS: `ORIGEN_FRONTEND`, `ORIGEN_PUBLICO` = `https://gymbarichara.com` y
+      `WOMPI_URL_REDIRECCION` = `https://gymbarichara.com/panel/facturacion`; reiniciar con
+      `TZ=America/Bogota pm2 restart gym-api --update-env && pm2 save`.
+- [x] A la VEZ que `ORIGEN_PUBLICO`: webhook de Twilio → `https://gymbarichara.com/api/webhooks/whatsapp`
+      (la firma se calcula sobre `ORIGEN_PUBLICO`: si no coinciden, se rechazan todos los
+      mensajes entrantes). Se configura en el SENDER (Senders → WhatsApp → numero); el Messaging
+      Service "Gym Barichara WhatsApp OTP" esta en "Defer to sender's webhook". Probado el 7 oct
+      con un mensaje real que llego a la bandeja. OJO: del 4 al 7 oct los entrantes se rechazaron.
+- [ ] Webhooks de Wompi al nuevo dominio: plataforma `/api/webhooks/wompi` y cada gimnasio
+      `/api/webhooks/wompi-miembro`.
+- [x] Solo cuando todo lo anterior este en el dominio nuevo: `dedyn.io` → 301 al nuevo. Antes
+      no: un 301 rompe los POST de los webhooks. Las sesiones no migran (cookies por host):
+      todos vuelven a iniciar sesion una vez. Hecho el 7 oct: canonico `gymbarichara.com`;
+      `www` y `dedyn` (http y https) → 301. Respaldo previo en `/root/gymbarichara.nginx.bak2`.
+- [ ] En 1-2 semanas, si los logs ya no muestran trafico a dedyn: quitarlo de nginx, reemitir
+      el cert solo para `gymbarichara.com` + `www` (hoy el cert se llama `gymbarichara.dedyn.io`
+      y cubre los 3 nombres) y borrar `gymbarichara` en deSEC. NO borrar la cuenta de deSEC:
+      `glowup.dedyn.io` y `prestaya.dedyn.io` siguen vivos en el mismo VPS.
+- [ ] Verificar el dominio en el proveedor de correo (DKIM/SPF) con `gymbarichara.com`, no dedyn.
+
 **Seguridad (rotar secretos que se pegaron en el chat):**
 - [ ] Contraseña root del VPS `Sam*@2023@` (reusada en Atlas). Ya hay llave SSH instalada
       (`claude-deploy-gym`), asi que se puede rotar y desactivar el login por contraseña sin
@@ -679,6 +708,141 @@ Tres modulos que pidio el cliente dueño de gimnasio. Orden de construccion:
 - [x] 6 pruebas (`maquinas.prueba.js`): arranca operativa, se marca dañada con nota, rechaza
       estado invalido, aislamiento por sede (lista y 404), filtro por estado. Suite: 205 en verde.
 - [x] Seed con maquinas de demo por sede (una en mantenimiento, una dañada).
+
+---
+
+## Fase 10 — Control de acceso en la puerta (huella → rostro → chapa) · BACKEND HECHO
+
+Objetivo: en la puerta de cada sede, el miembro pone la huella; si su mensualidad esta vigente
+(o dentro de la gracia) la pantalla dice "Bienvenido, <nombre>" y se abre la chapa; si no,
+"No puedes ingresar: tu mensualidad vencio hace N dias, te invitamos a renovarla".
+
+### Decisiones del dueño (7 oct 2026)
+- **Lector:** ZKTeco **USB** (sin pantalla). Modelo exacto por confirmar (etiqueta: ZK4500 /
+  ZK9500 / SLK20R…); los tres funcionan con el **ZKFinger SDK** (`libzkfp.dll`, Windows).
+- **Gracia: 3 dias.** Vencido hasta 3 dias entra con aviso de renovar; desde el dia 4 se niega.
+  Constante `DIAS_GRACIA_ACCESO` (luego configurable por gimnasio).
+- **Cualquier sede:** la huella sirve en las dos sedes del gimnasio (el acceso NO usa
+  `filtroSede` para decidir; la sede del puesto solo se registra en el log).
+- **Orden:** huella primero; rostro (camara iPhone) y chapa (rele) en etapas siguientes.
+
+### Arquitectura
+El navegador NO puede leer un lector de huella USB. Por eso hay tres piezas:
+
+```
+[Lector USB] ── agente local (PC de la puerta, Windows) ── ws://localhost ──> [pagina kiosco /acceso]
+                 - libzkfp: captura, 1:N contra plantillas cacheadas            |  token de PUESTO
+                 - sincroniza plantillas del tenant desde el backend           v
+                 - (etapa chapa) acciona el rele                       POST /api/acceso/verificar
+                                                                         -> derivarEstado(ultimo pago)
+                                                                         -> AccesoPuerta (log) + mensaje
+```
+
+- **El 1:N se hace en el agente** (el SDK lo trae: `DBInit/DBAdd/DBIdentify`), contra las
+  plantillas del tenant que baja del backend. El backend NO hace matching biometrico.
+- **La decision de acceso la toma el backend**, con la MISMA consulta de vencimiento
+  (`vencimientos.servicio`), nunca el agente: asi el puesto no puede "abrir" a un vencido.
+- **El puesto se autentica con un token de dispositivo** (`PuestoAcceso`: tenant + sede +
+  hash del token), no con la cookie de un usuario: el kiosco queda encendido dias.
+- **Enrolamiento:** desde la ficha del miembro, en un PC con lector + agente: 3 capturas →
+  `DBMerge` → plantilla → `POST /api/miembros/:id/huellas`.
+
+### Ley 1581 de 2012 (datos sensibles)
+- [x] Autorizacion EXPRESA: `autorizacionDatosBiometricos: true` obligatorio (Zod) + fecha y
+      quien registro guardados. Falta la casilla en la UI (frontend).
+- [x] Solo la plantilla (nunca la imagen), **cifrada en reposo**; borrable (`DELETE .../huellas/:id`).
+- [x] Al dar de baja a un miembro, se borran sus plantillas.
+
+### Etapa 1 — Huella · FUNCIONA EN LOCAL
+- [x] Confirmar modelo del lector + descargar ZKFinger SDK y probar captura en el PC.
+      **ZK9500** (`VID_1B55&PID_0124`), ZKFinger Standard SDK **5.3.0.33** (el setup instala el
+      driver y `libzkfp.dll` en System32/SysWOW64). Probado desde Node 24 x64 con **koffi**: captura
+      300x375, plantilla ~860 bytes, mismo dedo `DBMatch` = 716. Trampas: los buffers se declaran
+      `uint8_t*` y los tamaños como `Uint32Array` (con `_Out_ uint8_t*` koffi NO pasa el buffer y
+      todo da -8); `-8` = "sin dedo", es lo normal mientras se espera.
+- [x] Modelos (tenant-scoped, indices con `tenant` primero): `HuellaMiembro` (plantilla CIFRADA
+      AES-256-GCM con `CLAVE_CIFRADO_BIOMETRIA`, `select: false`, + `autorizacion`),
+      `PuestoAcceso` (token `<tenantId>.<puestoId>.<secreto>`, solo se guarda el SHA-256) y
+      `AccesoPuerta` (log con foto: nombre, motivo, vence, dias vencido; `sede` = la de la PUERTA).
+- [x] `acceso.servicio.js → evaluarAcceso` (pura) sobre `derivarEstado` + `DIAS_GRACIA_ACCESO`;
+      `verificarAcceso` usa `vencimientos.obtenerUltimoPago` (mismo criterio, un solo miembro).
+- [x] Endpoints. Puerta (`Authorization: Bearer`, `middlewares/autenticacionPuesto.js`):
+      `GET /api/acceso/puesto`, `GET /api/acceso/huellas` (sync, todas las sedes, solo activos),
+      `POST /api/acceso/verificar`. Ficha (personal, con `filtroSede`):
+      `GET|POST /api/miembros/:id/huellas`, `DELETE /api/miembros/:id/huellas/:huellaId`.
+      Dueño: `GET|POST /api/puestos-acceso`, `POST /:id/token`, `DELETE /:id`. Historial:
+      `GET /api/accesos?fecha=&sede=&resultado=` (filtroSede sobre la sede de la puerta).
+- [x] Baja del miembro (`PATCH activo:false`) borra sus huellas. Maximo 2 huellas por miembro.
+- [x] Auditoria: registrar/eliminar huella y crear/desactivar/cambiar token de puesto.
+- [x] 19 pruebas en `acceso.prueba.js` (regla de gracia, tokens, cifrado, aislamiento entre
+      gimnasios, alcance por sede, cualquier sede, ultimo pago). Suite: 223 en verde.
+- [x] `CLAVE_CIFRADO_BIOMETRIA` en el `.env` del VPS (generada EN el servidor el 9 oct 2026; no
+      salio de ahi) y en el local (otra, solo desarrollo).
+- [x] Agente local `agente-acceso/` (Node + koffi + ws, `npm start` con `.env`): abre el ZK9500,
+      sincroniza huellas cada 60 s (`GET /acceso/huellas`, fid local = indice), identifica 1:N con
+      el SDK y pregunta `POST /acceso/verificar`; difunde a las pantallas por `ws://127.0.0.1:7788`
+      (solo `ORIGENES_PERMITIDOS`). Sin `TOKEN_PUESTO` queda en modo solo-registro. Enrolamiento:
+      3 capturas del mismo dedo (`DBMatch` > 0) → rechaza si ya es de alguien → `DBMerge`; la
+      PANTALLA sube la plantilla con la sesion del personal (el agente nunca sube nada).
+- [x] Pagina kiosco `/acceso` (publica, sin sesion; verde/ambar/rojo) + `DialogoHuellas.vue` en la
+      ficha (autorizacion Ley 1581, 3 tomas, se cierra al registrar) + `SeccionPuestosAcceso.vue`
+      en Sedes (token visible una sola vez) + `PaginaEntradas.vue` (menu "Entradas").
+- [x] **Probado en local de punta a punta el 7 oct 2026** con el ZK9500 real: registrar huella,
+      crear puesto, reconocer en la puerta y decidir por la mensualidad.
+- [x] Desplegado al VPS el 9 oct 2026 (backend `src` + frontend). Respaldos: `src.bak.1791574342`,
+      `.env.bak.1791574342` y `/root/deploy-backups/gymbarichara-web.1791574372.tgz`. El VPS NO es un
+      clon de git: se copia `backend/src` y `frontend/dist/spa` (el commit queda aparte).
+- [x] Senal en el propio lector (sin pantalla): verde + 1 pitido = entra, roja + 3 = no,
+      roja + 2 = huella desconocida, roja + 4 = sin servidor, blanca al quedar listo
+      (`ZKFPM_SetParameters` 101/102/103/104). Sin probar aun con un dedo real.
+- [x] Vincular el equipo SIN tocar archivos: en `/acceso`, si el agente no tiene token (o el
+      servidor lo rechaza), sale `VincularEquipo.vue`: el dueño inicia sesion, elige puerta nueva
+      o existente, el panel crea/regenera el puesto y manda el token al agente por el WebSocket
+      (`vincular`). El agente lo prueba contra `/acceso/puesto`, lo guarda en
+      `ProgramData\GymBarichara\Puerta\config.json` y la sesion del dueño se cierra sola.
+      Probado en local (puerta nueva y existente) el 9 oct 2026.
+- [x] Instalador `agente-acceso/instalador/` (Inno Setup, `construir.ps1` →
+      `salida/InstalarPuertaGymBarichara.exe`, ~37 MB): trae su node.exe, instala el ZKFinger SDK
+      en silencio si falta, registra la tarea "GymBarichara - Puerta" (SYSTEM, al encender) y deja
+      en el escritorio el acceso a `/acceso`. `-Web http://localhost:9000` arma uno de PRUEBA.
+- [x] Instalador probado en el PC de desarrollo (9 oct 2026): la tarea corre como SYSTEM, abre
+      el ZK9500 sin sesion de Windows y Chrome se conecta. Registro en
+      `ProgramData\GymBarichara\Puerta\agente.log` e `instalacion.log`. Trampa encontrada: en
+      `tarea.ps1` una variable `$accion` pisaba el parametro `-Accion` (PowerShell no distingue
+      mayusculas) y el script moria en silencio sin registrar la tarea.
+- [x] Ventana "GymBarichara Puerta" (v1.1 del instalador): `/acceso` en Edge modo aplicacion,
+      escritorio + menu Inicio (+ al iniciar Windows, opcional). Lista "Hoy en esta puerta"
+      (`GET /api/acceso/entradas` con el token del puesto, prueba en `acceso.prueba.js`), y botones
+      Apagar/Encender lector y Reconectar. Probado en local el 9 oct 2026.
+- [x] Voz en la ventana de la puerta (`composables/useVoz.js`, Web Speech API, sin costo): saludo
+      neutro ("te damos la bienvenida", el sistema no sabe el genero), aviso de gracia y de negado;
+      prefiere voces es-CO "Natural" de Edge (Salome por defecto; en Chrome no existen y suena la
+      robotica de Windows). Menu Voz: silenciar o elegir voz (se prueba al tocarla; recordado en el
+      PC). Si una voz en linea falla, repite la frase con la mejor voz local. El acceso directo lleva `--autoplay-policy=no-user-gesture-required`.
+- [x] "Local Network Access": en produccion Chrome/Edge 154 BLOQUEABAN la ventana -> agente
+      (`ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`). Instalador v1.3 escribe la politica
+      `LocalNetworkAccessAllowedForUrls` para gymbarichara.com; probado en Edge y Chrome (9 oct 2026).
+- [x] PC de desarrollo vinculado en produccion como "Entrada Villanueva" (sede villanueva).
+- [x] nginx sin `Cache-Control`: el navegador cacheaba `index.html` y la ventana de la puerta seguia
+      con la version vieja tras desplegar. Ahora `index.html` y las rutas SPA van `no-cache` y
+      `/assets/` (con hash) `immutable` 1 año. Respaldo `/root/deploy-backups/nginx-gymbarichara.1791601204.conf`.
+- [x] Desplegado al VPS el 9 oct 2026 (backend + frontend, suite 229/229). Respaldos:
+      `src.bak.1791600167` y `/root/deploy-backups/gymbarichara-web.1791600183.tgz`. El instalador
+      se publica con la web en `/descargas/InstalarPuertaGymBarichara.exe` (boton en Sedes ->
+      Puestos de entrada); `construir.ps1` lo copia a `frontend/public/descargas/` (fuera de git):
+      SIN correrlo antes de `npm run build`, el despliegue se queda sin instalador.
+- [ ] PC de la puerta de cada sede: correr el instalador y vincular desde `/acceso`.
+- [ ] OJO Windows: detener `npm start` con TaskStop/cerrar la consola puede dejar vivo el `node`
+      hijo (sigue con el puerto 7788 y el lector). El agente ahora avisa "puerto en uso".
+
+### Etapa 2 — Rostro (pendiente)
+- [ ] Reconocimiento en el navegador (embeddings, no fotos). OJO: una camara normal se engaña
+      con una foto en otro celular; usarlo como metodo secundario, no como el principal.
+
+### Etapa 3 — Chapa (pendiente)
+- [ ] Cerradura electromagnetica 12 V (~280 kg) + fuente con bateria + rele USB/WiFi + boton de
+      salida interior. El agente activa el rele 3-5 s SOLO si el backend respondio "permitido".
+      Es fail-safe (abre sin luz): correcto para evacuacion; por eso la bateria.
 
 ---
 

@@ -54,13 +54,18 @@ export default defineBoot(({ app, router }) => {
         !peticionOriginal.yaReintentada &&
         !RUTAS_SIN_REFRESCO.includes(peticionOriginal.url);
 
+      // Por que se cayo la sesion. `sesion_reemplazada` = alguien inicio sesion con
+      // esta cuenta en otro dispositivo (una sola sesion por cuenta).
+      let codigoSesion = error.response?.data?.error?.codigo ?? null;
+
       if (puedeRefrescar) {
         try {
           await refrescarSesion();
           peticionOriginal.yaReintentada = true;
           return await api.request(peticionOriginal);
-        } catch {
+        } catch (errorRefresco) {
           // El refresco tambien fallo: la sesion esta muerta de verdad.
+          codigoSesion = codigoSesion ?? errorRefresco.response?.data?.error?.codigo ?? null;
         }
       }
 
@@ -78,8 +83,14 @@ export default defineBoot(({ app, router }) => {
           !peticionOriginal?.omitirRedireccion401 &&
           !RUTAS_PUBLICAS_401.includes(router.currentRoute.value.name);
 
-        // Sesion caida (expiro o se abrio en otro equipo): de vuelta a la portada.
-        if (debeRedirigir) await router.push({ name: 'inicio' });
+        // Si otra persona entro con esta cuenta, se lleva al login CON el aviso (y
+        // aunque se este en una pantalla publica): salir en silencio no explica nada.
+        // Si solo expiro, de vuelta a la portada.
+        if (codigoSesion === 'sesion_reemplazada' && router.currentRoute.value.name !== 'iniciar-sesion') {
+          await router.push({ name: 'iniciar-sesion', query: { motivo: 'otra-sesion' } });
+        } else if (debeRedirigir) {
+          await router.push({ name: 'inicio' });
+        }
       }
 
       return Promise.reject(error);

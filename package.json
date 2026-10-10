@@ -7,6 +7,7 @@
   "scripts": {
     "backend": "npm --prefix backend run dev",
     "frontend": "npm --prefix frontend run dev",
+    "puerta": "npm --prefix agente-acceso start",
     "instalar": "npm --prefix backend install && npm --prefix frontend install",
     "sembrar": "npm --prefix backend run sembrar",
     "prueba": "vitest run",

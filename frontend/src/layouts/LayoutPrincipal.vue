@@ -59,29 +59,90 @@
       <q-list padding class="q-px-sm">
         <q-item-label v-if="!miniActivo" header class="etiqueta-nav">Navegacion</q-item-label>
 
-        <q-item
-          v-for="enlace in enlacesVisibles"
-          :key="enlace.nombre"
-          clickable
-          :to="{ name: enlace.nombre }"
-          exact
-          class="enlace-nav q-mb-xs"
-          active-class="enlace-activo"
-          @click="alNavegar"
-        >
-          <q-item-section avatar class="relative-position">
-            <q-icon :name="enlace.icono" />
-            <q-badge v-if="pendientesDe(enlace.nombre) > 0" floating color="primary" rounded>
-              {{ pendientesDe(enlace.nombre) }}
-            </q-badge>
-          </q-item-section>
-          <q-item-section>{{ enlace.titulo }}</q-item-section>
+        <template v-for="entrada in menuVisible" :key="entrada.clave">
+          <!-- Enlace directo (Inicio, Finanzas, o un grupo al que le queda una sola opcion) -->
+          <q-item
+            v-if="entrada.tipo === 'enlace'"
+            clickable
+            :to="{ name: entrada.nombre }"
+            exact
+            class="enlace-nav q-mb-xs"
+            active-class="enlace-activo"
+            @click="alNavegar"
+          >
+            <q-item-section avatar class="relative-position">
+              <q-icon :name="entrada.icono" />
+              <q-badge v-if="pendientesDe(entrada.nombre) > 0" floating color="primary" rounded>
+                {{ pendientesDe(entrada.nombre) }}
+              </q-badge>
+            </q-item-section>
+            <q-item-section>{{ entrada.titulo }}</q-item-section>
+            <!-- En modo mini (escritorio) el texto se oculta: el tooltip lo trae de vuelta. -->
+            <q-tooltip v-if="miniActivo" anchor="center right" self="center left">
+              {{ entrada.titulo }}
+            </q-tooltip>
+          </q-item>
 
-          <!-- En modo mini (escritorio) el texto se oculta: el tooltip lo trae de vuelta. -->
-          <q-tooltip v-if="miniActivo" anchor="center right" self="center left">
-            {{ enlace.titulo }}
-          </q-tooltip>
-        </q-item>
+          <!-- Grupo en modo mini: solo su icono (al pasar el mouse el menu se despliega). -->
+          <q-item
+            v-else-if="miniActivo"
+            :class="['enlace-nav', 'q-mb-xs', { 'enlace-activo': grupoActivo(entrada) }]"
+          >
+            <q-item-section avatar class="relative-position">
+              <q-icon :name="entrada.icono" />
+              <q-badge v-if="pendientesDeGrupo(entrada) > 0" floating color="primary" rounded>
+                {{ pendientesDeGrupo(entrada) }}
+              </q-badge>
+            </q-item-section>
+          </q-item>
+
+          <!-- Grupo desplegable: la categoria y, dentro, sus opciones. -->
+          <q-expansion-item
+            v-else
+            v-model="gruposAbiertos[entrada.id]"
+            :header-class="['enlace-nav', 'cabecera-grupo', { 'grupo-activo': grupoActivo(entrada) }]"
+            class="q-mb-xs"
+            expand-icon-class="icono-desplegar"
+          >
+            <template #header>
+              <q-item-section avatar class="relative-position">
+                <q-icon :name="entrada.icono" />
+                <!-- Cerrado, el grupo muestra la suma de lo pendiente de sus opciones. -->
+                <q-badge
+                  v-if="!gruposAbiertos[entrada.id] && pendientesDeGrupo(entrada) > 0"
+                  floating
+                  color="primary"
+                  rounded
+                >
+                  {{ pendientesDeGrupo(entrada) }}
+                </q-badge>
+              </q-item-section>
+              <q-item-section>{{ entrada.titulo }}</q-item-section>
+            </template>
+
+            <div class="hijos-grupo">
+              <q-item
+                v-for="hijo in entrada.hijos"
+                :key="hijo.nombre"
+                clickable
+                dense
+                :to="{ name: hijo.nombre }"
+                exact
+                class="enlace-nav enlace-hijo"
+                active-class="enlace-activo"
+                @click="alNavegar"
+              >
+                <q-item-section avatar class="avatar-hijo">
+                  <q-icon :name="hijo.icono" size="20px" />
+                </q-item-section>
+                <q-item-section>{{ hijo.titulo }}</q-item-section>
+                <q-item-section v-if="pendientesDe(hijo.nombre) > 0" side>
+                  <q-badge color="primary" rounded>{{ pendientesDe(hijo.nombre) }}</q-badge>
+                </q-item-section>
+              </q-item>
+            </div>
+          </q-expansion-item>
+        </template>
       </q-list>
     </q-drawer>
 
@@ -122,11 +183,13 @@
 
 <script setup>
 import { useQuasar } from 'quasar';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
 import CampoTelefono from 'src/components/CampoTelefono.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import { ROLES, useAutenticacionStore } from 'src/stores/autenticacion.js';
+import { comprobarSesion } from 'src/servicios/auth.servicio.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
 const { usuario, cerrarSesion } = useAutenticacion();
@@ -181,55 +244,96 @@ const ETIQUETAS_ROL = {
   [ROLES.SEDE_ADMIN]: 'Sede',
 };
 
-// Cada enlace declara que roles pueden verlo, igual que `meta.roles` en las rutas.
-const ENLACES = [
-  { nombre: 'panel', titulo: 'Inicio', icono: 'dashboard', roles: null },
+// El menu se agrupa por categorias para que sea corto. Cada opcion declara que
+// roles pueden verla, igual que `meta.roles` en las rutas.
+const DUENO = [ROLES.TENANT_OWNER];
+const PERSONAL = [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN];
+
+const MENU = [
+  { tipo: 'enlace', nombre: 'panel', titulo: 'Inicio', icono: 'dashboard', roles: null },
   {
-    nombre: 'miembros',
+    tipo: 'grupo',
+    id: 'miembros',
     titulo: 'Miembros',
     icono: 'groups',
-    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
+    hijos: [
+      { nombre: 'miembros', titulo: 'Miembros', icono: 'groups', roles: PERSONAL },
+      { nombre: 'mensajes', titulo: 'Mensajes', icono: 'chat', roles: DUENO },
+      { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: DUENO },
+    ],
+  },
+  // La pantalla de la puerta (/acceso) no va en el menu: vive en el PC de la puerta,
+  // en la ventana "GymBarichara Puerta" que deja el instalador.
+  { tipo: 'enlace', nombre: 'entradas', titulo: 'Entradas', icono: 'login', roles: PERSONAL },
+  {
+    tipo: 'grupo',
+    id: 'tienda',
+    titulo: 'Tienda',
+    icono: 'storefront',
+    hijos: [
+      { nombre: 'inventario', titulo: 'Inventario', icono: 'inventory_2', roles: PERSONAL },
+      { nombre: 'ventas', titulo: 'Ventas', icono: 'point_of_sale', roles: PERSONAL },
+    ],
   },
   {
-    nombre: 'inventario',
-    titulo: 'Inventario',
-    icono: 'inventory_2',
-    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
+    tipo: 'grupo',
+    id: 'gimnasio',
+    titulo: 'Gimnasio',
+    icono: 'sports_gymnastics',
+    hijos: [
+      { nombre: 'maquinas', titulo: 'Máquinas', icono: 'fitness_center', roles: PERSONAL },
+      { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: DUENO },
+    ],
   },
+  { tipo: 'enlace', nombre: 'finanzas', titulo: 'Finanzas', icono: 'account_balance_wallet', roles: PERSONAL },
   {
-    nombre: 'ventas',
-    titulo: 'Ventas',
-    icono: 'point_of_sale',
-    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
+    tipo: 'grupo',
+    id: 'administracion',
+    titulo: 'Administración',
+    icono: 'admin_panel_settings',
+    hijos: [
+      { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: DUENO },
+      { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: DUENO },
+      { nombre: 'auditoria', titulo: 'Auditoría', icono: 'fact_check', roles: DUENO },
+    ],
   },
-  {
-    nombre: 'maquinas',
-    titulo: 'Maquinas',
-    icono: 'fitness_center',
-    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
-  },
-  {
-    nombre: 'finanzas',
-    titulo: 'Finanzas',
-    icono: 'account_balance_wallet',
-    roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN],
-  },
-  { nombre: 'mensajes', titulo: 'Mensajes', icono: 'chat', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'reportes', titulo: 'Reportes', icono: 'report_problem', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'auditoria', titulo: 'Auditoria', icono: 'fact_check', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'sedes', titulo: 'Sedes', icono: 'store', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'equipo', titulo: 'Equipo', icono: 'badge', roles: [ROLES.TENANT_OWNER] },
-  { nombre: 'planes', titulo: 'Planes', icono: 'sell', roles: [ROLES.TENANT_OWNER] },
 ];
+
+const puedeVer = (opcion) => !opcion.roles || opcion.roles.includes(usuario.value?.rol);
+
+/**
+ * El menu que ve el usuario segun su rol. Un grupo sin opciones visibles
+ * desaparece; uno al que le queda UNA sola se muestra como enlace directo (un
+ * desplegable con un unico hijo es un clic de mas).
+ */
+const menuVisible = computed(() =>
+  MENU.flatMap((entrada) => {
+    if (entrada.tipo === 'enlace') return puedeVer(entrada) ? [{ ...entrada, clave: entrada.nombre }] : [];
+    const hijos = entrada.hijos.filter(puedeVer);
+    if (hijos.length === 0) return [];
+    if (hijos.length === 1) return [{ ...hijos[0], tipo: 'enlace', clave: hijos[0].nombre }];
+    return [{ ...entrada, hijos, clave: entrada.id }];
+  }),
+);
+
+// El grupo de la pagina actual se abre solo (al entrar y al navegar).
+const ruta = useRoute();
+const gruposAbiertos = ref({});
+const grupoActivo = (grupo) => grupo.hijos.some((hijo) => hijo.nombre === ruta.name);
+watch(
+  () => ruta.name,
+  () => {
+    for (const entrada of menuVisible.value) {
+      if (entrada.tipo === 'grupo' && grupoActivo(entrada)) gruposAbiertos.value[entrada.id] = true;
+    }
+  },
+  { immediate: true },
+);
 
 const etiquetaRol = computed(() => ETIQUETAS_ROL[usuario.value?.rol] ?? '');
 
 // El titulo del header es el nombre del NEGOCIO; si no llega, cae a Gym Barichara.
 const tituloNegocio = computed(() => usuario.value?.tenantNombre || 'Gym Barichara');
-
-const enlacesVisibles = computed(() =>
-  ENLACES.filter((enlace) => !enlace.roles || enlace.roles.includes(usuario.value?.rol)),
-);
 
 // El boton hamburguesa: en movil abre/cierra el overlay; en escritorio FIJA el
 // menu abierto (deja de recogerse al quitar el mouse) o lo devuelve al modo
@@ -259,9 +363,25 @@ function pendientesDe(nombre) {
   return 0;
 }
 
+/** Lo pendiente de todas las opciones de un grupo (se ve aunque este cerrado). */
+function pendientesDeGrupo(grupo) {
+  return grupo.hijos.reduce((total, hijo) => total + pendientesDe(hijo.nombre), 0);
+}
+
 // Los badges se cuentan al montar el panel; cada pagina los baja a 0 al abrirse.
 // Reportes es solo del dueño; la bandeja la atiende tambien el encargado de sede.
 // Reportes y bandeja de mensajes son SOLO del dueño.
+// Cada 30 s (con la pestana visible) se comprueba que la sesion siga viva: si
+// alguien mas entro con esta cuenta, el aviso aparece sin esperar a un clic.
+const MS_COMPROBAR_SESION = 30_000;
+let temporizadorSesion = null;
+onMounted(() => {
+  temporizadorSesion = setInterval(() => {
+    if (!document.hidden) comprobarSesion().catch(() => {});
+  }, MS_COMPROBAR_SESION);
+});
+onBeforeUnmount(() => clearInterval(temporizadorSesion));
+
 onMounted(() => {
   if (usuario.value?.rol === ROLES.TENANT_OWNER) {
     gimnasio.contarReportesNoLeidos().catch(() => {});
@@ -332,5 +452,34 @@ onMounted(() => {
 
 .enlace-activo :deep(.q-icon) {
   color: var(--color-primario-texto);
+}
+
+/* Grupos: la cabecera se ve como un enlace; si contiene la pagina actual, se
+   marca con el texto en negrita (el fondo dorado queda para la opcion activa). */
+:deep(.cabecera-grupo) {
+  min-height: 46px;
+  padding-left: 16px;
+  padding-right: 8px;
+}
+:deep(.grupo-activo) {
+  font-weight: 700;
+}
+:deep(.icono-desplegar) {
+  color: var(--q-secondary);
+  opacity: 0.55;
+}
+/* Las opciones de un grupo cuelgan de una linea guia, un poco hacia adentro. */
+.hijos-grupo {
+  margin: 2px 0 6px 27px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(27, 30, 36, 0.12);
+}
+.enlace-hijo {
+  min-height: 38px;
+  margin-bottom: 2px;
+  font-size: 0.92rem;
+}
+.avatar-hijo {
+  min-width: 34px;
 }
 </style>

@@ -41,6 +41,7 @@ const MOVIMIENTOS = {
     PATCH: 'Actualizo un usuario',
     DELETE: 'Elimino un usuario del equipo',
   },
+  'puestos-acceso': { POST: 'Creo un puesto de entrada', DELETE: 'Desactivo un puesto de entrada' },
   'planes-membresia': {
     POST: 'Creo un plan de membresia',
     PATCH: 'Actualizo un plan de membresia',
@@ -66,6 +67,16 @@ function describirMovimiento(peticion) {
   // Abonar a una deuda no es "actualizarla": es un pago.
   if (recurso === 'deudas' && subaccion === 'abonos') {
     return { recurso: 'deudas', accion: 'Abono a una deuda' };
+  }
+
+  // Las huellas cuelgan de la ficha del miembro, pero no son "actualizarlo".
+  if (recurso === 'miembros' && subaccion === 'huellas') {
+    const accion = { POST: 'Registro una huella', DELETE: 'Elimino una huella' }[peticion.method];
+    return accion ? { recurso: 'miembros', accion } : null;
+  }
+
+  if (recurso === 'puestos-acceso' && subaccion === 'token') {
+    return { recurso: 'puestos-acceso', accion: 'Cambio el token de un puesto de entrada' };
   }
 
   // De la bandeja solo interesa responderle a alguien; marcar leido no es un

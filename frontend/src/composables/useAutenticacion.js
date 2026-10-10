@@ -62,7 +62,8 @@ export function useAutenticacion() {
     // Dueño con maquinas reportadas SIN LEER: se le avisa y se le lleva directo
     // al panel de reportes. Una vez ahi se marcan leidas y no vuelve a saltar,
     // aunque el equipo siga sin arreglarse (para verlas de nuevo entra a Reportes).
-    if (sesion.rol === ROLES.TENANT_OWNER && (await hayReportesPendientes())) {
+    // Si venia de una pagina concreta (p. ej. vincular la puerta en /acceso), esa gana.
+    if (!ruta.query.redirigir && sesion.rol === ROLES.TENANT_OWNER && (await hayReportesPendientes())) {
       await enrutador.push({ name: 'reportes' });
       return sesion;
     }

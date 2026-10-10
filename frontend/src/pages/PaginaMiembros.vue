@@ -1,6 +1,6 @@
 <template>
   <q-page padding class="pagina-panel">
-    <div class="row items-end justify-between q-mb-lg">
+    <div class="row items-end justify-between q-mb-md encabezado">
       <div>
         <div class="ceja">Mi gimnasio</div>
         <h1 class="titulo-display titulo-pagina q-my-none">Miembros</h1>
@@ -23,29 +23,38 @@
           no-caps
           icon="person_add"
           label="Nuevo miembro"
+          class="boton-nuevo"
           @click="abrirCreacion"
         />
       </div>
     </div>
 
-    <!-- El semaforo de la operacion diaria: quien esta al dia, quien esta por
-         vencer (a quien hay que llamar) y quien ya vencio. -->
-    <div class="fila-discos q-mb-lg">
-      <div v-for="resumen in discosEstado" :key="resumen.estado" class="celda-disco">
-        <div class="disco" :style="{ borderColor: resumen.color }">
-          <span class="titulo-display numero-disco cifra-tabular">{{ resumen.total }}</span>
-        </div>
-        <div class="etiqueta-disco">{{ resumen.etiqueta }}</div>
-      </div>
+    <!-- El semaforo de la operacion diaria, ahora tambien es el filtro: un clic y
+         la tabla muestra solo ese estado. -->
+    <div class="filtros-estado" role="tablist" aria-label="Filtrar por estado">
+      <button
+        v-for="pestana in pestanasEstado"
+        :key="pestana.estado"
+        type="button"
+        role="tab"
+        :aria-selected="filtroEstado === pestana.estado"
+        :class="['pestana-estado', { activa: filtroEstado === pestana.estado }]"
+        :style="{ '--banda': pestana.color }"
+        @click="filtroEstado = pestana.estado"
+      >
+        <span class="pestana-total cifra-tabular">{{ pestana.total }}</span>
+        <span class="pestana-etiqueta">{{ pestana.etiqueta }}</span>
+      </button>
     </div>
 
     <div class="row q-col-gutter-md q-mb-md">
       <q-input
         v-model="busqueda"
-        class="col-12 col-sm-5"
+        class="col-12 col-sm-6 col-md-5"
         dense
         outlined
         clearable
+        bg-color="white"
         placeholder="Buscar por nombre o documento"
       >
         <template #prepend><q-icon name="search" /></template>
@@ -54,12 +63,13 @@
       <q-select
         v-if="sedesVisibles"
         v-model="filtroSede"
-        class="col-12 col-sm-4"
+        class="col-12 col-sm-4 col-md-3"
         dense
         outlined
         clearable
         emit-value
         map-options
+        bg-color="white"
         label="Todas las sedes"
         :options="opcionesSede"
       />
@@ -69,60 +79,172 @@
       flat
       bordered
       row-key="_id"
+      class="tabla-miembros"
+      :grid="quasar.screen.lt.md"
       :rows="filasFiltradas"
       :columns="columnasResponsivas"
       :loading="cargando"
       :pagination="{ rowsPerPage: 50 }"
       :rows-per-page-options="[50, 100, 200, 0]"
       :hide-bottom="filasFiltradas.length <= 50"
-      no-data-label="Aun no hay miembros. Registra el primero."
+      :no-data-label="textoSinFilas"
     >
-      <!-- Fila completa tintada con el color (suave) del estado del miembro, para
-           leer de un vistazo quien esta al dia, por vencer o vencido. `props.cols`
-           respeta el reordenamiento responsive de columnas. -->
+      <!-- Escritorio: fila blanca, banda de color del estado a la izquierda. -->
       <template #body="props">
-        <q-tr :props="props" :class="`fila-estado fila-${props.row.estado}`">
+        <q-tr :props="props" :class="`fila-miembro fila-${props.row.estado}`">
           <q-td v-for="col in props.cols" :key="col.name" :props="props" :class="col.classes">
             <template v-if="col.name === 'miembro'">
-              <div class="text-weight-medium">
-                {{ props.row.miembro.nombres }} {{ props.row.miembro.apellidos }}
+              <div class="celda-miembro">
+                <span class="avatar" :style="{ '--anillo': APARIENCIA_VENCIMIENTO[props.row.estado].color }">
+                  {{ iniciales(props.row.miembro) }}
+                </span>
+                <div>
+                  <div class="nombre-miembro">
+                    {{ props.row.miembro.nombres }} {{ props.row.miembro.apellidos }}
+                  </div>
+                  <div class="text-caption text-grey-7">doc. {{ props.row.miembro.documento }}</div>
+                </div>
               </div>
-              <div class="text-caption text-grey-7">doc. {{ props.row.miembro.documento }}</div>
+            </template>
+
+            <template v-else-if="col.name === 'sede'">
+              <span class="chip-sede">{{ col.value }}</span>
+            </template>
+
+            <template v-else-if="col.name === 'telefono'">
+              <a
+                class="enlace-telefono"
+                :href="enlaceWhatsapp(props.row.miembro)"
+                target="_blank"
+                rel="noopener"
+                :aria-label="`Escribir a ${props.row.miembro.nombres} por WhatsApp`"
+              >
+                <IconoWhatsapp class="icono-wa" />
+                <span class="cifra-tabular">{{ col.value }}</span>
+              </a>
             </template>
 
             <template v-else-if="col.name === 'vence'">
-              <div>{{ formatearFecha(props.row.ultimoPago?.periodoFin) }}</div>
-              <div class="text-caption text-grey-7">{{ describirVencimiento(props.row) }}</div>
+              <div class="celda-vigencia">
+                <div class="row items-baseline justify-between no-wrap">
+                  <span>{{ formatearFecha(props.row.ultimoPago?.periodoFin) }}</span>
+                </div>
+                <div class="riel-vigencia">
+                  <div
+                    class="carga-vigencia"
+                    :style="{
+                      width: `${vigencia(props.row) * 100}%`,
+                      background: APARIENCIA_VENCIMIENTO[props.row.estado].color,
+                    }"
+                  />
+                </div>
+                <div :class="['text-caption', `texto-${props.row.estado}`]">
+                  {{ describirVencimiento(props.row) }}
+                </div>
+              </div>
             </template>
 
             <template v-else-if="col.name === 'estado'">
-              <span
-                class="chip-banda"
-                :style="{ '--banda': APARIENCIA_VENCIMIENTO[props.row.estado].color }"
-              >
+              <span class="chip-banda" :style="{ '--banda': APARIENCIA_VENCIMIENTO[props.row.estado].color }">
                 {{ APARIENCIA_VENCIMIENTO[props.row.estado].etiqueta }}
               </span>
             </template>
 
             <template v-else-if="col.name === 'acciones'">
-              <q-btn round flat dense color="primary" icon="payments" @click="abrirPago(props.row.miembro)">
-                <q-tooltip>Registrar pago</q-tooltip>
-              </q-btn>
-              <q-btn round flat dense color="grey-8" icon="history" @click="abrirHistorial(props.row.miembro)">
-                <q-tooltip>Historial de pagos</q-tooltip>
-              </q-btn>
-              <q-btn round flat dense color="grey-8" icon="edit" @click="abrirEdicion(props.row.miembro)">
-                <q-tooltip>Editar</q-tooltip>
-              </q-btn>
+              <div class="acciones">
+                <q-btn
+                  unelevated
+                  dense
+                  no-caps
+                  color="primary"
+                  text-color="dark"
+                  icon="payments"
+                  label="Cobrar"
+                  class="boton-cobrar"
+                  @click="abrirPago(props.row.miembro)"
+                />
+                <q-btn
+                  round
+                  flat
+                  dense
+                  icon="fingerprint"
+                  :color="conHuella.has(props.row.miembro._id) ? 'positive' : 'grey-6'"
+                  @click="abrirHuellas(props.row.miembro)"
+                >
+                  <q-tooltip>
+                    {{ conHuella.has(props.row.miembro._id) ? 'Huella registrada' : 'Sin huella: registrala para la puerta' }}
+                  </q-tooltip>
+                </q-btn>
+                <q-btn round flat dense color="grey-7" icon="more_vert" aria-label="Más acciones">
+                  <q-menu anchor="bottom right" self="top right">
+                    <q-list dense style="min-width: 190px">
+                      <q-item v-close-popup clickable @click="abrirHistorial(props.row.miembro)">
+                        <q-item-section avatar><q-icon name="history" /></q-item-section>
+                        <q-item-section>Historial de pagos</q-item-section>
+                      </q-item>
+                      <q-item v-close-popup clickable @click="abrirEdicion(props.row.miembro)">
+                        <q-item-section avatar><q-icon name="edit" /></q-item-section>
+                        <q-item-section>Editar miembro</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </div>
             </template>
 
             <template v-else>{{ col.value }}</template>
           </q-td>
         </q-tr>
       </template>
+
+      <!-- Celular: una tarjeta por miembro. -->
+      <template #item="props">
+        <div class="col-12 q-pa-xs">
+          <div :class="`tarjeta-miembro-movil fila-${props.row.estado}`">
+            <div class="celda-miembro">
+              <span class="avatar" :style="{ '--anillo': APARIENCIA_VENCIMIENTO[props.row.estado].color }">
+                {{ iniciales(props.row.miembro) }}
+              </span>
+              <div class="col">
+                <div class="nombre-miembro">{{ props.row.miembro.nombres }} {{ props.row.miembro.apellidos }}</div>
+                <div class="text-caption text-grey-7">{{ nombreSede(props.row.miembro.sede) }} · doc. {{ props.row.miembro.documento }}</div>
+              </div>
+              <span class="chip-banda" :style="{ '--banda': APARIENCIA_VENCIMIENTO[props.row.estado].color }">
+                {{ APARIENCIA_VENCIMIENTO[props.row.estado].etiqueta }}
+              </span>
+            </div>
+            <div class="riel-vigencia q-mt-sm">
+              <div
+                class="carga-vigencia"
+                :style="{ width: `${vigencia(props.row) * 100}%`, background: APARIENCIA_VENCIMIENTO[props.row.estado].color }"
+              />
+            </div>
+            <div :class="['text-caption', 'q-mt-xs', `texto-${props.row.estado}`]">
+              {{ describirVencimiento(props.row) }} · {{ formatearFecha(props.row.ultimoPago?.periodoFin) }}
+            </div>
+            <div class="acciones q-mt-sm">
+              <q-btn unelevated dense no-caps color="primary" text-color="dark" icon="payments" label="Cobrar" class="boton-cobrar" @click="abrirPago(props.row.miembro)" />
+              <q-btn round flat dense type="a" :href="enlaceWhatsapp(props.row.miembro)" target="_blank" rel="noopener" class="boton-wa-movil" aria-label="WhatsApp">
+                <IconoWhatsapp />
+              </q-btn>
+              <q-btn round flat dense icon="fingerprint" :color="conHuella.has(props.row.miembro._id) ? 'positive' : 'grey-6'" @click="abrirHuellas(props.row.miembro)" />
+              <q-btn round flat dense color="grey-7" icon="history" @click="abrirHistorial(props.row.miembro)" />
+              <q-btn round flat dense color="grey-7" icon="edit" @click="abrirEdicion(props.row.miembro)" />
+            </div>
+          </div>
+        </div>
+      </template>
     </q-table>
 
     <FormularioPago v-model="dialogoPago" :miembro="miembroActivo" />
+
+    <!-- Solo montado mientras esta abierto: asi no se conecta al agente de la puerta si nadie lo usa. -->
+    <DialogoHuellas
+      v-if="dialogoHuellas"
+      v-model="dialogoHuellas"
+      :miembro="miembroActivo"
+      @actualizado="cargarConHuella"
+    />
 
     <DialogoHistorialPagos
       v-model="dialogoHistorial"
@@ -317,6 +439,8 @@ import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js'
 
 import CampoTelefono from 'src/components/CampoTelefono.vue';
 import DialogoHistorialPagos from 'src/components/DialogoHistorialPagos.vue';
+import DialogoHuellas from 'src/components/DialogoHuellas.vue';
+import IconoWhatsapp from 'src/components/IconoWhatsapp.vue';
 import FormularioPago from 'src/components/FormularioPago.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 import {
@@ -324,6 +448,7 @@ import {
   ESTADOS_VENCIMIENTO,
   useVencimientos,
 } from 'src/composables/useVencimientos.js';
+import { listarMiembrosConHuella } from 'src/servicios/gimnasio.servicio.js';
 import { ROLES } from 'src/stores/autenticacion.js';
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 
@@ -341,10 +466,13 @@ const { vencimientos, cargando, conteosPorEstado, cargar, formatearFecha, descri
 
 const busqueda = ref('');
 const filtroSede = ref(null);
+// '' = todos. Si no, uno de ESTADOS_VENCIMIENTO.
+const filtroEstado = ref('');
 
 const dialogoPago = ref(false);
 const dialogoMiembro = ref(false);
 const dialogoHistorial = ref(false);
+const dialogoHuellas = ref(false);
 const dialogoArchivados = ref(false);
 const cargandoArchivados = ref(false);
 const reactivandoId = ref(null);
@@ -387,7 +515,7 @@ const COLUMNAS = [
   },
   {
     name: 'vence',
-    label: 'Vence',
+    label: 'Vigencia',
     field: (fila) => fila.ultimoPago?.periodoFin ?? '',
     align: 'left',
     sortable: true,
@@ -399,25 +527,62 @@ const COLUMNAS = [
 // En movil, la columna de acciones va primero (ver el composable).
 const columnasResponsivas = useColumnasResponsive(COLUMNAS);
 
-const ORDEN_DISCOS = [
-  ESTADOS_VENCIMIENTO.AL_DIA,
-  ESTADOS_VENCIMIENTO.POR_VENCER,
-  ESTADOS_VENCIMIENTO.VENCIDO,
-];
-
-const discosEstado = computed(() =>
-  ORDEN_DISCOS.map((estado) => ({
+/**
+ * Pestanas de estado: el conteo y, a la vez, el filtro de la tabla. "Sin pagos"
+ * no tiene pestana (se ve dentro de "Todos").
+ */
+const PESTANAS = [
+  { estado: '', etiqueta: 'Todos', color: 'var(--q-secondary)' },
+  ...[
+    ESTADOS_VENCIMIENTO.AL_DIA,
+    ESTADOS_VENCIMIENTO.POR_VENCER,
+    ESTADOS_VENCIMIENTO.VENCIDO,
+  ].map((estado) => ({
     estado,
     etiqueta: APARIENCIA_VENCIMIENTO[estado].plural,
     color: APARIENCIA_VENCIMIENTO[estado].color,
-    total: conteosPorEstado.value[estado],
+  })),
+];
+
+const pestanasEstado = computed(() =>
+  PESTANAS.map((pestana) => ({
+    ...pestana,
+    total: pestana.estado ? conteosPorEstado.value[pestana.estado] : vencimientos.value.length,
   })),
 );
+
+const textoSinFilas = computed(() =>
+  vencimientos.value.length === 0 ? 'Aun no hay miembros. Registra el primero.' : 'Ningun miembro coincide con el filtro.',
+);
+
+/** Iniciales para el avatar ("Ana Ramirez" -> "AR"). */
+function iniciales(miembro) {
+  return `${miembro.nombres?.[0] ?? ''}${miembro.apellidos?.[0] ?? ''}`.toUpperCase();
+}
+
+/**
+ * Cuanto le queda de la mensualidad pagada, de 0 a 1 (el riel de vigencia).
+ * Vencido o sin pagos: 0.
+ */
+function vigencia(fila) {
+  const pago = fila.ultimoPago;
+  if (!pago) return 0;
+  const inicio = new Date(pago.periodoInicio).getTime();
+  const fin = new Date(pago.periodoFin).getTime();
+  if (!(fin > inicio)) return 0;
+  return Math.min(Math.max((fin - Date.now()) / (fin - inicio), 0), 1);
+}
+
+function enlaceWhatsapp(miembro) {
+  const texto = `Hola ${miembro.nombres}, te escribimos de ${usuario.value?.tenantNombre || 'Gym Barichara'}.`;
+  return `https://wa.me/${miembro.telefono}?text=${encodeURIComponent(texto)}`;
+}
 
 const filasFiltradas = computed(() => {
   const texto = (busqueda.value ?? '').trim().toLowerCase();
 
   return vencimientos.value.filter((fila) => {
+    if (filtroEstado.value && fila.estado !== filtroEstado.value) return false;
     if (filtroSede.value && fila.miembro.sede !== filtroSede.value) return false;
     if (!texto) return true;
 
@@ -536,6 +701,22 @@ function abrirHistorial(miembro) {
   dialogoHistorial.value = true;
 }
 
+// Quien ya tiene huella para la puerta: su icono va en verde.
+const conHuella = ref(new Set());
+
+async function cargarConHuella() {
+  try {
+    conHuella.value = new Set(await listarMiembrosConHuella());
+  } catch {
+    // No es critico: sin esto el icono solo queda gris.
+  }
+}
+
+function abrirHuellas(miembro) {
+  miembroActivo.value = miembro;
+  dialogoHuellas.value = true;
+}
+
 async function abrirArchivados() {
   dialogoArchivados.value = true;
   cargandoArchivados.value = true;
@@ -617,7 +798,7 @@ async function guardarMiembro() {
 
 onMounted(async () => {
   try {
-    await Promise.all([cargar(), gimnasio.cargarSedes()]);
+    await Promise.all([cargar(), gimnasio.cargarSedes(), cargarConHuella()]);
   } catch {
     quasar.notify({ type: 'negative', message: 'No se pudieron cargar los miembros' });
   }
@@ -649,52 +830,217 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
-/* Fondo suave por estado del miembro, para leer de un vistazo. Los colores son
-   los de las bandas de disco, muy diluidos para no competir con el texto. Una
-   banda a la izquierda refuerza el estado sin depender solo del color. */
-.fila-estado :deep(td:first-child) {
-  border-left: 3px solid transparent;
+/* --- Pestanas de estado (conteo + filtro) --- */
+.filtros-estado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.pestana-estado {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px 10px 14px;
+  border: 1px solid #e4e7ec;
+  border-left: 4px solid var(--banda);
+  border-radius: 10px;
+  background: #fff;
+  color: #3b3f46;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+.pestana-estado:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+.pestana-estado:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: 2px;
+}
+.pestana-estado.activa {
+  background: #14161b;
+  border-color: #14161b;
+  border-left-color: var(--banda);
+  color: #fff;
+}
+.pestana-total {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.pestana-etiqueta {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+/* En celular: una sola fila delgada que se desliza de lado si no cabe. */
+@media (max-width: 600px) {
+  .filtros-estado {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin: 0 -16px 12px;
+    padding: 0 16px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filtros-estado::-webkit-scrollbar {
+    display: none;
+  }
+  .pestana-estado {
+    flex-shrink: 0;
+    gap: 5px;
+    padding: 6px 10px 6px 8px;
+    border-left-width: 3px;
+    border-radius: 8px;
+  }
+  .pestana-total {
+    font-size: 1rem;
+  }
+  .pestana-etiqueta {
+    font-size: 0.74rem;
+  }
 }
 
-.fila-al_dia {
-  background: rgba(31, 122, 70, 0.08);
+/* --- Tabla --- */
+.tabla-miembros {
+  border-radius: 12px;
+}
+.tabla-miembros :deep(thead th) {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: #fafafa;
+}
+.fila-miembro :deep(td:first-child) {
+  border-left: 4px solid transparent;
+}
+.fila-miembro:hover {
+  background: #f8f9fb;
 }
 .fila-al_dia :deep(td:first-child) {
   border-left-color: var(--q-positive);
 }
-
-.fila-por_vencer {
-  background: rgba(154, 112, 22, 0.12);
-}
 .fila-por_vencer :deep(td:first-child) {
   border-left-color: var(--q-warning);
 }
-
-.fila-vencido {
-  background: rgba(143, 29, 20, 0.09);
-}
 .fila-vencido :deep(td:first-child) {
   border-left-color: var(--q-negative);
-}
-
-.fila-sin_pagos {
-  background: rgba(102, 112, 133, 0.08);
 }
 .fila-sin_pagos :deep(td:first-child) {
   border-left-color: #667085;
 }
 
-/* Al pasar el mouse, el tinte se intensifica un poco (gana al hover de Quasar). */
-.fila-al_dia:hover {
-  background: rgba(31, 122, 70, 0.15) !important;
+.celda-miembro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.fila-por_vencer:hover {
-  background: rgba(154, 112, 22, 0.2) !important;
+/* Avatar con iniciales: el anillo lleva el color del estado. */
+.avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #14161b;
+  color: #fff;
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--anillo);
 }
-.fila-vencido:hover {
-  background: rgba(143, 29, 20, 0.16) !important;
+.nombre-miembro {
+  font-weight: 600;
+  color: #0b0b0b;
 }
-.fila-sin_pagos:hover {
-  background: rgba(102, 112, 133, 0.14) !important;
+.chip-sede {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f1f2f4;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3b3f46;
+}
+.enlace-telefono {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: inherit;
+  text-decoration: none;
+}
+.enlace-telefono:hover {
+  color: #1faa52;
+}
+.icono-wa {
+  font-size: 17px;
+  color: #1faa52;
+}
+
+/* Riel de vigencia: lo que le queda de la mensualidad pagada. */
+.celda-vigencia {
+  min-width: 150px;
+}
+.riel-vigencia {
+  height: 6px;
+  margin: 5px 0 3px;
+  border-radius: 3px;
+  background: #eceef1;
+  overflow: hidden;
+}
+.carga-vigencia {
+  height: 100%;
+  border-radius: 3px;
+}
+.texto-vencido {
+  color: var(--q-negative) !important;
+}
+.texto-por_vencer {
+  color: var(--q-warning) !important;
+}
+.texto-al_dia {
+  color: var(--q-positive) !important;
+}
+
+.acciones {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.boton-cobrar {
+  padding: 2px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+/* --- Celular: tarjetas --- */
+.tarjeta-miembro-movil {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e4e7ec;
+  border-left: 4px solid #667085;
+  background: #fff;
+}
+.tarjeta-miembro-movil.fila-al_dia {
+  border-left-color: var(--q-positive);
+}
+.tarjeta-miembro-movil.fila-por_vencer {
+  border-left-color: var(--q-warning);
+}
+.tarjeta-miembro-movil.fila-vencido {
+  border-left-color: var(--q-negative);
+}
+.boton-wa-movil {
+  color: #1faa52;
+  font-size: 20px;
 }
 </style>

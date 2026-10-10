@@ -12,10 +12,10 @@ export function responderCreado(respuesta, data) {
   return responderOk(respuesta, data, 201);
 }
 
-export function responderError(respuesta, estado, mensaje, detalles = null) {
+export function responderError(respuesta, estado, mensaje, detalles = null, codigo = null) {
   return respuesta.status(estado).json({
     ok: false,
     data: null,
-    error: { mensaje, detalles },
+    error: { mensaje, detalles, ...(codigo ? { codigo } : {}) },
   });
 }

@@ -40,6 +40,8 @@
       </template>
     </q-table>
 
+    <SeccionPuestosAcceso class="q-mt-xl" />
+
     <q-dialog v-model="dialogoAbierto">
       <q-card class="tarjeta-sede">
         <q-card-section class="q-pb-sm">
@@ -80,6 +82,8 @@ import { useQuasar } from 'quasar';
 import { onMounted, reactive, ref } from 'vue';
 
 import { useColumnasResponsive } from 'src/composables/useColumnasResponsive.js';
+
+import SeccionPuestosAcceso from 'src/components/SeccionPuestosAcceso.vue';
 
 import { useGimnasioStore } from 'src/stores/gimnasio.js';
 

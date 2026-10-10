@@ -17,6 +17,7 @@ import { entorno } from '../config/entorno.js';
  */
 
 const CARPETA_BASE = 'gymsaas/comprobantes';
+const SEGUNDOS_DESCARGA_PRIVADA = 300;
 
 function configurar() {
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = entorno;
@@ -74,6 +75,23 @@ export async function borrarComprobante(publicId, { tipoRecurso = 'image' } = {}
     type: 'authenticated',
     resource_type: tipoRecurso,
     invalidate: true,
+  });
+}
+
+/**
+ * URL de DESCARGA privada (API de Cloudinary, caduca en minutos). Es la via para
+ * los PDF: Cloudinary bloquea por defecto la ENTREGA de PDF ("Allow delivery of
+ * PDF and ZIP files" apagado) y la URL firmada de `urlFirmada` responde 401
+ * "deny or ACL failure"; la descarga privada no esta sujeta a ese bloqueo.
+ * `formato` es la extension (un PDF subido con `resource_type: auto` queda como
+ * `image` sin extension en el public_id).
+ */
+export function urlDescargaPrivada(publicId, { tipoRecurso = 'image', formato = '' } = {}) {
+  const cl = configurar();
+  return cl.utils.private_download_url(publicId, formato, {
+    resource_type: tipoRecurso,
+    type: 'authenticated',
+    expires_at: Math.floor(Date.now() / 1000) + SEGUNDOS_DESCARGA_PRIVADA,
   });
 }
 

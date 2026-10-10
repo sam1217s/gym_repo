@@ -231,10 +231,29 @@ describe('rutas protegidas', () => {
     const dispositivoB = peticion.agent(app);
     await dispositivoB.post('/api/auth/iniciar-sesion').send(credenciales).expect(200);
 
-    // El nuevo login subio `versionToken`: la sesion de A queda invalidada...
-    await dispositivoA.get('/api/auth/yo').expect(401);
+    // El nuevo login subio `versionToken`: la sesion de A queda invalidada, y la
+    // respuesta dice POR QUE (para que A vea el aviso en vez de salir en silencio)...
+    const respuestaA = await dispositivoA.get('/api/auth/yo').expect(401);
+    expect(respuestaA.body.error.codigo).toBe('sesion_reemplazada');
+    // ...tambien al intentar refrescar con su cookie vieja...
+    const refrescoA = await dispositivoA.post('/api/auth/refrescar').expect(401);
+    expect(refrescoA.body.error.codigo).toBe('sesion_reemplazada');
     // ...y solo la sesion nueva (B) sigue viva.
     await dispositivoB.get('/api/auth/yo').expect(200);
+  });
+
+  it('cerrar sesion NO se reporta como sesion reemplazada', async () => {
+    await crearGimnasioConDuena();
+    const agente = peticion.agent(app);
+    const login = await agente
+      .post('/api/auth/iniciar-sesion')
+      .send({ identificador: 'laura@gimnasio-prueba.co', contrasena: CONTRASENA })
+      .expect(200);
+    const cookieGuardada = leerCookie(login, COOKIE_ACCESO);
+    await agente.post('/api/auth/cerrar-sesion').expect(200);
+
+    const respuesta = await peticion(app).get('/api/auth/yo').set('Cookie', cookieGuardada).expect(401);
+    expect(respuesta.body.error.codigo).toBeUndefined();
   });
 });
 

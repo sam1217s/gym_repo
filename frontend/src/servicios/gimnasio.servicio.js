@@ -292,3 +292,55 @@ export async function obtenerReportePanel() {
   const { data: respuesta } = await api.get('/reportes');
   return respuesta.data;
 }
+
+// --- Control de acceso en la puerta ------------------------------------------------
+
+/** Huellas registradas de un miembro (sin la plantilla: esa nunca vuelve al navegador). */
+export async function listarHuellas(miembroId) {
+  const { data: respuesta } = await api.get(`/miembros/${miembroId}/huellas`);
+  return respuesta.data;
+}
+
+/** Ids de los miembros (del alcance de quien consulta) que ya tienen huella. */
+export async function listarMiembrosConHuella() {
+  const { data: respuesta } = await api.get('/miembros/con-huella');
+  return respuesta.data;
+}
+
+/** `datos`: `{ plantilla, dedo, autorizacionDatosBiometricos: true }`. */
+export async function registrarHuella(miembroId, datos) {
+  const { data: respuesta } = await api.post(`/miembros/${miembroId}/huellas`, datos);
+  return respuesta.data;
+}
+
+export async function eliminarHuella(miembroId, huellaId) {
+  const { data: respuesta } = await api.delete(`/miembros/${miembroId}/huellas/${huellaId}`);
+  return respuesta.data;
+}
+
+export async function listarPuestosAcceso() {
+  const { data: respuesta } = await api.get('/puestos-acceso');
+  return respuesta.data;
+}
+
+/** Devuelve `{ puesto, token }`. El token solo se ve AQUI: el backend guarda su hash. */
+export async function crearPuestoAcceso(datos) {
+  const { data: respuesta } = await api.post('/puestos-acceso', datos);
+  return respuesta.data;
+}
+
+export async function regenerarTokenPuesto(id) {
+  const { data: respuesta } = await api.post(`/puestos-acceso/${id}/token`);
+  return respuesta.data;
+}
+
+export async function desactivarPuestoAcceso(id) {
+  const { data: respuesta } = await api.delete(`/puestos-acceso/${id}`);
+  return respuesta.data;
+}
+
+/** `{ accesos, resumen: { total, permitidos, negados } }` de un dia (`fecha` = 'AAAA-MM-DD'). */
+export async function listarAccesos(params = {}) {
+  const { data: respuesta } = await api.get('/accesos', { params });
+  return respuesta.data;
+}

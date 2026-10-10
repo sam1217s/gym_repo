@@ -215,6 +215,47 @@ export const ESTADOS_MAQUINA_REQUIEREN_ATENCION = Object.freeze([
   ESTADOS_MAQUINA.DANADA,
 ]);
 
+// --- Control de acceso en la puerta (huella) ---------------------------------
+
+/**
+ * Dias que un miembro VENCIDO todavia puede entrar (con aviso de renovar). Desde
+ * el dia siguiente se le niega. Se cuentan dias de calendario, igual que el
+ * panel: vencido hace 3 dias entra; hace 4 ya no.
+ */
+export const DIAS_GRACIA_ACCESO = 3;
+
+/** Como se identifico quien llega a la puerta. El rostro vendra despues. */
+export const METODOS_ACCESO = Object.freeze({ HUELLA: 'huella' });
+export const LISTA_METODOS_ACCESO = Object.values(METODOS_ACCESO);
+
+export const RESULTADOS_ACCESO = Object.freeze({ PERMITIDO: 'permitido', NEGADO: 'negado' });
+export const LISTA_RESULTADOS_ACCESO = Object.values(RESULTADOS_ACCESO);
+
+/**
+ * Por que se permitio o nego una entrada. Los cuatro primeros salen del estado
+ * de vencimiento; `en_gracia` es un vencido dentro de `DIAS_GRACIA_ACCESO`.
+ */
+export const MOTIVOS_ACCESO = Object.freeze({
+  AL_DIA: 'al_dia',
+  POR_VENCER: 'por_vencer',
+  EN_GRACIA: 'en_gracia',
+  VENCIDO: 'vencido',
+  SIN_PAGOS: 'sin_pagos',
+  INACTIVO: 'inactivo',
+});
+export const LISTA_MOTIVOS_ACCESO = Object.values(MOTIVOS_ACCESO);
+
+/** Huellas que se le pueden registrar a un miembro (una principal y una de respaldo). */
+export const MAX_HUELLAS_POR_MIEMBRO = 2;
+
+/** Una plantilla del ZK9500 pesa ~900 bytes; el SDK reserva 2048. Tope con holgura. */
+export const BYTES_MAX_PLANTILLA_HUELLA = 4096;
+
+export const DEDOS = Object.freeze([
+  'pulgar_derecho', 'indice_derecho', 'medio_derecho', 'anular_derecho', 'menique_derecho',
+  'pulgar_izquierdo', 'indice_izquierdo', 'medio_izquierdo', 'anular_izquierdo', 'menique_izquierdo',
+]);
+
 /**
  * Todos los dias a las 6:00 y a las 17:00, en la zona horaria del producto. La
  * segunda corrida es red de respaldo: como cada recordatorio se marca en
@@ -259,6 +300,13 @@ export const DURACION_TOKEN_ACCESO = '15m';
 export const DURACION_TOKEN_REFRESCO = '7d';
 export const DURACION_TOKEN_REFRESCO_MS = 7 * 24 * 60 * 60 * 1000;
 export const DURACION_TOKEN_ACCESO_MS = 15 * 60 * 1000;
+
+/**
+ * Codigos de error que el frontend distingue. `sesion_reemplazada`: alguien
+ * inicio sesion con la misma cuenta en otro dispositivo y esta sesion se cerro
+ * (una sola sesion por cuenta).
+ */
+export const CODIGOS_ERROR = Object.freeze({ SESION_REEMPLAZADA: 'sesion_reemplazada' });
 
 /** Nombres de las cookies HttpOnly que transportan los tokens. */
 export const COOKIE_ACCESO = 'gs_acceso';

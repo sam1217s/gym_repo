@@ -31,13 +31,24 @@ export async function obtenerUltimoPagoPorMiembro(filtroSede = {}) {
 }
 
 /**
+ * El ultimo pago de UN miembro, con el mismo criterio que
+ * `obtenerUltimoPagoPorMiembro` (el de `periodoFin` mas reciente). Existe para la
+ * puerta, que pregunta por una persona a la vez y no puede agregar todos los
+ * pagos del gimnasio en cada huella.
+ */
+export function obtenerUltimoPago(miembroId) {
+  const Pago = obtenerModelo('Pago');
+  return Pago.findOne({ miembro: miembroId }).sort({ periodoFin: -1 }).lean();
+}
+
+/**
  * Dias de CALENDARIO entre hoy y una fecha, en la zona del gimnasio. Se comparan
  * DIAS CIVILES, no instantes: una mensualidad que vence "el 30" cubre TODO el 30,
  * asi que a cualquier hora del 30 faltan 0 dias ("vence hoy"), no "ya vencio".
  * Restar milisegundos marcaria como vencido el mismo dia pasada la medianoche.
  * Mismo criterio que el cron de avisos (`notificaciones.servicio`).
  */
-function diasCalendarioHasta(fecha, ahora, zonaHoraria = ZONA_HORARIA_POR_DEFECTO) {
+export function diasCalendarioHasta(fecha, ahora, zonaHoraria = ZONA_HORARIA_POR_DEFECTO) {
   const diaCivil = (valor) =>
     new Intl.DateTimeFormat('en-CA', {
       year: 'numeric',

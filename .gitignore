@@ -31,3 +31,9 @@ frontend/src-cordova/
 
 # Cache de mongodb-memory-server
 .cache/
+
+# Instalador del PC de la puerta (se genera con agente-acceso/instalador/construir.ps1)
+agente-acceso/instalador/salida/
+
+# El instalador de la puerta se copia aqui al construirlo (pesa ~37 MB)
+frontend/public/descargas/

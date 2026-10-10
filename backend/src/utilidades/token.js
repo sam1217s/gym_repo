@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import {
+  CODIGOS_ERROR,
   COOKIE_ACCESO,
   COOKIE_REFRESCO,
   DURACION_TOKEN_ACCESO,
@@ -9,6 +10,7 @@ import {
   RUTA_COOKIE_REFRESCO,
 } from '../config/constantes.js';
 import { entorno, esProduccion } from '../config/entorno.js';
+import { ErrorApi } from './ErrorApi.js';
 
 /**
  * Tokens JWT y las cookies HttpOnly que los transportan.
@@ -48,13 +50,16 @@ export function firmarTokenAcceso(usuario) {
     tenant: usuario.tenant ? usuario.tenant.toString() : null,
     sede: usuario.sede ? usuario.sede.toString() : null,
     version: usuario.versionToken,
+    // Instante de emision en ms (`iat` va en segundos): distingue con exactitud
+    // una sesion reemplazada por otro inicio de sesion (ver `errorSesionRevocada`).
+    emitido: Date.now(),
   };
 
   return jwt.sign(carga, entorno.JWT_SECRETO_ACCESO, { expiresIn: DURACION_TOKEN_ACCESO });
 }
 
 export function firmarTokenRefresco(usuario) {
-  const carga = { sub: usuario._id.toString(), version: usuario.versionToken };
+  const carga = { sub: usuario._id.toString(), version: usuario.versionToken, emitido: Date.now() };
   return jwt.sign(carga, entorno.JWT_SECRETO_REFRESCO, { expiresIn: DURACION_TOKEN_REFRESCO });
 }
 
@@ -119,6 +124,25 @@ export function verificarTokenPagoMiembro(token) {
  * adjunta al resto de la API, asi que una vulnerabilidad en otro endpoint no lo
  * expone.
  */
+/**
+ * Error para un token cuya `versionToken` ya no coincide. Si la cuenta inicio
+ * sesion DESPUES de emitirse este token (`ultimoAcceso` > `iat`), es que alguien
+ * entro con la misma cuenta en otro dispositivo: se marca `sesion_reemplazada`
+ * para que el frontend lo diga en vez de sacar al usuario en silencio. Cerrar
+ * sesion o cambiar la contrasena tambien revocan, pero no tocan `ultimoAcceso`.
+ */
+export function errorSesionRevocada(usuario, carga) {
+  // Tokens emitidos antes de existir `emitido` caen al `iat` (segundos).
+  const emitidoMs = carga.emitido ?? (carga.iat ?? 0) * 1000;
+  const ingresoPosterior = Boolean(usuario.ultimoAcceso) && usuario.ultimoAcceso.getTime() > emitidoMs;
+  return ingresoPosterior
+    ? ErrorApi.noAutenticado(
+        'Se cerro tu sesion porque alguien inicio sesion con tu cuenta en otro dispositivo',
+        CODIGOS_ERROR.SESION_REEMPLAZADA,
+      )
+    : ErrorApi.noAutenticado('Sesion revocada, vuelve a iniciar sesion');
+}
+
 export function establecerCookiesSesion(respuesta, usuario) {
   respuesta.cookie(COOKIE_ACCESO, firmarTokenAcceso(usuario), opcionesCookie(DURACION_TOKEN_ACCESO_MS));
   respuesta.cookie(

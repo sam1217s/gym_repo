@@ -6,6 +6,17 @@
       <div class="text-caption text-grey-7">Acceso para funcionarios</div>
     </q-card-section>
 
+    <!-- Se llega aqui con ?motivo=otra-sesion cuando alguien inicio sesion con esta
+         cuenta en otro dispositivo y la sesion de este se cerro. -->
+    <q-banner v-if="sesionReemplazada" rounded class="aviso-otra-sesion q-mt-md">
+      <template #avatar><q-icon name="gpp_maybe" size="28px" /></template>
+      <div class="text-weight-bold">Se cerró tu sesión</div>
+      <div class="text-caption">
+        Alguien inició sesión con tu cuenta en otro dispositivo. Solo se permite una sesión a la vez.
+        Si no fuiste tú, entra y <b>cambia tu contraseña</b> de inmediato.
+      </div>
+    </q-banner>
+
     <q-tabs v-model="modo" class="text-grey-7 q-mt-sm" active-color="primary" indicator-color="primary" dense narrow-indicator>
       <q-tab name="correo" icon="badge" label="Correo" no-caps />
       <q-tab name="telefono" icon="smartphone" label="Telefono" no-caps />
@@ -130,12 +141,16 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import CampoTelefono from 'src/components/CampoTelefono.vue';
 import { useAutenticacion } from 'src/composables/useAutenticacion.js';
 
 const { iniciarSesion, enviarOtp, iniciarSesionOtp, cargando, exigeGimnasio } = useAutenticacion();
+
+const ruta = useRoute();
+const sesionReemplazada = computed(() => ruta.query.motivo === 'otra-sesion');
 
 const modo = ref('correo');
 const contrasenaVisible = ref(false);
@@ -181,6 +196,16 @@ function reiniciarOtp() {
 </script>
 
 <style scoped>
+.aviso-otra-sesion {
+  background: #fff4e5;
+  border-left: 4px solid var(--q-warning);
+  color: #5c3d00;
+  text-align: left;
+}
+.aviso-otra-sesion .q-icon {
+  color: var(--q-warning);
+}
+
 .logo-acceso {
   width: 84px;
   height: 84px;

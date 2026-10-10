@@ -2,6 +2,7 @@ import { obtenerContexto } from '../contexto/contextoTenant.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { darBienvenida } from './bienvenida.servicio.js';
+import { eliminarHuellasDeMiembro } from './huellas.servicio.js';
 import { exigirSede } from './sedes.servicio.js';
 
 /**
@@ -71,7 +72,11 @@ export async function actualizarMiembro(id, datos, filtroSede = {}) {
   Object.assign(miembro, datos);
 
   try {
-    return await miembro.save();
+    const guardado = await miembro.save();
+    // Dar de baja borra sus huellas: es dato sensible y deja de tener proposito
+    // (Ley 1581). Si vuelve, se le registran de nuevo con nueva autorizacion.
+    if (datos.activo === false) await eliminarHuellasDeMiembro(guardado._id);
+    return guardado;
   } catch (error) {
     if (error.code === CODIGO_DUPLICADO_MONGO) {
       throw ErrorApi.conflicto('Ya existe un miembro con ese documento en este gimnasio');

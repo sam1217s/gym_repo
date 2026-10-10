@@ -17,6 +17,15 @@ const rutas = [
     meta: { publica: true },
   },
 
+  // Pantalla de la puerta de cada sede (kiosco). Sin sesion: solo escucha al
+  // agente local del lector de huella, que es quien habla con el servidor.
+  {
+    path: '/acceso',
+    name: 'acceso',
+    component: () => import('pages/PaginaAcceso.vue'),
+    meta: { publica: true },
+  },
+
   {
     path: '/',
     component: () => import('layouts/LayoutAutenticacion.vue'),
@@ -48,6 +57,12 @@ const rutas = [
         path: 'miembros',
         name: 'miembros',
         component: () => import('pages/PaginaMiembros.vue'),
+        meta: { roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN] },
+      },
+      {
+        path: 'entradas',
+        name: 'entradas',
+        component: () => import('pages/PaginaEntradas.vue'),
         meta: { roles: [ROLES.TENANT_OWNER, ROLES.SEDE_ADMIN] },
       },
       {

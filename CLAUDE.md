@@ -214,6 +214,49 @@ crea un `ReporteMaquina` (tenant-scoped) para el **dueño**. Reglas no obvias:
 - El panel es **solo del dueño** (`requiereDuenoGimnasio`) y ve los de TODAS sus sedes (sin
   `filtroSede`): el plugin ya acota al tenant y su alcance es el gimnasio entero.
 
+### Control de acceso en la puerta (huella)
+
+El PC de la puerta de cada sede (lector ZK9500 + pantalla) identifica al miembro y el backend
+decide si entra. Reglas no obvias:
+
+- **La decision la toma SIEMPRE el backend** (`acceso.servicio → evaluarAcceso`), sobre el ULTIMO
+  pago con `derivarEstado`, igual que el panel y el cron. El agente de la puerta solo dice QUIEN
+  es (el 1:N lo hace el SDK de ZKTeco en local): un puesto manipulado no puede abrirle a un vencido.
+- **Gracia**: vencido hasta `DIAS_GRACIA_ACCESO` (3) dias de calendario entra (`en_gracia`); desde
+  el 4 se niega. Sin pagos o dado de baja, no entra.
+- **Cualquier sede**: la verificacion NO aplica `filtroSede` y el puesto sincroniza las huellas de
+  todo el gimnasio. `AccesoPuerta.sede` es la de la PUERTA, y sobre ella filtra el historial.
+- **El puesto no es un usuario**: se autentica con `Authorization: Bearer <tenantId>.<puestoId>.<secreto>`
+  (`middlewares/autenticacionPuesto.js`, que tambien abre el contexto). El tenant viaja en el token
+  para buscar el puesto con `ejecutarConTenant` sin pasar por `ejecutarSinTenant`; lo que autentica
+  es el SHA-256 del secreto, comparado en tiempo constante. El token se muestra UNA vez.
+- **El token no lo copia nadie: se VINCULA.** Si el agente no tiene token (o el servidor lo
+  rechaza con 401), `/acceso` muestra `VincularEquipo.vue`: el dueño inicia sesion ahi, el panel
+  crea o regenera el puesto y le pasa el token al agente por el WebSocket local (`vincular`). El
+  agente lo prueba contra `/acceso/puesto` ANTES de guardarlo en
+  `ProgramData\GymBarichara\Puerta\config.json` (su token gana sobre el `.env`), y la pantalla
+  cierra la sesion del dueño: en un PC de puerta no puede quedar abierta. La confirmacion la
+  pinta `PaginaAcceso` y no el componente, porque al vincularse llega el nuevo `estado` y el
+  formulario se desmonta antes que la respuesta.
+- **El agente funciona sin pantalla** y responde en el propio lector (luz + pitidos). En
+  produccion lo instala `agente-acceso/instalador/` (Inno Setup, trae su node.exe y el SDK de
+  ZKTeco) como tarea de Windows de SYSTEM al encender. Sus valores por defecto son los de
+  PRODUCCION (`gymbarichara.com`); el `.env` es solo de desarrollo.
+- **La "app de escritorio" es `/acceso` en una ventana propia** (acceso "GymBarichara Puerta" =
+  `msedge --app=.../acceso`), no un programa aparte: ahi se ve quien entro hoy y se apaga/enciende
+  (`pausar`/`reanudar`) o reconecta el lector, todo por el WebSocket del agente. La ventana no tiene
+  sesion: las entradas las pide el AGENTE con su token (`GET /api/acceso/entradas`, solo la sede del
+  puesto y solo nombre/resultado/motivo/hora) y se las reenvia. Cerrar la ventana no apaga la puerta;
+  "apagar" es del agente y no sobrevive a un reinicio (al encender el PC vuelve encendido).
+- **Trampa "Local Network Access" (Chrome/Edge 14x):** una pagina de INTERNET no puede abrir
+  `ws://127.0.0.1` sin permiso del usuario; sin el, falla en silencio
+  (`net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`) y la ventana se queda en "Iniciando…". En local
+  no se ve (localhost no es "internet"). El instalador escribe la politica
+  `LocalNetworkAccessAllowedForUrls` (Edge y Chrome, HKLM) solo para gymbarichara.com.
+- **Huella = dato sensible (Ley 1581)**: solo la plantilla, cifrada AES-256-GCM con
+  `CLAVE_CIFRADO_BIOMETRIA` y `select: false`; enrolar exige `autorizacionDatosBiometricos: true`;
+  dar de baja al miembro borra sus huellas. Perder la clave obliga a re-enrolar a todos.
+
 **Hay DOS integraciones de Wompi, con cuentas y secretos distintos, y confundirlas es un
 agujero:** la de plataforma (una sola cuenta de GymSaaS, en el `.env`, webhook `/webhooks/wompi`)
 y la de cada gimnasio (las llaves del dueno en `tenant.config.wompi`, webhook
@@ -365,6 +408,12 @@ exigirLimite(RECURSOS.X)         // solo en las rutas que CREAN, y despues de va
 - Los refresh tokens **no se guardan en la base de datos**. La revocacion se hace con
   `Usuario.versionToken`: cerrar sesion o cambiar la contrasena lo incrementa, lo que invalida
   de golpe todos los tokens emitidos antes.
+- **Una sola sesion por cuenta**: iniciar sesion (correo u OTP) sube `versionToken` y sella
+  `ultimoAcceso`. La sesion vieja recibe 401 con `error.codigo: 'sesion_reemplazada'` cuando su
+  token (claim `emitido`, en ms) es anterior a `ultimoAcceso` (`token.js → errorSesionRevocada`);
+  cerrar sesion o cambiar la contrasena tambien revocan pero NO llevan ese codigo. El interceptor
+  de Axios lleva entonces a `/iniciar-sesion?motivo=otra-sesion` (aviso visible), y el layout del
+  panel hace `GET /auth/yo` cada 30 s para que el aviso salga aunque nadie toque nada.
 - `autenticar` consulta `Usuario` y `Tenant` en **cada peticion**. Es deliberado: sin eso,
   desactivar un usuario o suspender un gimnasio no surtiria efecto hasta que expirara su token.
 
@@ -726,7 +775,9 @@ miembro manda el comprobante de su transferencia, sin esta bandeja no lo ve nadi
   Cloudinary** como tipo `authenticated` en `gymsaas/comprobantes/<tenantId>`. Se sirve por
   `GET /api/mensajes/:id/archivo` (con cookie de sesion y `filtroSede`), que **redirige** a una
   URL firmada de corta duracion. Los comprobantes en disco previos a la migracion (`archivo`) se
-  siguen sirviendo streameados. El cron `comprobantes.tarea.js` purga a los
+  siguen sirviendo streameados. **Los PDF NO van por la URL firmada**: Cloudinary bloquea por
+  defecto la ENTREGA de PDF (401 "deny or ACL failure"); `rutaArchivo` los manda por
+  `urlDescargaPrivada` (API de descarga privada, no sujeta a ese bloqueo). El cron `comprobantes.tarea.js` purga a los
   `MESES_RETENCION_COMPROBANTE` (3): borra el archivo (de Cloudinary o disco) y conserva el
   registro. Cloudinary es de la PLATAFORMA (env `CLOUDINARY_*`), no por gimnasio.
 - **Responder es texto libre** (`Body`), que WhatsApp solo acepta dentro de las **24 h** desde el

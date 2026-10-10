@@ -27,12 +27,13 @@ export function manejadorErrores(error, _peticion, respuesta, siguiente) {
     traducido.estado,
     traducido.mensaje,
     esProduccion && traducido.estado >= 500 ? null : traducido.detalles,
+    traducido.codigo,
   );
 }
 
 function traducirError(error) {
   if (error instanceof ErrorApi) {
-    return { estado: error.estado, mensaje: error.message, detalles: error.detalles };
+    return { estado: error.estado, mensaje: error.message, detalles: error.detalles, codigo: error.codigo };
   }
 
   /**

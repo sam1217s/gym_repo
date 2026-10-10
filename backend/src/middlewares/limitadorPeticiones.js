@@ -23,11 +23,11 @@ const opcionesBase = {
   message: mensaje,
 };
 
-/** Login y refresco: 10 intentos por IP cada 15 minutos. */
+/** Login y refresco: 20 intentos por IP cada 15 minutos. */
 export const limitadorLogin = rateLimit({
   ...opcionesBase,
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: 20,
 });
 
 /** Registro publico de gimnasios: 5 por IP cada hora (evita alta masiva). */

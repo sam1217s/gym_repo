@@ -1,9 +1,11 @@
 import { obtenerConexion } from '../config/baseDatos.js';
 import { obtenerContexto } from '../contexto/contextoTenant.js';
 
+import * as accesoPuerta from './AccesoPuerta.js';
 import * as auditoria from './Auditoria.js';
 import * as deuda from './Deuda.js';
 import * as gasto from './Gasto.js';
+import * as huellaMiembro from './HuellaMiembro.js';
 import * as mensajeWhatsapp from './MensajeWhatsapp.js';
 import * as maquina from './Maquina.js';
 import * as notificacion from './Notificacion.js';
@@ -12,6 +14,7 @@ import * as planMembresia from './PlanMembresia.js';
 import * as miembro from './Miembro.js';
 import * as reporteMaquina from './ReporteMaquina.js';
 import * as producto from './Producto.js';
+import * as puestoAcceso from './PuestoAcceso.js';
 import * as sede from './Sede.js';
 import * as tenant from './Tenant.js';
 import * as usuario from './Usuario.js';
@@ -45,6 +48,9 @@ const definiciones = [
   deuda,
   gasto,
   mensajeWhatsapp,
+  huellaMiembro,
+  puestoAcceso,
+  accesoPuerta,
 ];
 
 export const NOMBRES_MODELOS = Object.freeze(

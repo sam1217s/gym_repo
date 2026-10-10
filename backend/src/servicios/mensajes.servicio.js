@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   borrarComprobante,
   subirComprobante,
+  urlDescargaPrivada,
   urlFirmada,
 } from '../almacenamiento/cloudinary.js';
 import {
@@ -459,9 +460,13 @@ export async function purgarComprobantesAntiguos({
   });
 }
 
+/** Documentos que Cloudinary no ENTREGA por su URL firmada: van por descarga privada. */
+const EXTENSION_POR_DOCUMENTO = { 'application/pdf': 'pdf' };
+
 /**
  * Como servir el comprobante, ya comprobado el alcance por sede:
- *  - Cloudinary: una URL firmada de corta duracion a la que redirigir.
+ *  - Cloudinary: una URL firmada de corta duracion que el backend descarga (los
+ *    PDF, por la descarga privada: ver `urlDescargaPrivada`).
  *  - HEREDADO (disco): la ruta absoluta del archivo para streamearlo.
  */
 export async function rutaArchivo(id, filtroSede = {}) {
@@ -471,8 +476,13 @@ export async function rutaArchivo(id, filtroSede = {}) {
   if (!mensaje) throw ErrorApi.noEncontrado('El mensaje no existe');
 
   if (mensaje.archivoPublicId) {
+    const opciones = { tipoRecurso: mensaje.archivoTipoRecurso };
+    const formato = EXTENSION_POR_DOCUMENTO[mensaje.mimeType];
     return {
-      redireccion: urlFirmada(mensaje.archivoPublicId, { tipoRecurso: mensaje.archivoTipoRecurso }),
+      redireccion: formato
+        ? urlDescargaPrivada(mensaje.archivoPublicId, { ...opciones, formato })
+        : urlFirmada(mensaje.archivoPublicId, opciones),
+      mimeType: mensaje.mimeType,
     };
   }
 

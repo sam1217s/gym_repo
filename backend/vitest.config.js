@@ -55,6 +55,9 @@ export default defineConfig({
       CLOUDINARY_API_KEY: '',
       CLOUDINARY_API_SECRET: '',
 
+      // Clave de mentira para cifrar las plantillas de huella en las pruebas.
+      CLAVE_CIFRADO_BIOMETRIA: 'a'.repeat(64),
+
       // El cron nunca se programa en pruebas: sus funciones se llaman a mano.
       HABILITAR_CRON: 'false',
     },

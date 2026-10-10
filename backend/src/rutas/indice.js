@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { estaConectada } from '../config/baseDatos.js';
 import { auditar } from '../middlewares/auditoria.js';
 import { responderOk } from '../utilidades/respuesta.js';
+import rutasAcceso from './acceso.rutas.js';
+import rutasAccesos from './accesos.rutas.js';
 import rutasAuditoria from './auditoria.rutas.js';
 import rutasAuth from './auth.rutas.js';
 import rutasDeudas from './deudas.rutas.js';
@@ -13,6 +15,7 @@ import rutasMiembros from './miembros.rutas.js';
 import rutasPagos from './pagos.rutas.js';
 import rutasPagosMiembro from './pagosMiembro.rutas.js';
 import rutasPlanesMembresia from './planesMembresia.rutas.js';
+import rutasPuestosAcceso from './puestosAcceso.rutas.js';
 import rutasReportes from './reportes.rutas.js';
 import rutasReportesMaquina from './reportesMaquina.rutas.js';
 import rutasSedes from './sedes.rutas.js';
@@ -39,6 +42,9 @@ rutas.use('/webhooks', rutasWebhooks);
 // enlace, no por cookie (quien llega es el celular del miembro).
 rutas.use('/pagar', rutasPagosMiembro);
 
+// El PC de la puerta: se autentica con el token del puesto, no por cookie.
+rutas.use('/acceso', rutasAcceso);
+
 rutas.use('/auth', rutasAuth);
 rutas.use('/sedes', rutasSedes);
 rutas.use('/usuarios', rutasUsuarios);
@@ -55,5 +61,7 @@ rutas.use('/reportes-maquina', rutasReportesMaquina);
 rutas.use('/auditoria', rutasAuditoria);
 rutas.use('/gastos', rutasGastos);
 rutas.use('/deudas', rutasDeudas);
+rutas.use('/puestos-acceso', rutasPuestosAcceso);
+rutas.use('/accesos', rutasAccesos);
 
 export default rutas;

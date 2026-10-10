@@ -4,11 +4,14 @@
  * manejador central la convierte en un 500 generico sin filtrar detalles.
  */
 export class ErrorApi extends Error {
-  constructor(estado, mensaje, detalles = null) {
+  constructor(estado, mensaje, detalles = null, codigo = null) {
     super(mensaje);
     this.name = 'ErrorApi';
     this.estado = estado;
     this.detalles = detalles;
+    // Codigo estable para que el frontend reaccione a un caso concreto sin
+    // depender del texto (p. ej. `sesion_reemplazada`).
+    this.codigo = codigo;
     this.esOperacional = true;
   }
 
@@ -16,8 +19,8 @@ export class ErrorApi extends Error {
     return new ErrorApi(400, mensaje, detalles);
   }
 
-  static noAutenticado(mensaje = 'No has iniciado sesion') {
-    return new ErrorApi(401, mensaje);
+  static noAutenticado(mensaje = 'No has iniciado sesion', codigo = null) {
+    return new ErrorApi(401, mensaje, null, codigo);
   }
 
   static prohibido(mensaje = 'No tienes permiso para hacer esto') {

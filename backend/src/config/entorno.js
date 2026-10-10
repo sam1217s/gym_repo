@@ -99,6 +99,19 @@ const esquemaEntorno = z.object({
    */
   ALMACEN_ARCHIVOS: z.string().default('almacen'),
 
+  /**
+   * Clave AES-256 (64 caracteres hex) con que se cifran EN REPOSO las plantillas
+   * de huella de los miembros: son datos sensibles (Ley 1581 de 2012). Opcional
+   * para que el proyecto arranque sin ella; registrar o sincronizar huellas LANZA
+   * un 503 claro mientras falte. Si se pierde, las huellas guardadas no se pueden
+   * leer y hay que volver a registrarlas: guardala como guardas los JWT.
+   * Genera una con: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   */
+  CLAVE_CIFRADO_BIOMETRIA: z
+    .string()
+    .regex(/^([a-f\d]{64})?$/i, 'Debe tener 64 caracteres hexadecimales')
+    .default(''),
+
   SMTP_HOST: z.string().default(''),
   SMTP_PUERTO: z.coerce.number().int().positive().default(587),
   SMTP_USUARIO: z.string().default(''),

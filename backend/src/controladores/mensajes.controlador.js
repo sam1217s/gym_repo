@@ -49,7 +49,8 @@ export const descargarArchivo = manejadorAsync(async (peticion, respuesta) => {
   if (redireccion) {
     const arriba = await fetch(redireccion, { signal: AbortSignal.timeout(TIEMPO_LIMITE_DESCARGA_MS) });
     if (!arriba.ok) throw ErrorApi.noEncontrado('No se pudo obtener el archivo');
-    const tipo = arriba.headers.get('content-type') || mimeType || 'application/octet-stream';
+    // El tipo guardado manda: la descarga privada puede responder octet-stream.
+    const tipo = mimeType || arriba.headers.get('content-type') || 'application/octet-stream';
     const buffer = Buffer.from(await arriba.arrayBuffer());
     respuesta.type(tipo);
     return respuesta.send(buffer);

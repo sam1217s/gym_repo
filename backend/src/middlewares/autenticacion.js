@@ -2,7 +2,7 @@ import { COOKIE_ACCESO } from '../config/constantes.js';
 import { obtenerModelo } from '../modelos/indice.js';
 import { ErrorApi } from '../utilidades/ErrorApi.js';
 import { manejadorAsync } from '../utilidades/manejadorAsync.js';
-import { verificarTokenAcceso } from '../utilidades/token.js';
+import { errorSesionRevocada, verificarTokenAcceso } from '../utilidades/token.js';
 
 /**
  * Verifica la cookie de acceso y deja el usuario en `peticion.usuario`.
@@ -31,7 +31,7 @@ export const autenticar = manejadorAsync(async (peticion, _respuesta, siguiente)
   // Cerrar sesion o cambiar la contrasena incrementa `versionToken`, lo que
   // invalida de inmediato cualquier token emitido antes.
   if (usuario.versionToken !== carga.version) {
-    throw ErrorApi.noAutenticado('Sesion revocada, vuelve a iniciar sesion');
+    throw errorSesionRevocada(usuario, carga);
   }
 
   peticion.tenant = await exigirTenant(usuario.tenant);
