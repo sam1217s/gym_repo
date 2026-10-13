@@ -83,10 +83,12 @@ export default defineBoot(({ app, router }) => {
           !peticionOriginal?.omitirRedireccion401 &&
           !RUTAS_PUBLICAS_401.includes(router.currentRoute.value.name);
 
-        // Si otra persona entro con esta cuenta, se lleva al login CON el aviso (y
-        // aunque se este en una pantalla publica): salir en silencio no explica nada.
-        // Si solo expiro, de vuelta a la portada.
-        if (codigoSesion === 'sesion_reemplazada' && router.currentRoute.value.name !== 'iniciar-sesion') {
+        // Si otra persona entro con esta cuenta, se lleva al login CON el aviso:
+        // salir en silencio no explica nada. Si solo expiro, de vuelta a la portada.
+        // Ambos respetan `debeRedirigir`: la comprobacion de fondo del guard al abrir
+        // la portada (cookie vieja de una sesion reemplazada en ese dispositivo) no
+        // puede sacar al visitante de la pagina publica hacia el login.
+        if (codigoSesion === 'sesion_reemplazada' && debeRedirigir) {
           await router.push({ name: 'iniciar-sesion', query: { motivo: 'otra-sesion' } });
         } else if (debeRedirigir) {
           await router.push({ name: 'inicio' });
