@@ -122,7 +122,7 @@ describe('a quien se avisa', () => {
     const gimnasio = await montarGimnasio();
 
     await crearMiembroConPagos(gimnasio, { documento: 'por-vencer', pagos: [{ diasHastaVencer: 2 }] });
-    await crearMiembroConPagos(gimnasio, { documento: 'vencido', pagos: [{ diasHastaVencer: -5 }] });
+    await crearMiembroConPagos(gimnasio, { documento: 'vencido', pagos: [{ diasHastaVencer: -1 }] });
     await crearMiembroConPagos(gimnasio, { documento: 'al-dia', pagos: [{ diasHastaVencer: 25 }] });
     await crearMiembroConPagos(gimnasio, { documento: 'sin-pagos', pagos: [] });
 
@@ -193,7 +193,7 @@ describe('a quien se avisa', () => {
   });
 });
 
-describe('varios recordatorios por ciclo (offsets 2, 1, -1, -2, -5)', () => {
+describe('varios recordatorios por ciclo (offsets 2, 1, -1)', () => {
   it('avisa faltando 2 y 1 dia; faltando 3 aun no (no es un offset)', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, { documento: 'faltan-3', pagos: [{ diasHastaVencer: 3 }] });
@@ -207,7 +207,7 @@ describe('varios recordatorios por ciclo (offsets 2, 1, -1, -2, -5)', () => {
     expect(falso.enviados).toHaveLength(2);
   });
 
-  it('avisa a 1, 2 y 5 dias vencido; a 3 y 4 no (no son offsets)', async () => {
+  it('avisa a 1 dia vencido; a 2, 3, 4 y 5 no (no son offsets)', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, { documento: 'venc-1', pagos: [{ diasHastaVencer: -1 }] });
     await crearMiembroConPagos(gimnasio, { documento: 'venc-2', pagos: [{ diasHastaVencer: -2 }] });
@@ -218,16 +218,16 @@ describe('varios recordatorios por ciclo (offsets 2, 1, -1, -2, -5)', () => {
     const falso = proveedorFalso();
     await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });
 
-    // -1, -2 y -5 (tres); -3 y -4 no estan en la lista.
-    expect(falso.enviados).toHaveLength(3);
+    // Solo -1; de -2 a -5 no estan en la lista.
+    expect(falso.enviados).toHaveLength(1);
     expect(falso.enviados.every((a) => /te recordamos que el pago/.test(a.mensaje))).toBe(true);
   });
 
   it('no reenvia un recordatorio ya enviado (mismo offset)', async () => {
     const gimnasio = await montarGimnasio();
     await crearMiembroConPagos(gimnasio, {
-      documento: 'ya-venc-2',
-      pagos: [{ diasHastaVencer: -2, avisosEnviados: [-2] }],
+      documento: 'ya-venc-1',
+      pagos: [{ diasHastaVencer: -1, avisosEnviados: [-1] }],
     });
 
     const falso = proveedorFalso();
@@ -242,8 +242,8 @@ describe('registro del envio', () => {
     const gimnasio = await montarGimnasio();
     const miembro = await crearMiembroConPagos(gimnasio, {
       documento: 'dos-pagos',
-      // Los dos vencidos: el viejo es historia, el ultimo (2 dias) es el que se avisa.
-      pagos: [{ diasHastaVencer: -40 }, { diasHastaVencer: -2 }],
+      // Los dos vencidos: el viejo es historia, el ultimo (1 dia) es el que se avisa.
+      pagos: [{ diasHastaVencer: -40 }, { diasHastaVencer: -1 }],
     });
 
     const falso = proveedorFalso();
@@ -253,7 +253,7 @@ describe('registro del envio', () => {
 
     const [viejo, ultimo] = await listarPagosDe(gimnasio.tenant._id, miembro._id);
     expect(viejo.avisosEnviados).toHaveLength(0);
-    expect(ultimo.avisosEnviados).toContain(-2);
+    expect(ultimo.avisosEnviados).toContain(-1);
 
     const notificaciones = await contarNotificaciones(gimnasio.tenant._id);
     expect(notificaciones).toHaveLength(1);
@@ -321,7 +321,7 @@ describe('aislamiento entre gimnasios', () => {
 
     await crearMiembroConPagos(a, { documento: 'a1', pagos: [{ diasHastaVencer: 1 }] });
     await crearMiembroConPagos(b, { documento: 'b1', pagos: [{ diasHastaVencer: 1 }] });
-    await crearMiembroConPagos(b, { documento: 'b2', pagos: [{ diasHastaVencer: -2 }] });
+    await crearMiembroConPagos(b, { documento: 'b2', pagos: [{ diasHastaVencer: -1 }] });
 
     const falso = proveedorFalso();
     const resumen = await ejecutarAvisosDeVencimiento({ crearProveedor: falso.crearProveedor });

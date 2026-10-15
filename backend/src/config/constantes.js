@@ -128,9 +128,9 @@ export const DIAS_AVISO_VENCIMIENTO = 3;
  * se envia UNA sola vez (se registra en `Pago.avisosEnviados`). El cron corre a
  * diario y avisa cuando los dias que faltan/lleva vencido coinciden EXACTO con un
  * offset de esta lista.
- *   faltando 2 dias, faltando 1 dia, 1 dia vencido, 2 dias vencido, 5 dias vencido.
+ *   faltando 2 dias, faltando 1 dia, 1 dia vencido.
  */
-export const OFFSETS_AVISO_VENCIMIENTO = Object.freeze([2, 1, -1, -2, -5]);
+export const OFFSETS_AVISO_VENCIMIENTO = Object.freeze([2, 1, -1]);
 
 /**
  * Datos de pago que van en el aviso de vencimiento. DEBEN COINCIDIR con la

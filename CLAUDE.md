@@ -521,7 +521,7 @@ ejecutarConTenant(tenant._id, async () => {
 
 **VARIOS recordatorios por ciclo, cada uno una sola vez.** No hay booleanos por etapa, sino un
 arreglo `Pago.avisosEnviados` con los OFFSETS (dias respecto al vencimiento) ya enviados.
-`OFFSETS_AVISO_VENCIMIENTO = [2, 1, -1, -2, -5]` (positivo = antes de vencer; negativo = ya
+`OFFSETS_AVISO_VENCIMIENTO = [2, 1, -1]` (positivo = antes de vencer; negativo = ya
 vencido). El cron corre a diario y `offsetAvisoDeHoy()` mira los dias de calendario del `periodoFin`
 del ULTIMO pago: si coinciden EXACTO con un offset de la lista y ese offset aun no esta en
 `avisosEnviados`, se envia y se anota (con `$addToSet`) SOLO tras confirmar el envio, asi que cada
